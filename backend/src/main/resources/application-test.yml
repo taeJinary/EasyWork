@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: taskflow-test
+  datasource:
+    url: jdbc:h2:mem:taskflow;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+    show-sql: false
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+  security:
+    oauth2:
+      client:
+        registration: {}
+
+jwt:
+  secret: test-secret-key-for-jwt-signing-minimum-32chars
+  access-token-expiration: 600000
+  refresh-token-expiration: 1200000
+
+logging:
+  level:
+    root: INFO
+
+server:
+  port: 0
