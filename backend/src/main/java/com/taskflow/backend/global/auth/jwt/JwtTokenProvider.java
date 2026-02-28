@@ -69,6 +69,12 @@ public class JwtTokenProvider {
         return role == null ? null : Role.valueOf(role);
     }
 
+    public long getRemainingExpiration(String token) {
+        Date expiration = parseClaims(token).getExpiration();
+        long remaining = expiration.getTime() - System.currentTimeMillis();
+        return Math.max(remaining, 0L);
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey)

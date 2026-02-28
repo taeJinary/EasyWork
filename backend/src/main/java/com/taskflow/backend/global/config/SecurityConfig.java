@@ -40,7 +40,8 @@ public class SecurityConfig {
                         (request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
                 ))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue").permitAll()
+                        .requestMatchers("/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
