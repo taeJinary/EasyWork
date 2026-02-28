@@ -2,6 +2,7 @@ package com.taskflow.backend.global.auth.jwt;
 
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.global.auth.CustomUserDetails;
+import com.taskflow.backend.infra.redis.RedisService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,14 +22,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final RedisService redisService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        return uri.startsWith("/api/auth/") || uri.startsWith("/error");
+        return uri.equals("/api/auth/signup")
+                || uri.equals("/api/auth/login")
+                || uri.equals("/api/auth/reissue")
+                || uri.startsWith("/error");
     }
 
     @Override
@@ -40,6 +46,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (token != null
+                && !redisService.hasKey(BLACKLIST_KEY_PREFIX + token)
                 && jwtTokenProvider.validateToken(token)
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             Long userId = jwtTokenProvider.getUserId(token);
