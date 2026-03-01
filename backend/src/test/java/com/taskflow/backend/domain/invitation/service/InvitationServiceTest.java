@@ -161,6 +161,38 @@ class InvitationServiceTest {
     }
 
     @Test
+    void createInvitationNormalizesExpiredPendingAndCreatesNewInvitation() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User invitee = activeUser(2L, "member@example.com", "invitee");
+        Project project = project(10L, owner);
+        ProjectMember ownerMembership = ownerMember(100L, project, owner);
+        CreateInvitationRequest request = new CreateInvitationRequest("member@example.com", ProjectRole.MEMBER);
+        ProjectInvitation expiredPending = ProjectInvitation.create(
+                project,
+                owner,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().minusHours(1)
+        );
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+        given(userRepository.findByEmail("member@example.com")).willReturn(Optional.of(invitee));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.empty());
+        given(projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(10L, 2L, InvitationStatus.PENDING))
+                .willReturn(Optional.of(expiredPending));
+        given(projectInvitationRepository.save(any(ProjectInvitation.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        InvitationSummaryResponse response = invitationService.createInvitation(1L, 10L, request);
+
+        assertThat(expiredPending.getStatus()).isEqualTo(InvitationStatus.EXPIRED);
+        assertThat(response.status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(response.inviteeUserId()).isEqualTo(2L);
+    }
+
+    @Test
     void getMyInvitationsReturnsPagedResultWithStatusFilter() {
         User invitee = activeUser(2L, "member@example.com", "팀원");
         User owner = activeUser(1L, "owner@example.com", "오너");
@@ -186,6 +218,31 @@ class InvitationServiceTest {
         assertThat(response.content().getFirst().inviterNickname()).isEqualTo("오너");
         assertThat(response.page()).isEqualTo(0);
         assertThat(response.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getMyInvitationsFiltersOutExpiredPendingAfterNormalization() {
+        User invitee = activeUser(2L, "member@example.com", "invitee");
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        Project project = project(10L, owner);
+        ProjectInvitation expiredPending = ProjectInvitation.create(
+                project,
+                owner,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().minusMinutes(30)
+        );
+
+        given(userRepository.findById(2L)).willReturn(Optional.of(invitee));
+        given(projectInvitationRepository.findAllByInviteeIdAndStatusOrderByCreatedAtDesc(2L, InvitationStatus.PENDING))
+                .willReturn(List.of(expiredPending));
+
+        InvitationListResponse response = invitationService.getMyInvitations(2L, InvitationStatus.PENDING, 0, 20);
+
+        assertThat(expiredPending.getStatus()).isEqualTo(InvitationStatus.EXPIRED);
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
     }
 
     @Test
@@ -322,6 +379,33 @@ class InvitationServiceTest {
     }
 
     @Test
+    void cancelInvitationExpiresAndThrowsWhenInvitationAlreadyExpired() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User invitee = activeUser(2L, "member@example.com", "invitee");
+        Project project = project(10L, owner);
+        ProjectMember ownerMembership = ownerMember(100L, project, owner);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                owner,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().minusDays(1)
+        );
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        assertThatThrownBy(() -> invitationService.cancelInvitation(1L, 10L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVITATION_ALREADY_PROCESSED);
+
+        assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.EXPIRED);
+    }
+
+    @Test
     void acceptInvitationThrowsWhenAlreadyProcessed() {
         User invitee = activeUser(2L, "member@example.com", "팀원");
         User inviter = activeUser(1L, "owner@example.com", "오너");
@@ -388,4 +472,3 @@ class InvitationServiceTest {
                 .build();
     }
 }
-

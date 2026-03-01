@@ -55,15 +55,18 @@ public class InvitationService {
             throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
         }
 
-        if (projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(
+        LocalDateTime now = LocalDateTime.now();
+        ProjectInvitation pendingInvitation = projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(
                 projectId,
                 invitee.getId(),
                 InvitationStatus.PENDING
-        ).isPresent()) {
+        ).orElse(null);
+
+        if (pendingInvitation != null && !normalizeExpiredPendingInvitation(pendingInvitation, now)) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(invitationExpiresDays);
+        LocalDateTime expiresAt = now.plusDays(invitationExpiresDays);
         ProjectInvitation invitation = ProjectInvitation.create(
                 project,
                 inviterMembership.getUser(),
@@ -86,6 +89,7 @@ public class InvitationService {
         );
     }
 
+    @Transactional
     public InvitationListResponse getMyInvitations(
             Long userId,
             InvitationStatus status,
@@ -97,8 +101,18 @@ public class InvitationService {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = size > 0 ? size : 20;
 
+        LocalDateTime now = LocalDateTime.now();
+        List<ProjectInvitation> pendingInvitations =
+                projectInvitationRepository.findAllByInviteeIdAndStatusOrderByCreatedAtDesc(
+                        userId,
+                        InvitationStatus.PENDING
+                );
+        normalizeExpiredPendingInvitations(pendingInvitations, now);
+
         List<ProjectInvitation> invitations = status == null
                 ? projectInvitationRepository.findAllByInviteeIdOrderByCreatedAtDesc(userId)
+                : status == InvitationStatus.PENDING
+                ? pendingInvitations.stream().filter(ProjectInvitation::isPending).toList()
                 : projectInvitationRepository.findAllByInviteeIdAndStatusOrderByCreatedAtDesc(userId, status);
 
         long totalElements = invitations.size();
@@ -184,7 +198,7 @@ public class InvitationService {
         if (!invitation.getProject().getId().equals(project.getId())) {
             throw new BusinessException(ErrorCode.INVITATION_NOT_FOUND);
         }
-        ensurePending(invitation);
+        ensurePendingAndNotExpired(invitation);
 
         invitation.cancel(LocalDateTime.now());
 
@@ -224,10 +238,27 @@ public class InvitationService {
 
     private void ensurePendingAndNotExpired(ProjectInvitation invitation) {
         ensurePending(invitation);
-        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-            invitation.expire(LocalDateTime.now());
+        if (normalizeExpiredPendingInvitation(invitation, LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.INVITATION_ALREADY_PROCESSED);
         }
+    }
+
+    private void normalizeExpiredPendingInvitations(List<ProjectInvitation> invitations, LocalDateTime now) {
+        List<ProjectInvitation> expiredInvitations = invitations.stream()
+                .filter(invitation -> normalizeExpiredPendingInvitation(invitation, now))
+                .toList();
+
+        if (!expiredInvitations.isEmpty()) {
+            projectInvitationRepository.saveAll(expiredInvitations);
+        }
+    }
+
+    private boolean normalizeExpiredPendingInvitation(ProjectInvitation invitation, LocalDateTime now) {
+        if (invitation.isPending() && invitation.getExpiresAt().isBefore(now)) {
+            invitation.expire(now);
+            return true;
+        }
+        return false;
     }
 
     private void ensurePending(ProjectInvitation invitation) {
