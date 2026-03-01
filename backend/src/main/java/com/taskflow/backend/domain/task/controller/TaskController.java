@@ -1,10 +1,12 @@
 package com.taskflow.backend.domain.task.controller;
 
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.MoveTaskRequest;
 import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskMoveResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.service.TaskService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -117,6 +119,20 @@ public class TaskController {
                 request
         );
         return ResponseEntity.ok(ApiResponse.success(response, "태스크가 수정되었습니다."));
+    }
+
+    @PatchMapping("/tasks/{taskId}/move")
+    public ResponseEntity<ApiResponse<TaskMoveResponse>> moveTask(
+            Authentication authentication,
+            @PathVariable Long taskId,
+            @Valid @RequestBody MoveTaskRequest request
+    ) {
+        TaskMoveResponse response = taskService.moveTask(
+                extractUserId(authentication),
+                taskId,
+                request
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "태스크 위치가 변경되었습니다."));
     }
 
     private Long extractUserId(Authentication authentication) {

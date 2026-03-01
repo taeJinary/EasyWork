@@ -7,6 +7,7 @@ import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.MoveTaskRequest;
 import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
@@ -857,6 +858,269 @@ class TaskServiceTest {
 
         verify(taskLabelRepository, never()).deleteAllByTaskId(1000L);
         verify(taskLabelRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void moveTaskReordersWithinSameStatusColumn() {
+        User actor = activeUser(1L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        Task taskA = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task A")
+                .description("A")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(0)
+                .version(0L)
+                .build();
+        Task taskB = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task B")
+                .description("B")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(1)
+                .version(0L)
+                .build();
+        Task taskC = Task.builder()
+                .id(1002L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task C")
+                .description("C")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(2)
+                .version(0L)
+                .build();
+
+        MoveTaskRequest request = new MoveTaskRequest(TaskStatus.TODO, 0, 0L);
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(taskB));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(10L, TaskStatus.TODO))
+                .willReturn(List.of(taskA, taskB, taskC));
+
+        var response = taskService.moveTask(1L, 1001L, request);
+
+        assertThat(response.taskId()).isEqualTo(1001L);
+        assertThat(response.status()).isEqualTo(TaskStatus.TODO);
+        assertThat(response.position()).isEqualTo(0);
+        assertThat(taskB.getPosition()).isEqualTo(0);
+        assertThat(taskA.getPosition()).isEqualTo(1);
+        assertThat(taskC.getPosition()).isEqualTo(2);
+    }
+
+    @Test
+    void moveTaskChangesStatusAndCompletedAtWhenMovingToDone() {
+        User actor = activeUser(1L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        Task movingTask = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task B")
+                .description("B")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(1)
+                .version(0L)
+                .completedAt(null)
+                .build();
+        Task sourceTask = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task A")
+                .description("A")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(0)
+                .version(0L)
+                .build();
+        Task doneTask = Task.builder()
+                .id(1002L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task C")
+                .description("C")
+                .status(TaskStatus.DONE)
+                .priority(TaskPriority.HIGH)
+                .dueDate(null)
+                .position(0)
+                .version(0L)
+                .completedAt(LocalDateTime.of(2026, 3, 1, 12, 0))
+                .build();
+
+        MoveTaskRequest request = new MoveTaskRequest(TaskStatus.DONE, 1, 0L);
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(movingTask));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(10L, TaskStatus.TODO))
+                .willReturn(List.of(sourceTask, movingTask));
+        given(taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(10L, TaskStatus.DONE))
+                .willReturn(List.of(doneTask));
+
+        var response = taskService.moveTask(1L, 1001L, request);
+
+        assertThat(response.status()).isEqualTo(TaskStatus.DONE);
+        assertThat(response.position()).isEqualTo(1);
+        assertThat(response.completedAt()).isNotNull();
+        assertThat(movingTask.getStatus()).isEqualTo(TaskStatus.DONE);
+        assertThat(movingTask.getPosition()).isEqualTo(1);
+        assertThat(movingTask.getCompletedAt()).isNotNull();
+        assertThat(sourceTask.getPosition()).isEqualTo(0);
+        assertThat(doneTask.getPosition()).isEqualTo(0);
+    }
+
+    @Test
+    void moveTaskClearsCompletedAtWhenMovingOutOfDone() {
+        User actor = activeUser(1L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        Task movingTask = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Done task")
+                .description("done")
+                .status(TaskStatus.DONE)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(0)
+                .version(0L)
+                .completedAt(LocalDateTime.of(2026, 3, 1, 12, 0))
+                .build();
+        Task todoTask = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Todo task")
+                .description("todo")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(0)
+                .version(0L)
+                .build();
+
+        MoveTaskRequest request = new MoveTaskRequest(TaskStatus.TODO, 1, 0L);
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(movingTask));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(10L, TaskStatus.DONE))
+                .willReturn(List.of(movingTask));
+        given(taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(10L, TaskStatus.TODO))
+                .willReturn(List.of(todoTask));
+
+        var response = taskService.moveTask(1L, 1001L, request);
+
+        assertThat(response.status()).isEqualTo(TaskStatus.TODO);
+        assertThat(response.position()).isEqualTo(1);
+        assertThat(response.completedAt()).isNull();
+        assertThat(movingTask.getStatus()).isEqualTo(TaskStatus.TODO);
+        assertThat(movingTask.getCompletedAt()).isNull();
+        assertThat(todoTask.getPosition()).isEqualTo(0);
+    }
+
+    @Test
+    void moveTaskThrowsWhenVersionConflict() {
+        User actor = activeUser(1L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task movingTask = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task B")
+                .description("B")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(1)
+                .version(1L)
+                .build();
+
+        MoveTaskRequest request = new MoveTaskRequest(TaskStatus.DONE, 0, 0L);
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(movingTask));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> taskService.moveTask(1L, 1001L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TASK_CONFLICT);
     }
 
     private User activeUser(Long id, String email, String nickname) {

@@ -2,11 +2,13 @@ package com.taskflow.backend.domain.task.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.MoveTaskRequest;
 import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskMoveResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.service.TaskService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -296,6 +298,50 @@ class TaskControllerTest {
                 """;
 
         mockMvc.perform(patch("/tasks/100")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void moveTaskReturnsResponse() throws Exception {
+        MoveTaskRequest request = new MoveTaskRequest(TaskStatus.IN_PROGRESS, 0, 0L);
+        TaskMoveResponse response = new TaskMoveResponse(
+                100L,
+                TaskStatus.IN_PROGRESS,
+                0,
+                1L,
+                null
+        );
+        given(taskService.moveTask(eq(1L), eq(100L), any(MoveTaskRequest.class))).willReturn(response);
+
+        mockMvc.perform(patch("/tasks/100/move")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.taskId").value(100L))
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.data.position").value(0))
+                .andExpect(jsonPath("$.data.version").value(1));
+
+        then(taskService).should().moveTask(eq(1L), eq(100L), any(MoveTaskRequest.class));
+    }
+
+    @Test
+    void moveTaskReturnsBadRequestWhenVersionMissing() throws Exception {
+        String invalidJson = """
+                {
+                  "toStatus": "IN_PROGRESS",
+                  "targetPosition": 0
+                }
+                """;
+
+        mockMvc.perform(patch("/tasks/100/move")
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
