@@ -27,6 +27,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,6 +61,8 @@ class InvitationServiceTest {
         Project project = project(10L, owner);
         ProjectMember ownerMember = ownerMember(100L, project, owner);
         CreateInvitationRequest request = new CreateInvitationRequest("member@example.com", ProjectRole.MEMBER);
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
 
         given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
@@ -77,6 +80,7 @@ class InvitationServiceTest {
         assertThat(response.inviteeEmail()).isEqualTo("member@example.com");
         assertThat(response.role()).isEqualTo(ProjectRole.MEMBER);
         assertThat(response.status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
     }
 
     @Test
@@ -275,6 +279,8 @@ class InvitationServiceTest {
         User invitee = activeUser(2L, "member@example.com", "팀원");
         User inviter = activeUser(1L, "owner@example.com", "오너");
         Project project = project(10L, inviter);
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
         ProjectInvitation invitation = ProjectInvitation.create(
                 project,
                 inviter,
@@ -304,6 +310,7 @@ class InvitationServiceTest {
         assertThat(response.memberId()).isEqualTo(500L);
         assertThat(response.status()).isEqualTo(InvitationStatus.ACCEPTED);
         assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.ACCEPTED);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
     }
 
     @Test
@@ -335,6 +342,8 @@ class InvitationServiceTest {
         User invitee = activeUser(2L, "member@example.com", "팀원");
         User inviter = activeUser(1L, "owner@example.com", "오너");
         Project project = project(10L, inviter);
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
         ProjectInvitation invitation = ProjectInvitation.create(
                 project,
                 inviter,
@@ -351,6 +360,7 @@ class InvitationServiceTest {
         assertThat(response.projectId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(InvitationStatus.REJECTED);
         assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.REJECTED);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
     }
 
     @Test
@@ -358,6 +368,8 @@ class InvitationServiceTest {
         User owner = activeUser(1L, "owner@example.com", "오너");
         User invitee = activeUser(2L, "member@example.com", "팀원");
         Project project = project(10L, owner);
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
         ProjectMember ownerMembership = ownerMember(100L, project, owner);
         ProjectInvitation invitation = ProjectInvitation.create(
                 project,
@@ -377,6 +389,7 @@ class InvitationServiceTest {
         assertThat(response.projectId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(InvitationStatus.CANCELED);
         assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.CANCELED);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
     }
 
     @Test

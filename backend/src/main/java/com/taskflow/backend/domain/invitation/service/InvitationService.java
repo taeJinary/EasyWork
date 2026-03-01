@@ -83,6 +83,8 @@ public class InvitationService {
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
+        project.touch(now);
+
         return new InvitationSummaryResponse(
                 saved.getId(),
                 project.getId(),
@@ -167,6 +169,7 @@ public class InvitationService {
         );
 
         invitation.accept(LocalDateTime.now());
+        invitation.getProject().touch(LocalDateTime.now());
 
         return new InvitationActionResponse(
                 invitation.getId(),
@@ -184,6 +187,7 @@ public class InvitationService {
         ensurePendingAndNotExpired(invitation);
 
         invitation.reject(LocalDateTime.now());
+        invitation.getProject().touch(LocalDateTime.now());
 
         return new InvitationActionResponse(
                 invitation.getId(),
@@ -207,6 +211,7 @@ public class InvitationService {
         ensurePendingAndNotExpired(invitation);
 
         invitation.cancel(LocalDateTime.now());
+        invitation.getProject().touch(LocalDateTime.now());
 
         return new InvitationActionResponse(
                 invitation.getId(),

@@ -51,6 +51,10 @@ public class Project extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public void touch(LocalDateTime changedAt) {
+        touchUpdatedAt(changedAt);
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }

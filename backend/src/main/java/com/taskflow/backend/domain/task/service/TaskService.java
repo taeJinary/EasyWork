@@ -70,6 +70,7 @@ public class TaskService {
         ));
 
         syncTaskLabels(savedTask, projectId, request.labelIds());
+        project.touch(LocalDateTime.now());
 
         return toTaskSummaryResponse(savedTask);
     }
@@ -93,6 +94,7 @@ public class TaskService {
         );
 
         replaceTaskLabels(task, projectId, request.labelIds());
+        task.getProject().touch(LocalDateTime.now());
 
         return getTaskDetail(userId, taskId);
     }
@@ -116,6 +118,7 @@ public class TaskService {
             moveAcrossColumns(task, projectId, fromStatus, toStatus, targetPosition);
         }
 
+        task.getProject().touch(LocalDateTime.now());
         taskRepository.flush();
         return toTaskMoveResponse(task);
     }
