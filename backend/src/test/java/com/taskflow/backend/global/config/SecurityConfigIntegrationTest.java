@@ -1,5 +1,8 @@
 package com.taskflow.backend.global.config;
 
+import com.taskflow.backend.global.auth.jwt.JwtProperties;
+import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
+import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,7 @@ import org.springframework.test.web.servlet.ResultMatcher;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -21,6 +25,9 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JwtProperties jwtProperties;
 
     @Test
     void loginEndpointPermitsAnonymousRequest() throws Exception {
@@ -70,6 +77,34 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
     void wsHandshakeEndpointPermitsAnonymousRequest() throws Exception {
         mockMvc.perform(get("/api/v1/ws").contextPath("/api/v1"))
                 .andExpect(anyOf(status().isBadRequest(), status().isSwitchingProtocols()));
+    }
+
+    @Test
+    void protectedEndpointReturnsTokenInvalidWhenMalformedBearerToken() throws Exception {
+        mockMvc.perform(get("/projects")
+                        .header("Authorization", "Bearer invalid.token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOKEN_INVALID"));
+    }
+
+    @Test
+    void protectedEndpointReturnsTokenExpiredWhenExpiredBearerToken() throws Exception {
+        mockMvc.perform(get("/projects")
+                        .header("Authorization", "Bearer " + expiredAccessToken()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOKEN_EXPIRED"));
+    }
+
+    private String expiredAccessToken() {
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret(jwtProperties.getSecret());
+        properties.setAccessTokenExpiration(-1L);
+        properties.setRefreshTokenExpiration(jwtProperties.getRefreshTokenExpiration());
+
+        JwtTokenProvider expiredTokenProvider = new JwtTokenProvider(properties);
+        return expiredTokenProvider.generateAccessToken(1L, "expired@example.com", Role.ROLE_USER);
     }
 
     private ResultMatcher anyOf(ResultMatcher... matchers) {

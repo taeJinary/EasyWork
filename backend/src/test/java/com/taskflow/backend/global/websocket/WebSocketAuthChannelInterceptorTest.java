@@ -63,7 +63,8 @@ class WebSocketAuthChannelInterceptorTest {
         User user = activeUser(1L, "user@example.com");
         Message<?> message = connectMessage("Bearer valid-token");
 
-        given(jwtTokenProvider.validateToken("valid-token")).willReturn(true);
+        given(jwtTokenProvider.validateAccessToken("valid-token"))
+                .willReturn(JwtTokenProvider.TokenValidationResult.VALID);
         given(jwtTokenProvider.getTokenId("valid-token")).willReturn("jti-123");
         given(redisService.hasKey("blacklist:jti-123")).willReturn(false);
         given(jwtTokenProvider.getUserId("valid-token")).willReturn(1L);
@@ -91,7 +92,8 @@ class WebSocketAuthChannelInterceptorTest {
     void connectWithBlacklistedTokenThrowsTokenInvalid() {
         Message<?> message = connectMessage("Bearer valid-token");
 
-        given(jwtTokenProvider.validateToken("valid-token")).willReturn(true);
+        given(jwtTokenProvider.validateAccessToken("valid-token"))
+                .willReturn(JwtTokenProvider.TokenValidationResult.VALID);
         given(jwtTokenProvider.getTokenId("valid-token")).willReturn("jti-123");
         given(redisService.hasKey("blacklist:jti-123")).willReturn(true);
 
@@ -99,6 +101,19 @@ class WebSocketAuthChannelInterceptorTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.TOKEN_INVALID);
+    }
+
+    @Test
+    void connectWithExpiredTokenThrowsTokenExpired() {
+        Message<?> message = connectMessage("Bearer expired-token");
+
+        given(jwtTokenProvider.validateAccessToken("expired-token"))
+                .willReturn(JwtTokenProvider.TokenValidationResult.EXPIRED);
+
+        assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TOKEN_EXPIRED);
     }
 
     @Test

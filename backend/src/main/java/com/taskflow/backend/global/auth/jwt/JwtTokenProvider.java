@@ -2,6 +2,7 @@ package com.taskflow.backend.global.auth.jwt;
 
 import com.taskflow.backend.global.common.enums.Role;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -15,6 +16,12 @@ import org.springframework.stereotype.Component;
 public class JwtTokenProvider {
 
     private static final String SESSION_ID_CLAIM = "sid";
+
+    public enum TokenValidationResult {
+        VALID,
+        EXPIRED,
+        INVALID
+    }
 
     private final JwtProperties jwtProperties;
     private final SecretKey signingKey;
@@ -58,11 +65,17 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
+        return validateAccessToken(token) == TokenValidationResult.VALID;
+    }
+
+    public TokenValidationResult validateAccessToken(String token) {
         try {
             parseClaims(token);
-            return true;
+            return TokenValidationResult.VALID;
+        } catch (ExpiredJwtException e) {
+            return TokenValidationResult.EXPIRED;
         } catch (JwtException | IllegalArgumentException e) {
-            return false;
+            return TokenValidationResult.INVALID;
         }
     }
 
