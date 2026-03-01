@@ -117,7 +117,8 @@ class AuthServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("access-token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
-        assertThat(response.expiresIn()).isEqualTo(1800000L);
+        assertThat(response.accessTokenExpiresIn()).isEqualTo(1800000L);
+        assertThat(response.refreshTokenExpiresIn()).isEqualTo(1209600000L);
         assertThat(response.user().userId()).isEqualTo(user.getId());
 
         verify(redisService).setValue(
@@ -190,7 +191,8 @@ class AuthServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("new-access-token");
         assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
-        assertThat(response.expiresIn()).isEqualTo(1800000L);
+        assertThat(response.accessTokenExpiresIn()).isEqualTo(1800000L);
+        assertThat(response.refreshTokenExpiresIn()).isEqualTo(1209600000L);
 
         verify(redisService).setValue(
                 "auth:refresh:" + user.getId(),

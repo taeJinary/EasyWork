@@ -64,11 +64,11 @@ public class AuthController {
             HttpServletResponse response
     ) {
         LoginTokens tokens = authService.login(request);
-        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.expiresIn());
+        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
         LoginResponse loginResponse = new LoginResponse(
                 tokens.accessToken(),
-                tokens.expiresIn(),
+                tokens.accessTokenExpiresIn(),
                 tokens.user()
         );
         return ResponseEntity.ok(ApiResponse.success(loginResponse));
@@ -84,11 +84,11 @@ public class AuthController {
         }
 
         ReissueTokens tokens = authService.reissue(refreshToken);
-        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.expiresIn());
+        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
         ReissueResponse reissueResponse = new ReissueResponse(
                 tokens.accessToken(),
-                tokens.expiresIn()
+                tokens.accessTokenExpiresIn()
         );
         return ResponseEntity.ok(ApiResponse.success(reissueResponse));
     }

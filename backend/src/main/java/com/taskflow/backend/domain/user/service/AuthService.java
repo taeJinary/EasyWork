@@ -97,6 +97,7 @@ public class AuthService {
                 accessToken,
                 refreshToken,
                 jwtProperties.getAccessTokenExpiration(),
+                jwtProperties.getRefreshTokenExpiration(),
                 AuthUserResponse.from(user)
         );
     }
@@ -130,7 +131,8 @@ public class AuthService {
         return new ReissueTokens(
                 newAccessToken,
                 newRefreshToken,
-                jwtProperties.getAccessTokenExpiration()
+                jwtProperties.getAccessTokenExpiration(),
+                jwtProperties.getRefreshTokenExpiration()
         );
     }
 
