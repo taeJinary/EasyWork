@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.invitation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.invitation.dto.request.CreateInvitationRequest;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
@@ -25,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -123,5 +125,70 @@ class InvitationControllerTest {
                 .andExpect(jsonPath("$.data.content[0].invitationId").value(10L))
                 .andExpect(jsonPath("$.data.content[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    void acceptInvitationReturnsOk() throws Exception {
+        InvitationActionResponse response = new InvitationActionResponse(
+                10L,
+                1L,
+                500L,
+                ProjectRole.MEMBER,
+                InvitationStatus.ACCEPTED
+        );
+        given(invitationService.acceptInvitation(1L, 10L)).willReturn(response);
+
+        mockMvc.perform(post("/invitations/10/accept")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.invitationId").value(10L))
+                .andExpect(jsonPath("$.data.status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.message").value("초대를 수락했습니다."));
+
+        then(invitationService).should().acceptInvitation(1L, 10L);
+    }
+
+    @Test
+    void rejectInvitationReturnsOk() throws Exception {
+        InvitationActionResponse response = new InvitationActionResponse(
+                10L,
+                1L,
+                null,
+                ProjectRole.MEMBER,
+                InvitationStatus.REJECTED
+        );
+        given(invitationService.rejectInvitation(1L, 10L)).willReturn(response);
+
+        mockMvc.perform(post("/invitations/10/reject")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.invitationId").value(10L))
+                .andExpect(jsonPath("$.data.status").value("REJECTED"))
+                .andExpect(jsonPath("$.message").value("초대를 거절했습니다."));
+
+        then(invitationService).should().rejectInvitation(1L, 10L);
+    }
+
+    @Test
+    void cancelInvitationReturnsOk() throws Exception {
+        InvitationActionResponse response = new InvitationActionResponse(
+                10L,
+                10L,
+                null,
+                ProjectRole.MEMBER,
+                InvitationStatus.CANCELED
+        );
+        given(invitationService.cancelInvitation(1L, 10L, 10L)).willReturn(response);
+
+        mockMvc.perform(post("/projects/10/invitations/10/cancel")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("CANCELED"))
+                .andExpect(jsonPath("$.message").value("초대를 취소했습니다."));
+
+        then(invitationService).should().cancelInvitation(1L, 10L, 10L);
     }
 }

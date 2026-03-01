@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.invitation.controller;
 
 import com.taskflow.backend.domain.invitation.dto.request.CreateInvitationRequest;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.service.InvitationService;
@@ -58,6 +59,44 @@ public class InvitationController {
                 size
         );
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/invitations/{invitationId}/accept")
+    public ResponseEntity<ApiResponse<InvitationActionResponse>> acceptInvitation(
+            Authentication authentication,
+            @PathVariable Long invitationId
+    ) {
+        InvitationActionResponse response = invitationService.acceptInvitation(
+                extractUserId(authentication),
+                invitationId
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "초대를 수락했습니다."));
+    }
+
+    @PostMapping("/invitations/{invitationId}/reject")
+    public ResponseEntity<ApiResponse<InvitationActionResponse>> rejectInvitation(
+            Authentication authentication,
+            @PathVariable Long invitationId
+    ) {
+        InvitationActionResponse response = invitationService.rejectInvitation(
+                extractUserId(authentication),
+                invitationId
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "초대를 거절했습니다."));
+    }
+
+    @PostMapping("/projects/{projectId}/invitations/{invitationId}/cancel")
+    public ResponseEntity<ApiResponse<InvitationActionResponse>> cancelInvitation(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @PathVariable Long invitationId
+    ) {
+        InvitationActionResponse response = invitationService.cancelInvitation(
+                extractUserId(authentication),
+                projectId,
+                invitationId
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "초대를 취소했습니다."));
     }
 
     private Long extractUserId(Authentication authentication) {

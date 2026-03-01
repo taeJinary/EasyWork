@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.invitation.service;
 
 import com.taskflow.backend.domain.invitation.dto.request.CreateInvitationRequest;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
@@ -123,6 +124,79 @@ public class InvitationService {
         );
     }
 
+    @Transactional
+    public InvitationActionResponse acceptInvitation(Long userId, Long invitationId) {
+        ProjectInvitation invitation = findInvitation(invitationId);
+        ensureInvitee(invitation, userId);
+        ensurePendingAndNotExpired(invitation);
+
+        if (projectMemberRepository.findByProjectIdAndUserId(
+                invitation.getProject().getId(),
+                userId
+        ).isPresent()) {
+            throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
+        }
+
+        ProjectMember savedMember = projectMemberRepository.save(
+                ProjectMember.create(
+                        invitation.getProject(),
+                        invitation.getInvitee(),
+                        invitation.getRole(),
+                        LocalDateTime.now()
+                )
+        );
+
+        invitation.accept(LocalDateTime.now());
+
+        return new InvitationActionResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                savedMember.getId(),
+                invitation.getRole(),
+                invitation.getStatus()
+        );
+    }
+
+    @Transactional
+    public InvitationActionResponse rejectInvitation(Long userId, Long invitationId) {
+        ProjectInvitation invitation = findInvitation(invitationId);
+        ensureInvitee(invitation, userId);
+        ensurePendingAndNotExpired(invitation);
+
+        invitation.reject(LocalDateTime.now());
+
+        return new InvitationActionResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                null,
+                invitation.getRole(),
+                invitation.getStatus()
+        );
+    }
+
+    @Transactional
+    public InvitationActionResponse cancelInvitation(Long userId, Long projectId, Long invitationId) {
+        Project project = findActiveProject(projectId);
+        ProjectMember membership = findMembership(projectId, userId);
+        ensureOwner(membership);
+
+        ProjectInvitation invitation = findInvitation(invitationId);
+        if (!invitation.getProject().getId().equals(project.getId())) {
+            throw new BusinessException(ErrorCode.INVITATION_NOT_FOUND);
+        }
+        ensurePending(invitation);
+
+        invitation.cancel(LocalDateTime.now());
+
+        return new InvitationActionResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                null,
+                invitation.getRole(),
+                invitation.getStatus()
+        );
+    }
+
     private InvitationListItemResponse toInvitationListItemResponse(ProjectInvitation invitation) {
         return new InvitationListItemResponse(
                 invitation.getId(),
@@ -135,6 +209,31 @@ public class InvitationService {
                 invitation.getExpiresAt(),
                 invitation.getCreatedAt()
         );
+    }
+
+    private ProjectInvitation findInvitation(Long invitationId) {
+        return projectInvitationRepository.findById(invitationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVITATION_NOT_FOUND));
+    }
+
+    private void ensureInvitee(ProjectInvitation invitation, Long userId) {
+        if (!invitation.getInvitee().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    private void ensurePendingAndNotExpired(ProjectInvitation invitation) {
+        ensurePending(invitation);
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            invitation.expire(LocalDateTime.now());
+            throw new BusinessException(ErrorCode.INVITATION_ALREADY_PROCESSED);
+        }
+    }
+
+    private void ensurePending(ProjectInvitation invitation) {
+        if (!invitation.isPending()) {
+            throw new BusinessException(ErrorCode.INVITATION_ALREADY_PROCESSED);
+        }
     }
 
     private Project findActiveProject(Long projectId) {
