@@ -1,0 +1,88 @@
+package com.taskflow.backend.domain.comment.service;
+
+import com.taskflow.backend.domain.comment.dto.request.CreateCommentRequest;
+import com.taskflow.backend.domain.comment.dto.response.CommentListResponse;
+import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
+import com.taskflow.backend.domain.comment.entity.Comment;
+import com.taskflow.backend.domain.comment.repository.CommentRepository;
+import com.taskflow.backend.domain.project.entity.ProjectMember;
+import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
+import com.taskflow.backend.domain.task.entity.Task;
+import com.taskflow.backend.domain.task.repository.TaskRepository;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import java.time.LocalDateTime;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CommentService {
+
+    private static final int DEFAULT_SIZE = 20;
+
+    private final TaskRepository taskRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final CommentRepository commentRepository;
+
+    @Transactional
+    public CommentResponse createComment(Long userId, Long taskId, CreateCommentRequest request) {
+        Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ProjectMember membership = findMembership(task.getProject().getId(), userId);
+
+        Comment saved = commentRepository.save(Comment.create(
+                task,
+                membership.getUser(),
+                request.content()
+        ));
+        task.getProject().touch(LocalDateTime.now());
+        return toCommentResponse(saved, userId);
+    }
+
+    public CommentListResponse getComments(Long userId, Long taskId, Long cursor, int size) {
+        Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        findMembership(task.getProject().getId(), userId);
+
+        int normalizedSize = size > 0 ? size : DEFAULT_SIZE;
+        Pageable pageable = PageRequest.of(0, normalizedSize + 1);
+        List<Comment> fetched = cursor == null
+                ? commentRepository.findByTaskIdOrderByIdDesc(taskId, pageable)
+                : commentRepository.findByTaskIdAndIdLessThanOrderByIdDesc(taskId, cursor, pageable);
+
+        boolean hasNext = fetched.size() > normalizedSize;
+        List<Comment> pageContent = hasNext ? fetched.subList(0, normalizedSize) : fetched;
+        Long nextCursor = hasNext && !pageContent.isEmpty() ? pageContent.getLast().getId() : null;
+
+        List<CommentResponse> content = pageContent.stream()
+                .map(comment -> toCommentResponse(comment, userId))
+                .toList();
+
+        return new CommentListResponse(content, nextCursor, hasNext);
+    }
+
+    private ProjectMember findMembership(Long projectId, Long userId) {
+        return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private CommentResponse toCommentResponse(Comment comment, Long userId) {
+        return new CommentResponse(
+                comment.getId(),
+                new CommentResponse.AuthorResponse(
+                        comment.getAuthor().getId(),
+                        comment.getAuthor().getNickname()
+                ),
+                comment.getContent(),
+                comment.getCreatedAt(),
+                comment.getUpdatedAt(),
+                comment.getAuthor().getId().equals(userId)
+        );
+    }
+}
