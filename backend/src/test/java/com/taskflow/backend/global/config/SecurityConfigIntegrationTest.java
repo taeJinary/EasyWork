@@ -1,5 +1,6 @@
 package com.taskflow.backend.global.config;
 
+import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class SecurityConfigIntegrationTest {
+class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
     private MockMvc mockMvc;
