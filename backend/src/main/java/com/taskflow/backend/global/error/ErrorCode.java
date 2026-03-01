@@ -28,6 +28,8 @@ public enum ErrorCode {
     MEMBER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "멤버 초대 한도를 초과했습니다."),
     NOT_PROJECT_MEMBER(HttpStatus.FORBIDDEN, "프로젝트 멤버가 아닙니다."),
     ONLY_OWNER_ALLOWED(HttpStatus.FORBIDDEN, "OWNER만 가능한 작업입니다."),
+    CANNOT_REMOVE_LAST_OWNER(HttpStatus.BAD_REQUEST, "마지막 OWNER는 제거하거나 강등할 수 없습니다."),
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "프로젝트 멤버를 찾을 수 없습니다."),
     INVITEE_NOT_FOUND(HttpStatus.NOT_FOUND, "초대 대상 사용자를 찾을 수 없습니다."),
     INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "초대를 찾을 수 없습니다."),
     INVITATION_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 초대입니다."),

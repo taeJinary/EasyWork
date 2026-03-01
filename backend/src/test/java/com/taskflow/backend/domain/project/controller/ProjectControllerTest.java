@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.project.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskflow.backend.domain.project.dto.request.ChangeMemberRoleRequest;
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
 import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
@@ -213,6 +214,45 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.data[0].memberId").value(100L))
                 .andExpect(jsonPath("$.data[0].role").value("OWNER"))
                 .andExpect(jsonPath("$.data[1].role").value("MEMBER"));
+    }
+
+    @Test
+    void changeMemberRoleReturnsUpdatedMember() throws Exception {
+        ChangeMemberRoleRequest request = new ChangeMemberRoleRequest(ProjectRole.OWNER);
+        ProjectMemberResponse response = new ProjectMemberResponse(
+                101L,
+                2L,
+                "member@example.com",
+                "member",
+                ProjectRole.OWNER,
+                LocalDateTime.of(2026, 3, 1, 9, 30)
+        );
+
+        given(projectService.changeMemberRole(eq(1L), eq(10L), eq(101L), any(ChangeMemberRoleRequest.class)))
+                .willReturn(response);
+
+        mockMvc.perform(patch("/projects/10/members/101/role")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.memberId").value(101L))
+                .andExpect(jsonPath("$.data.role").value("OWNER"))
+                .andExpect(jsonPath("$.message").value("멤버 역할이 변경되었습니다."));
+
+        then(projectService).should().changeMemberRole(eq(1L), eq(10L), eq(101L), any(ChangeMemberRoleRequest.class));
+    }
+
+    @Test
+    void removeMemberReturnsOk() throws Exception {
+        mockMvc.perform(delete("/projects/10/members/101")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("멤버가 제거되었습니다."));
+
+        then(projectService).should().removeMember(1L, 10L, 101L);
     }
 }
 
