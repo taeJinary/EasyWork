@@ -2,8 +2,10 @@ package com.taskflow.backend.domain.user.repository;
 
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.global.config.JpaConfig;
+import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
@@ -15,7 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @Import(JpaConfig.class)
 @ActiveProfiles("test")
-class UserRepositoryTest {
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class UserRepositoryTest extends IntegrationTestContainerSupport {
 
     @Autowired
     private UserRepository userRepository;
