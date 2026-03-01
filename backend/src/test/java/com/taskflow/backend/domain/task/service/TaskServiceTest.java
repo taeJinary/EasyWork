@@ -1125,6 +1125,144 @@ class TaskServiceTest {
     }
 
     @Test
+    void deleteTaskSoftDeletesWhenRequesterIsCreator() {
+        User actor = activeUser(1L, "member@example.com", "member");
+        User owner = activeUser(9L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("Task B")
+                .description("B")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(1)
+                .version(0L)
+                .deletedAt(null)
+                .build();
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        taskService.deleteTask(1L, 1001L);
+
+        assertThat(task.getDeletedAt()).isNotNull();
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+    }
+
+    @Test
+    void deleteTaskSoftDeletesWhenRequesterIsOwner() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User creator = activeUser(2L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(creator)
+                .assignee(null)
+                .title("Task B")
+                .description("B")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(1)
+                .version(0L)
+                .deletedAt(null)
+                .build();
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        taskService.deleteTask(1L, 1001L);
+
+        assertThat(task.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void deleteTaskThrowsWhenRequesterIsNeitherCreatorNorOwner() {
+        User actor = activeUser(1L, "member@example.com", "member");
+        User owner = activeUser(9L, "owner@example.com", "owner");
+        User creator = activeUser(2L, "creator@example.com", "creator");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(creator)
+                .assignee(null)
+                .title("Task B")
+                .description("B")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(null)
+                .position(1)
+                .version(0L)
+                .deletedAt(null)
+                .build();
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> taskService.deleteTask(1L, 1001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INSUFFICIENT_PERMISSION);
+    }
+
+    @Test
+    void deleteTaskThrowsWhenTaskNotFound() {
+        given(taskRepository.findByIdAndDeletedAtIsNull(9999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.deleteTask(1L, 9999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TASK_NOT_FOUND);
+    }
+
+    @Test
     void moveTaskThrowsWhenVersionConflict() {
         User actor = activeUser(1L, "owner@example.com", "owner");
         Project project = Project.builder()

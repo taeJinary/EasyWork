@@ -126,6 +126,10 @@ public class Task extends BaseEntity {
         this.position = position;
     }
 
+    public void delete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }

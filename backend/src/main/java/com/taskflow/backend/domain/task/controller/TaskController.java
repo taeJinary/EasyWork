@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -133,6 +134,18 @@ public class TaskController {
                 request
         );
         return ResponseEntity.ok(ApiResponse.success(response, "태스크 위치가 변경되었습니다."));
+    }
+
+    @DeleteMapping("/tasks/{taskId}")
+    public ResponseEntity<ApiResponse<Void>> deleteTask(
+            Authentication authentication,
+            @PathVariable Long taskId
+    ) {
+        taskService.deleteTask(
+                extractUserId(authentication),
+                taskId
+        );
+        return ResponseEntity.ok(ApiResponse.success(null, "태스크가 삭제되었습니다."));
     }
 
     private Long extractUserId(Authentication authentication) {

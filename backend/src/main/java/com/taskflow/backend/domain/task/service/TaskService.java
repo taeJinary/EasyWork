@@ -22,6 +22,7 @@ import com.taskflow.backend.domain.task.repository.TaskLabelRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.task.repository.TaskStatusHistoryRepository;
 import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.error.BusinessException;
@@ -100,6 +101,24 @@ public class TaskService {
         task.getProject().touch(LocalDateTime.now());
 
         return getTaskDetail(userId, taskId);
+    }
+
+    @Transactional
+    public void deleteTask(Long userId, Long taskId) {
+        Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+
+        Long projectId = task.getProject().getId();
+        ProjectMember membership = findMembership(projectId, userId);
+        boolean isCreator = task.getCreator().getId().equals(userId);
+        boolean isOwner = membership.getRole() == ProjectRole.OWNER;
+
+        if (!isCreator && !isOwner) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        task.delete(LocalDateTime.now());
+        task.getProject().touch(LocalDateTime.now());
     }
 
     @Transactional
