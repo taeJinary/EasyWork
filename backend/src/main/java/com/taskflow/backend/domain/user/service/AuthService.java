@@ -1,15 +1,13 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
-import com.taskflow.backend.domain.user.dto.request.LogoutRequest;
-import com.taskflow.backend.domain.user.dto.request.ReissueRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
-import com.taskflow.backend.domain.user.dto.response.LoginResponse;
-import com.taskflow.backend.domain.user.dto.response.ReissueResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.user.service.model.LoginTokens;
+import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
 import com.taskflow.backend.global.common.enums.Role;
@@ -29,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AuthService {
 
-    private static final String TOKEN_TYPE = "Bearer";
     private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
     private static final String LOGIN_FAIL_KEY_PREFIX = "auth:login-fail:";
     private static final String LOGIN_LOCK_KEY_PREFIX = "auth:login-lock:";
@@ -62,7 +59,7 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginTokens login(LoginRequest request) {
         String email = request.email();
         ensureNotLocked(email);
 
@@ -92,18 +89,16 @@ public class AuthService {
                 Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
         );
 
-        return new LoginResponse(
+        return new LoginTokens(
                 accessToken,
                 refreshToken,
-                TOKEN_TYPE,
                 jwtProperties.getAccessTokenExpiration(),
                 AuthUserResponse.from(user)
         );
     }
 
     @Transactional
-    public ReissueResponse reissue(ReissueRequest request) {
-        String refreshToken = request.refreshToken();
+    public ReissueTokens reissue(String refreshToken) {
         Long userId = extractUserIdFromToken(refreshToken);
         String tokenKey = refreshTokenKey(userId);
 
@@ -128,16 +123,15 @@ public class AuthService {
                 Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
         );
 
-        return new ReissueResponse(
+        return new ReissueTokens(
                 newAccessToken,
                 newRefreshToken,
-                TOKEN_TYPE,
                 jwtProperties.getAccessTokenExpiration()
         );
     }
 
     @Transactional
-    public void logout(String accessToken, LogoutRequest request) {
+    public void logout(String accessToken, String refreshToken) {
         if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
             long remainingExpiration = jwtTokenProvider.getRemainingExpiration(accessToken);
             if (remainingExpiration > 0) {
@@ -149,7 +143,7 @@ public class AuthService {
             }
         }
 
-        Long userId = extractUserIdFromToken(request.refreshToken());
+        Long userId = extractUserIdFromToken(refreshToken);
         redisService.delete(refreshTokenKey(userId));
     }
 
