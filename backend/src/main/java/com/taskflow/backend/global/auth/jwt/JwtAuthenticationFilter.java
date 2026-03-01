@@ -22,7 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
+    private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -46,9 +46,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (token != null
-                && !redisService.hasKey(BLACKLIST_KEY_PREFIX + token)
                 && jwtTokenProvider.validateToken(token)
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
+            String tokenId = jwtTokenProvider.getTokenId(token);
+            if (tokenId != null && redisService.hasKey(BLACKLIST_KEY_PREFIX + tokenId)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             Long userId = jwtTokenProvider.getUserId(token);
 
             userRepository.findById(userId)

@@ -7,11 +7,14 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtTokenProvider {
+
+    private static final String SESSION_ID_CLAIM = "sid";
 
     private final JwtProperties jwtProperties;
     private final SecretKey signingKey;
@@ -26,6 +29,7 @@ public class JwtTokenProvider {
         Date expiration = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(userId))
                 .claim("email", email)
                 .claim("role", role.name())
@@ -36,11 +40,17 @@ public class JwtTokenProvider {
     }
 
     public String generateRefreshToken(Long userId) {
+        return generateRefreshToken(userId, UUID.randomUUID().toString());
+    }
+
+    public String generateRefreshToken(Long userId, String sessionId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(userId))
+                .claim(SESSION_ID_CLAIM, sessionId)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(signingKey)
@@ -67,6 +77,14 @@ public class JwtTokenProvider {
     public Role getRole(String token) {
         String role = parseClaims(token).get("role", String.class);
         return role == null ? null : Role.valueOf(role);
+    }
+
+    public String getTokenId(String token) {
+        return parseClaims(token).getId();
+    }
+
+    public String getSessionId(String token) {
+        return parseClaims(token).get(SESSION_ID_CLAIM, String.class);
     }
 
     public long getRemainingExpiration(String token) {

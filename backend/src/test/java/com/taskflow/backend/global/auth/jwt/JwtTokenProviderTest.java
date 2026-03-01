@@ -17,6 +17,7 @@ class JwtTokenProviderTest {
         assertThat(tokenProvider.getUserId(token)).isEqualTo(1L);
         assertThat(tokenProvider.getEmail(token)).isEqualTo("user@example.com");
         assertThat(tokenProvider.getRole(token)).isEqualTo(Role.ROLE_USER);
+        assertThat(tokenProvider.getTokenId(token)).isNotBlank();
     }
 
     @Test
@@ -30,10 +31,11 @@ class JwtTokenProviderTest {
     void refreshToken을_생성하고_검증한다() {
         JwtTokenProvider tokenProvider = new JwtTokenProvider(jwtProperties());
 
-        String token = tokenProvider.generateRefreshToken(7L);
+        String token = tokenProvider.generateRefreshToken(7L, "sid-123");
 
         assertThat(tokenProvider.validateToken(token)).isTrue();
         assertThat(tokenProvider.getUserId(token)).isEqualTo(7L);
+        assertThat(tokenProvider.getSessionId(token)).isEqualTo("sid-123");
     }
 
     private JwtProperties jwtProperties() {

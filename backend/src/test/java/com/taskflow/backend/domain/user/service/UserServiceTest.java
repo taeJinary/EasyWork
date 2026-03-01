@@ -127,7 +127,7 @@ class UserServiceTest {
 
         assertThat(user.getPassword()).isEqualTo("encoded-new");
         verify(passwordHistoryRepository).save(any(PasswordHistory.class));
-        verify(redisService).delete("auth:refresh:1");
+        verify(redisService).deleteByPattern("refresh:1:*");
     }
 
     @Test
@@ -143,7 +143,7 @@ class UserServiceTest {
                 .isEqualTo(ErrorCode.PASSWORD_MISMATCH);
 
         verify(passwordHistoryRepository, never()).save(any(PasswordHistory.class));
-        verify(redisService, never()).delete("auth:refresh:1");
+        verify(redisService, never()).deleteByPattern("refresh:1:*");
     }
 
     @Test
@@ -176,7 +176,7 @@ class UserServiceTest {
 
         assertThat(user.isDeleted()).isTrue();
         assertThat(user.getDeletedAt()).isNotNull();
-        verify(redisService).delete("auth:refresh:1");
+        verify(redisService).deleteByPattern("refresh:1:*");
     }
 
     @Test
@@ -191,7 +191,7 @@ class UserServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PASSWORD_MISMATCH);
 
-        verify(redisService, never()).delete("auth:refresh:1");
+        verify(redisService, never()).deleteByPattern("refresh:1:*");
     }
 
     private User activeUser() {

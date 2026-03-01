@@ -2,6 +2,7 @@ package com.taskflow.backend.infra.redis;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,13 @@ public class RedisService {
 
     public void delete(String key) {
         stringRedisTemplate.delete(key);
+    }
+
+    public void deleteByPattern(String pattern) {
+        Set<String> keys = stringRedisTemplate.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            stringRedisTemplate.delete(keys);
+        }
     }
 
     public Long increment(String key) {

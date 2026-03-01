@@ -115,7 +115,7 @@ class JwtAuthenticationFilterTest {
                 .build();
 
         String token = jwtTokenProvider.generateAccessToken(1L, user.getEmail(), user.getRole());
-        when(redisService.hasKey("auth:blacklist:" + token)).thenReturn(true);
+        when(redisService.hasKey("blacklist:" + jwtTokenProvider.getTokenId(token))).thenReturn(true);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/v1/projects/1");
