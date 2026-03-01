@@ -8,13 +8,17 @@ import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectMemberResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectSummaryResponse;
+import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
+import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.common.enums.ProjectRole;
+import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
@@ -31,6 +35,8 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
+    private final ProjectInvitationRepository projectInvitationRepository;
 
     @Transactional
     public ProjectSummaryResponse createProject(Long userId, CreateProjectRequest request) {
@@ -91,6 +97,17 @@ public class ProjectService {
         ProjectMember myMembership = findMembership(projectId, userId);
 
         List<ProjectMember> members = projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(projectId);
+        long pendingInvitationCount = projectInvitationRepository.countByProjectIdAndStatusAndExpiresAtAfter(
+                projectId,
+                InvitationStatus.PENDING,
+                LocalDateTime.now()
+        );
+        long todoTaskCount = taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(projectId, TaskStatus.TODO);
+        long inProgressTaskCount = taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(
+                projectId,
+                TaskStatus.IN_PROGRESS
+        );
+        long doneTaskCount = taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(projectId, TaskStatus.DONE);
 
         List<ProjectDetailResponse.MemberResponse> memberResponses = members.stream()
                 .map(member -> new ProjectDetailResponse.MemberResponse(
@@ -109,8 +126,8 @@ public class ProjectService {
                 project.getDescription(),
                 myMembership.getRole(),
                 (long) members.size(),
-                0L,
-                new ProjectDetailResponse.TaskSummaryResponse(0L, 0L, 0L),
+                pendingInvitationCount,
+                new ProjectDetailResponse.TaskSummaryResponse(todoTaskCount, inProgressTaskCount, doneTaskCount),
                 memberResponses
         );
     }
@@ -181,6 +198,9 @@ public class ProjectService {
     private ProjectListItemResponse toProjectListItem(ProjectMember projectMember) {
         Project project = projectMember.getProject();
         long memberCount = projectMemberRepository.countByProjectId(project.getId());
+        long taskCount = taskRepository.countByProjectIdAndDeletedAtIsNull(project.getId());
+        long doneTaskCount = taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(project.getId(), TaskStatus.DONE);
+        int progressRate = calculateProgressRate(taskCount, doneTaskCount);
 
         return new ProjectListItemResponse(
                 project.getId(),
@@ -188,11 +208,18 @@ public class ProjectService {
                 project.getDescription(),
                 projectMember.getRole(),
                 memberCount,
-                0L,
-                0L,
-                0,
+                taskCount,
+                doneTaskCount,
+                progressRate,
                 project.getUpdatedAt()
         );
+    }
+
+    private int calculateProgressRate(long taskCount, long doneTaskCount) {
+        if (taskCount <= 0L) {
+            return 0;
+        }
+        return (int) ((doneTaskCount * 100L) / taskCount);
     }
 
     private ProjectMemberResponse toProjectMemberResponse(ProjectMember projectMember) {

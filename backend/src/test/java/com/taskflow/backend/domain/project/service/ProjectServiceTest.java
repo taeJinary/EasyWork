@@ -9,12 +9,16 @@ import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectSummaryResponse;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
+import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
+import com.taskflow.backend.domain.task.repository.TaskRepository;
+import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
+import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
@@ -30,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,6 +50,12 @@ class ProjectServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private TaskRepository taskRepository;
+
+    @Mock
+    private ProjectInvitationRepository projectInvitationRepository;
 
     @InjectMocks
     private ProjectService projectService;
@@ -93,12 +104,17 @@ class ProjectServiceTest {
         given(projectMemberRepository.findAllActiveByUserIdOrderByProjectUpdatedAtDesc(1L))
                 .willReturn(List.of(myMembership));
         given(projectMemberRepository.countByProjectId(10L)).willReturn(1L);
+        given(taskRepository.countByProjectIdAndDeletedAtIsNull(10L)).willReturn(4L);
+        given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.DONE)).willReturn(1L);
 
         ProjectListResponse response = projectService.getMyProjects(1L, 0, 20);
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst().projectId()).isEqualTo(10L);
         assertThat(response.content().getFirst().role()).isEqualTo(ProjectRole.OWNER);
+        assertThat(response.content().getFirst().taskCount()).isEqualTo(4L);
+        assertThat(response.content().getFirst().doneTaskCount()).isEqualTo(1L);
+        assertThat(response.content().getFirst().progressRate()).isEqualTo(25);
         assertThat(response.page()).isEqualTo(0);
         assertThat(response.size()).isEqualTo(20);
         assertThat(response.totalElements()).isEqualTo(1);
@@ -139,14 +155,24 @@ class ProjectServiceTest {
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
         given(projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(10L))
                 .willReturn(List.of(ownerMember, member));
+        given(projectInvitationRepository.countByProjectIdAndStatusAndExpiresAtAfter(
+                eq(10L),
+                eq(InvitationStatus.PENDING),
+                any(LocalDateTime.class)
+        )).willReturn(2L);
+        given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.TODO)).willReturn(3L);
+        given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.IN_PROGRESS)).willReturn(4L);
+        given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.DONE)).willReturn(5L);
 
         ProjectDetailResponse response = projectService.getProjectDetail(1L, 10L);
 
         assertThat(response.projectId()).isEqualTo(10L);
         assertThat(response.myRole()).isEqualTo(ProjectRole.OWNER);
         assertThat(response.memberCount()).isEqualTo(2);
-        assertThat(response.pendingInvitationCount()).isEqualTo(0);
-        assertThat(response.taskSummary().todo()).isEqualTo(0);
+        assertThat(response.pendingInvitationCount()).isEqualTo(2);
+        assertThat(response.taskSummary().todo()).isEqualTo(3);
+        assertThat(response.taskSummary().inProgress()).isEqualTo(4);
+        assertThat(response.taskSummary().done()).isEqualTo(5);
         assertThat(response.members()).hasSize(2);
     }
 
