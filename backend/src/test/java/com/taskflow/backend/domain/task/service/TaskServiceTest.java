@@ -34,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -112,6 +113,8 @@ class TaskServiceTest {
                 LocalDate.of(2026, 3, 10),
                 List.of(1L, 2L)
         );
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
 
         Task savedTask = Task.builder()
                 .id(100L)
@@ -145,6 +148,7 @@ class TaskServiceTest {
         assertThat(response.version()).isEqualTo(0L);
         assertThat(response.assignee()).isNotNull();
         assertThat(response.assignee().userId()).isEqualTo(2L);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
         verify(taskLabelRepository).saveAll(anyList());
     }
 
@@ -662,6 +666,8 @@ class TaskServiceTest {
                 List.of(2L, 3L),
                 0L
         );
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
 
         given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(actorMembership));
@@ -684,6 +690,7 @@ class TaskServiceTest {
         assertThat(response.labels()).hasSize(2);
         assertThat(response.assignee()).isNotNull();
         assertThat(response.assignee().userId()).isEqualTo(2L);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
 
         verify(taskLabelRepository).deleteAllByTaskId(1000L);
         verify(taskLabelRepository).saveAll(anyList());
@@ -919,6 +926,8 @@ class TaskServiceTest {
                 .build();
 
         MoveTaskRequest request = new MoveTaskRequest(TaskStatus.TODO, 0, 0L);
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
 
         given(taskRepository.findByIdAndDeletedAtIsNull(1001L)).willReturn(Optional.of(taskB));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
@@ -933,6 +942,7 @@ class TaskServiceTest {
         assertThat(taskB.getPosition()).isEqualTo(0);
         assertThat(taskA.getPosition()).isEqualTo(1);
         assertThat(taskC.getPosition()).isEqualTo(2);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
     }
 
     @Test
