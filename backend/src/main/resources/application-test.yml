@@ -33,6 +33,8 @@ app:
     refresh-token-path: /api/v1/auth
     secure: false
     same-site: Lax
+  invitation:
+    expires-days: 7
 
 logging:
   level:

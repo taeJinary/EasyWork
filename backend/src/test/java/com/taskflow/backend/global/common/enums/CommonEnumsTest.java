@@ -37,6 +37,18 @@ class CommonEnumsTest {
     }
 
     @Test
+    void 초대_상태_ENUM은_명세값을_가진다() {
+        assertThat(InvitationStatus.values())
+                .containsExactly(
+                        InvitationStatus.PENDING,
+                        InvitationStatus.ACCEPTED,
+                        InvitationStatus.REJECTED,
+                        InvitationStatus.CANCELED,
+                        InvitationStatus.EXPIRED
+                );
+    }
+
+    @Test
     void 사용자_권한_및_상태_ENUM은_명세값을_가진다() {
         assertThat(Role.values()).containsExactly(Role.ROLE_USER, Role.ROLE_ADMIN);
         assertThat(UserStatus.values()).containsExactly(UserStatus.ACTIVE, UserStatus.LOCKED, UserStatus.DELETED);
