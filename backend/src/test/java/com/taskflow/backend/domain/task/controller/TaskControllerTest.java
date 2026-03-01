@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.task.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -229,5 +231,76 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.data.commentCount").value(0));
 
         then(taskService).should().getTaskDetail(1L, 100L);
+    }
+
+    @Test
+    void updateTaskReturnsResponse() throws Exception {
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "로그인 API 및 재발급 구현",
+                "설명을 수정했습니다.",
+                2L,
+                TaskPriority.URGENT,
+                LocalDate.of(2026, 3, 11),
+                List.of(1L, 3L),
+                0L
+        );
+
+        TaskDetailResponse response = new TaskDetailResponse(
+                100L,
+                10L,
+                "로그인 API 및 재발급 구현",
+                "설명을 수정했습니다.",
+                TaskStatus.TODO,
+                TaskPriority.URGENT,
+                LocalDate.of(2026, 3, 11),
+                0,
+                1L,
+                new TaskDetailResponse.UserSummaryResponse(1L, "오너"),
+                new TaskDetailResponse.UserSummaryResponse(2L, "팀원"),
+                List.of(
+                        new TaskDetailResponse.LabelResponse(1L, "백엔드", "#2563EB"),
+                        new TaskDetailResponse.LabelResponse(3L, "인증", "#16A34A")
+                ),
+                0L,
+                List.of(),
+                LocalDateTime.of(2026, 3, 1, 9, 0),
+                LocalDateTime.of(2026, 3, 1, 9, 10)
+        );
+        given(taskService.updateTask(eq(1L), eq(100L), any(UpdateTaskRequest.class))).willReturn(response);
+
+        mockMvc.perform(patch("/tasks/100")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.taskId").value(100L))
+                .andExpect(jsonPath("$.data.priority").value("URGENT"))
+                .andExpect(jsonPath("$.data.labels[1].labelId").value(3L))
+                .andExpect(jsonPath("$.message").value("태스크가 수정되었습니다."));
+
+        then(taskService).should().updateTask(eq(1L), eq(100L), any(UpdateTaskRequest.class));
+    }
+
+    @Test
+    void updateTaskReturnsBadRequestWhenVersionMissing() throws Exception {
+        String invalidJson = """
+                {
+                  "title": "로그인 API 및 재발급 구현",
+                  "description": "설명을 수정했습니다.",
+                  "assigneeUserId": 2,
+                  "priority": "URGENT",
+                  "dueDate": "2026-03-11",
+                  "labelIds": [1, 3]
+                }
+                """;
+
+        mockMvc.perform(patch("/tasks/100")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
     }
 }

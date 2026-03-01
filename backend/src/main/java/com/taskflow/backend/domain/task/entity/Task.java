@@ -102,6 +102,20 @@ public class Task extends BaseEntity {
                 .build();
     }
 
+    public void update(
+            String title,
+            String description,
+            User assignee,
+            TaskPriority priority,
+            LocalDate dueDate
+    ) {
+        this.title = title;
+        this.description = description;
+        this.assignee = assignee;
+        this.priority = priority;
+        this.dueDate = dueDate;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }
