@@ -21,7 +21,7 @@ class CommonEnumsTest {
     @Test
     void 프로젝트_권한_ENUM은_명세값을_가진다() {
         assertThat(ProjectRole.values())
-                .containsExactly(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER);
+                .containsExactly(ProjectRole.OWNER, ProjectRole.MEMBER);
     }
 
     @Test
