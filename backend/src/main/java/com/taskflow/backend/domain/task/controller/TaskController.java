@@ -2,11 +2,13 @@ package com.taskflow.backend.domain.task.controller;
 
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.service.TaskService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.common.enums.TaskPriority;
+import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import jakarta.validation.Valid;
@@ -59,6 +61,30 @@ public class TaskController {
                 assigneeUserId,
                 priority,
                 labelId,
+                keyword
+        );
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/projects/{projectId}/tasks")
+    public ResponseEntity<ApiResponse<TaskListResponse>> getTasks(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String direction,
+            @RequestParam(required = false) String keyword
+    ) {
+        TaskListResponse response = taskService.getTasks(
+                extractUserId(authentication),
+                projectId,
+                page,
+                size,
+                status,
+                sortBy,
+                direction,
                 keyword
         );
         return ResponseEntity.ok(ApiResponse.success(response));

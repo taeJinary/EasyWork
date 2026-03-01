@@ -8,6 +8,7 @@ import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
@@ -381,6 +382,112 @@ class TaskServiceTest {
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> taskService.getTaskBoard(1L, 10L, null, null, null, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
+    }
+
+    @Test
+    void getTasksReturnsPagedAndSortedContent() {
+        User member = activeUser(1L, "member@example.com", "멤버");
+        User assignee = activeUser(2L, "assignee@example.com", "담당자");
+
+        Project project = Project.builder()
+                .id(10L)
+                .owner(member)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(member)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        Task task1 = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(member)
+                .assignee(assignee)
+                .title("로그인 API 구현")
+                .description("Access/Refresh 구조 구현")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .dueDate(LocalDate.of(2026, 3, 11))
+                .position(0)
+                .version(0L)
+                .build();
+        Task task2 = Task.builder()
+                .id(1001L)
+                .project(project)
+                .creator(member)
+                .assignee(assignee)
+                .title("초대 API 구현")
+                .description("메일 초대 흐름")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(1)
+                .version(1L)
+                .build();
+        Task task3 = Task.builder()
+                .id(1002L)
+                .project(project)
+                .creator(member)
+                .assignee(null)
+                .title("보드 UI 점검")
+                .description("프론트 체크")
+                .status(TaskStatus.IN_PROGRESS)
+                .priority(TaskPriority.LOW)
+                .dueDate(null)
+                .position(0)
+                .version(2L)
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
+                .willReturn(List.of(task1, task2, task3));
+
+        TaskListResponse response = taskService.getTasks(
+                1L,
+                10L,
+                0,
+                20,
+                TaskStatus.TODO,
+                "dueDate",
+                "ASC",
+                "API"
+        );
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.content().getFirst().taskId()).isEqualTo(1001L);
+        assertThat(response.content().get(1).taskId()).isEqualTo(1000L);
+        assertThat(response.page()).isEqualTo(0);
+        assertThat(response.size()).isEqualTo(20);
+        assertThat(response.totalElements()).isEqualTo(2L);
+        assertThat(response.totalPages()).isEqualTo(1);
+        assertThat(response.first()).isTrue();
+        assertThat(response.last()).isTrue();
+    }
+
+    @Test
+    void getTasksThrowsWhenNotProjectMember() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.getTasks(1L, 10L, 0, 20, null, null, null, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);

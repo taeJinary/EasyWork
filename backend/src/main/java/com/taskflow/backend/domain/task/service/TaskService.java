@@ -8,6 +8,8 @@ import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
@@ -20,6 +22,7 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +115,56 @@ public class TaskService {
         );
     }
 
+    public TaskListResponse getTasks(
+            Long userId,
+            Long projectId,
+            int page,
+            int size,
+            TaskStatus status,
+            String sortBy,
+            String direction,
+            String keyword
+    ) {
+        projectRepository.findByIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+        findMembership(projectId, userId);
+
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = size > 0 ? size : 20;
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+
+        List<Task> tasks = taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(projectId);
+
+        List<Task> filtered = tasks.stream()
+                .filter(task -> status == null || task.getStatus() == status)
+                .filter(task -> normalizedKeyword == null || matchesKeyword(task, normalizedKeyword))
+                .sorted(buildTaskComparator(sortBy, direction))
+                .toList();
+
+        long totalElements = filtered.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
+
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
+
+        List<TaskListItemResponse> content = filtered.subList(fromIndex, toIndex).stream()
+                .map(this::toTaskListItemResponse)
+                .toList();
+
+        boolean first = normalizedPage == 0;
+        boolean last = totalPages == 0 || normalizedPage >= totalPages - 1;
+
+        return new TaskListResponse(
+                content,
+                normalizedPage,
+                normalizedSize,
+                totalElements,
+                totalPages,
+                first,
+                last
+        );
+    }
+
     private ProjectMember findMembership(Long projectId, Long userId) {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
@@ -195,6 +248,56 @@ public class TaskService {
                 assigneeResponse,
                 labels,
                 0L
+        );
+    }
+
+    private Comparator<Task> buildTaskComparator(String sortBy, String direction) {
+        String normalizedSortBy = sortBy == null ? "updatedAt" : sortBy.trim();
+        String normalizedDirection = direction == null ? "DESC" : direction.trim();
+
+        Comparator<Task> comparator = switch (normalizedSortBy) {
+            case "createdAt" -> Comparator.comparing(
+                    Task::getCreatedAt,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            case "dueDate" -> Comparator.comparing(
+                    Task::getDueDate,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            case "priority" -> Comparator.comparing(Task::getPriority);
+            case "updatedAt" -> Comparator.comparing(
+                    Task::getUpdatedAt,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            default -> Comparator.comparing(
+                    Task::getUpdatedAt,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+        };
+
+        if (!"ASC".equalsIgnoreCase(normalizedDirection)) {
+            comparator = comparator.reversed();
+        }
+        return comparator;
+    }
+
+    private TaskListItemResponse toTaskListItemResponse(Task task) {
+        TaskListItemResponse.AssigneeResponse assigneeResponse = task.getAssignee() == null
+                ? null
+                : new TaskListItemResponse.AssigneeResponse(
+                        task.getAssignee().getId(),
+                        task.getAssignee().getNickname()
+                );
+
+        return new TaskListItemResponse(
+                task.getId(),
+                task.getTitle(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getPosition(),
+                task.getVersion(),
+                assigneeResponse
         );
     }
 
