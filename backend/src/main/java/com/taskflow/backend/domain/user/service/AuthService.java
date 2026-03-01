@@ -4,7 +4,9 @@ import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
+import com.taskflow.backend.domain.user.entity.PasswordHistory;
 import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
@@ -35,6 +37,7 @@ public class AuthService {
     private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(5);
 
     private final UserRepository userRepository;
+    private final PasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
@@ -55,6 +58,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        passwordHistoryRepository.save(PasswordHistory.create(savedUser, savedUser.getPassword()));
         return SignupResponse.from(savedUser);
     }
 

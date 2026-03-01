@@ -3,7 +3,9 @@ package com.taskflow.backend.domain.user.service;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
+import com.taskflow.backend.domain.user.entity.PasswordHistory;
 import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
@@ -37,6 +39,9 @@ class AuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PasswordHistoryRepository passwordHistoryRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -82,6 +87,7 @@ class AuthServiceTest {
         assertThat(response.userId()).isEqualTo(1L);
         assertThat(response.email()).isEqualTo("new@example.com");
         assertThat(response.nickname()).isEqualTo("newbie");
+        verify(passwordHistoryRepository).save(any(PasswordHistory.class));
     }
 
     @Test
