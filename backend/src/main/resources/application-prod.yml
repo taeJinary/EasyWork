@@ -1,0 +1,11 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+app:
+  cookie:
+    refresh-token-name: refresh_token
+    refresh-token-path: /api/v1/auth
+    secure: true
+    same-site: Lax
