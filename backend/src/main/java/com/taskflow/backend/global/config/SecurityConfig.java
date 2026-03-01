@@ -2,6 +2,7 @@ package com.taskflow.backend.global.config;
 
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
@@ -79,6 +80,8 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        validateAllowedOrigins();
+
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
@@ -89,5 +92,15 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private void validateAllowedOrigins() {
+        boolean hasWildcard = allowedOrigins.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .anyMatch("*"::equals);
+        if (hasWildcard) {
+            throw new IllegalStateException("app.cors.allowed-origins cannot contain '*' when credentials are enabled");
+        }
     }
 }
