@@ -1,0 +1,68 @@
+package com.taskflow.backend.domain.project.controller;
+
+import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
+import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
+import com.taskflow.backend.domain.project.dto.response.ProjectSummaryResponse;
+import com.taskflow.backend.domain.project.service.ProjectService;
+import com.taskflow.backend.global.auth.CustomUserDetails;
+import com.taskflow.backend.global.common.dto.ApiResponse;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/projects")
+@RequiredArgsConstructor
+public class ProjectController {
+
+    private final ProjectService projectService;
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ProjectSummaryResponse>> createProject(
+            Authentication authentication,
+            @Valid @RequestBody CreateProjectRequest request
+    ) {
+        ProjectSummaryResponse response = projectService.createProject(extractUserId(authentication), request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "프로젝트가 생성되었습니다."));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<ProjectListResponse>> getMyProjects(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        ProjectListResponse response = projectService.getMyProjects(extractUserId(authentication), page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProjectDetail(
+            Authentication authentication,
+            @PathVariable Long projectId
+    ) {
+        ProjectDetailResponse response = projectService.getProjectDetail(extractUserId(authentication), projectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    private Long extractUserId(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        return userDetails.getUserId();
+    }
+}
+

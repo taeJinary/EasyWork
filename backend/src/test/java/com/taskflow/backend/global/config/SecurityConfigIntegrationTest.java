@@ -39,4 +39,10 @@ class SecurityConfigIntegrationTest {
         mockMvc.perform(get("/users/me"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void projectsEndpointReturns401ForAnonymousRequest() throws Exception {
+        mockMvc.perform(get("/projects"))
+                .andExpect(status().isUnauthorized());
+    }
 }
