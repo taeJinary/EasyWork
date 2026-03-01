@@ -80,6 +80,7 @@ class AuthControllerTest {
                 "access-token",
                 "refresh-token",
                 1800000L,
+                1209600000L,
                 new AuthUserResponse(1L, "user@example.com", "tester", null, "ROLE_USER")
         );
 
@@ -92,6 +93,7 @@ class AuthControllerTest {
                 .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
                 .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("access-token"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
@@ -101,7 +103,7 @@ class AuthControllerTest {
 
     @Test
     void reissueReturnsNewTokens() throws Exception {
-        ReissueTokens tokens = new ReissueTokens("new-access", "new-refresh", 1800000L);
+        ReissueTokens tokens = new ReissueTokens("new-access", "new-refresh", 1800000L, 1209600000L);
 
         given(authService.reissue(eq("refresh-token"))).willReturn(tokens);
 
@@ -110,6 +112,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("new-access"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
