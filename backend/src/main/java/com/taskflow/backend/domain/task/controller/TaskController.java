@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.task.controller;
 
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -101,6 +103,20 @@ public class TaskController {
                 taskId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/tasks/{taskId}")
+    public ResponseEntity<ApiResponse<TaskDetailResponse>> updateTask(
+            Authentication authentication,
+            @PathVariable Long taskId,
+            @Valid @RequestBody UpdateTaskRequest request
+    ) {
+        TaskDetailResponse response = taskService.updateTask(
+                extractUserId(authentication),
+                taskId,
+                request
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "태스크가 수정되었습니다."));
     }
 
     private Long extractUserId(Authentication authentication) {

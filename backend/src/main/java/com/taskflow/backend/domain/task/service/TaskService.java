@@ -7,6 +7,7 @@ import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +69,29 @@ public class TaskService {
         syncTaskLabels(savedTask, projectId, request.labelIds());
 
         return toTaskSummaryResponse(savedTask);
+    }
+
+    @Transactional
+    public TaskDetailResponse updateTask(Long userId, Long taskId, UpdateTaskRequest request) {
+        Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+
+        Long projectId = task.getProject().getId();
+        findMembership(projectId, userId);
+        validateTaskVersion(task, request.version());
+
+        User assignee = resolveAssignee(projectId, request.assigneeUserId());
+        task.update(
+                request.title(),
+                request.description(),
+                assignee,
+                request.priority(),
+                request.dueDate()
+        );
+
+        replaceTaskLabels(task, projectId, request.labelIds());
+
+        return getTaskDetail(userId, taskId);
     }
 
     public TaskDetailResponse getTaskDetail(Long userId, Long taskId) {
@@ -212,6 +237,38 @@ public class TaskService {
                 .map(label -> TaskLabel.create(task, label))
                 .toList();
         taskLabelRepository.saveAll(taskLabels);
+    }
+
+    private void replaceTaskLabels(Task task, Long projectId, List<Long> labelIds) {
+        List<Long> requestedLabelIds = normalizeLabelIds(labelIds);
+        if (requestedLabelIds.isEmpty()) {
+            taskLabelRepository.deleteAllByTaskId(task.getId());
+            return;
+        }
+
+        List<Label> labels = labelRepository.findAllByIdInAndProjectId(requestedLabelIds, projectId);
+        if (labels.size() != requestedLabelIds.size()) {
+            throw new BusinessException(ErrorCode.LABEL_NOT_FOUND);
+        }
+
+        taskLabelRepository.deleteAllByTaskId(task.getId());
+        List<TaskLabel> taskLabels = labels.stream()
+                .map(label -> TaskLabel.create(task, label))
+                .toList();
+        taskLabelRepository.saveAll(taskLabels);
+    }
+
+    private List<Long> normalizeLabelIds(List<Long> labelIds) {
+        if (labelIds == null || labelIds.isEmpty()) {
+            return List.of();
+        }
+        return new ArrayList<>(new LinkedHashSet<>(labelIds));
+    }
+
+    private void validateTaskVersion(Task task, Long requestedVersion) {
+        if (task.getVersion() == null || !task.getVersion().equals(requestedVersion)) {
+            throw new BusinessException(ErrorCode.TASK_CONFLICT);
+        }
     }
 
     private Map<Long, List<TaskBoardResponse.LabelResponse>> mapLabelsByTaskId(List<Task> tasks) {

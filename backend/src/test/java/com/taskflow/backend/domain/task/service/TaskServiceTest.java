@@ -7,6 +7,7 @@ import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
@@ -594,6 +595,268 @@ class TaskServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
+    }
+
+    @Test
+    void updateTaskUpdatesFieldsAndSyncsLabelsWhenVersionMatches() {
+        User actor = activeUser(1L, "owner@example.com", "오너");
+        User assignee = activeUser(2L, "member@example.com", "팀원");
+
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember actorMembership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        ProjectMember assigneeMembership = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(assignee)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("기존 제목")
+                .description("기존 설명")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(0L)
+                .build();
+
+        Label label2 = Label.builder()
+                .id(2L)
+                .project(project)
+                .name("백엔드")
+                .colorHex("#2563EB")
+                .build();
+        Label label3 = Label.builder()
+                .id(3L)
+                .project(project)
+                .name("인증")
+                .colorHex("#16A34A")
+                .build();
+
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "로그인 API 및 재발급 구현",
+                "설명을 수정했습니다.",
+                2L,
+                TaskPriority.URGENT,
+                LocalDate.of(2026, 3, 11),
+                List.of(2L, 3L),
+                0L
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(actorMembership));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(assigneeMembership));
+        given(labelRepository.findAllByIdInAndProjectId(List.of(2L, 3L), 10L)).willReturn(List.of(label2, label3));
+        given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L)))
+                .willReturn(List.of(TaskLabel.create(task, label2), TaskLabel.create(task, label3)));
+
+        TaskDetailResponse response = taskService.updateTask(1L, 1000L, request);
+
+        assertThat(task.getTitle()).isEqualTo("로그인 API 및 재발급 구현");
+        assertThat(task.getDescription()).isEqualTo("설명을 수정했습니다.");
+        assertThat(task.getAssignee()).isEqualTo(assignee);
+        assertThat(task.getPriority()).isEqualTo(TaskPriority.URGENT);
+        assertThat(task.getDueDate()).isEqualTo(LocalDate.of(2026, 3, 11));
+
+        assertThat(response.taskId()).isEqualTo(1000L);
+        assertThat(response.title()).isEqualTo("로그인 API 및 재발급 구현");
+        assertThat(response.priority()).isEqualTo(TaskPriority.URGENT);
+        assertThat(response.labels()).hasSize(2);
+        assertThat(response.assignee()).isNotNull();
+        assertThat(response.assignee().userId()).isEqualTo(2L);
+
+        verify(taskLabelRepository).deleteAllByTaskId(1000L);
+        verify(taskLabelRepository).saveAll(anyList());
+    }
+
+    @Test
+    void updateTaskThrowsWhenVersionConflict() {
+        User actor = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember actorMembership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("기존 제목")
+                .description("기존 설명")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(1L)
+                .build();
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "새 제목",
+                "새 설명",
+                null,
+                TaskPriority.HIGH,
+                LocalDate.of(2026, 3, 11),
+                List.of(),
+                0L
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(actorMembership));
+
+        assertThatThrownBy(() -> taskService.updateTask(1L, 1000L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TASK_CONFLICT);
+
+        verify(taskLabelRepository, never()).deleteAllByTaskId(1000L);
+        verify(taskLabelRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void updateTaskThrowsWhenAssigneeNotProjectMember() {
+        User actor = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember actorMembership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("기존 제목")
+                .description("기존 설명")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(0L)
+                .build();
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "새 제목",
+                "새 설명",
+                99L,
+                TaskPriority.HIGH,
+                LocalDate.of(2026, 3, 11),
+                List.of(),
+                0L
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(actorMembership));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 99L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.updateTask(1L, 1000L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    void updateTaskThrowsWhenLabelNotFound() {
+        User actor = activeUser(1L, "owner@example.com", "오너");
+        User assignee = activeUser(2L, "member@example.com", "팀원");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember actorMembership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        ProjectMember assigneeMembership = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(assignee)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .assignee(null)
+                .title("기존 제목")
+                .description("기존 설명")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(0L)
+                .build();
+        Label label2 = Label.builder()
+                .id(2L)
+                .project(project)
+                .name("백엔드")
+                .colorHex("#2563EB")
+                .build();
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "새 제목",
+                "새 설명",
+                2L,
+                TaskPriority.HIGH,
+                LocalDate.of(2026, 3, 11),
+                List.of(2L, 3L),
+                0L
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(actorMembership));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(assigneeMembership));
+        given(labelRepository.findAllByIdInAndProjectId(List.of(2L, 3L), 10L)).willReturn(List.of(label2));
+
+        assertThatThrownBy(() -> taskService.updateTask(1L, 1000L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.LABEL_NOT_FOUND);
+
+        verify(taskLabelRepository, never()).deleteAllByTaskId(1000L);
+        verify(taskLabelRepository, never()).saveAll(anyList());
     }
 
     private User activeUser(Long id, String email, String nickname) {
