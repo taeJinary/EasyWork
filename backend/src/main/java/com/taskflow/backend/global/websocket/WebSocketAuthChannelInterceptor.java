@@ -58,7 +58,11 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         if (!StringUtils.hasText(token)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        if (!jwtTokenProvider.validateToken(token)) {
+        JwtTokenProvider.TokenValidationResult validationResult = jwtTokenProvider.validateAccessToken(token);
+        if (validationResult == JwtTokenProvider.TokenValidationResult.EXPIRED) {
+            throw new BusinessException(ErrorCode.TOKEN_EXPIRED);
+        }
+        if (validationResult == JwtTokenProvider.TokenValidationResult.INVALID) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }
 

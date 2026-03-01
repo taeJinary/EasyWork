@@ -1,6 +1,7 @@
 package com.taskflow.backend.global.auth.jwt;
 
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.infra.redis.RedisService;
 import jakarta.servlet.FilterChain;
@@ -23,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
+    public static final String AUTH_ERROR_CODE_ATTRIBUTE = "authErrorCode";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -45,11 +47,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String token = resolveToken(request);
 
-        if (token != null
-                && jwtTokenProvider.validateToken(token)
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            JwtTokenProvider.TokenValidationResult validationResult = jwtTokenProvider.validateAccessToken(token);
+            if (validationResult == JwtTokenProvider.TokenValidationResult.EXPIRED) {
+                request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, ErrorCode.TOKEN_EXPIRED);
+                filterChain.doFilter(request, response);
+                return;
+            }
+            if (validationResult == JwtTokenProvider.TokenValidationResult.INVALID) {
+                request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, ErrorCode.TOKEN_INVALID);
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             String tokenId = jwtTokenProvider.getTokenId(token);
             if (tokenId != null && redisService.hasKey(BLACKLIST_KEY_PREFIX + tokenId)) {
+                request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, ErrorCode.TOKEN_INVALID);
                 filterChain.doFilter(request, response);
                 return;
             }
