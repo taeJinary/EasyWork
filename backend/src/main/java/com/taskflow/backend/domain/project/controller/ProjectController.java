@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.project.controller;
 
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.request.ChangeMemberRoleRequest;
 import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
@@ -89,6 +90,32 @@ public class ProjectController {
     ) {
         List<ProjectMemberResponse> response = projectService.getProjectMembers(extractUserId(authentication), projectId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/{projectId}/members/{memberId}/role")
+    public ResponseEntity<ApiResponse<ProjectMemberResponse>> changeMemberRole(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @Valid @RequestBody ChangeMemberRoleRequest request
+    ) {
+        ProjectMemberResponse response = projectService.changeMemberRole(
+                extractUserId(authentication),
+                projectId,
+                memberId,
+                request
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "멤버 역할이 변경되었습니다."));
+    }
+
+    @DeleteMapping("/{projectId}/members/{memberId}")
+    public ResponseEntity<ApiResponse<Void>> removeMember(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @PathVariable Long memberId
+    ) {
+        projectService.removeMember(extractUserId(authentication), projectId, memberId);
+        return ResponseEntity.ok(ApiResponse.success(null, "멤버가 제거되었습니다."));
     }
 
     private Long extractUserId(Authentication authentication) {

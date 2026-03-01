@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.project.service;
 
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.request.ChangeMemberRoleRequest;
 import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectMemberResponse;
@@ -340,6 +341,183 @@ class ProjectServiceTest {
                 .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
 
         verify(projectMemberRepository, never()).findAllByProjectIdOrderByJoinedAtAsc(10L);
+    }
+
+    @Test
+    void changeMemberRoleUpdatesRoleWhenOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User memberUser = activeUser(2L, "member@example.com", "팀원");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        ProjectMember targetMember = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(memberUser)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.findByIdAndProjectId(101L, 10L)).willReturn(Optional.of(targetMember));
+
+        ProjectMemberResponse response = projectService.changeMemberRole(
+                1L,
+                10L,
+                101L,
+                new ChangeMemberRoleRequest(ProjectRole.OWNER)
+        );
+
+        assertThat(response.memberId()).isEqualTo(101L);
+        assertThat(response.role()).isEqualTo(ProjectRole.OWNER);
+        assertThat(targetMember.getRole()).isEqualTo(ProjectRole.OWNER);
+    }
+
+    @Test
+    void changeMemberRoleThrowsWhenTargetMemberNotFound() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.findByIdAndProjectId(999L, 10L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectService.changeMemberRole(
+                1L,
+                10L,
+                999L,
+                new ChangeMemberRoleRequest(ProjectRole.MEMBER)
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    void changeMemberRoleThrowsWhenDemotingLastOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.findByIdAndProjectId(100L, 10L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.countByProjectIdAndRole(10L, ProjectRole.OWNER)).willReturn(1L);
+
+        assertThatThrownBy(() -> projectService.changeMemberRole(
+                1L,
+                10L,
+                100L,
+                new ChangeMemberRoleRequest(ProjectRole.MEMBER)
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CANNOT_REMOVE_LAST_OWNER);
+    }
+
+    @Test
+    void removeMemberDeletesMemberWhenOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User memberUser = activeUser(2L, "member@example.com", "팀원");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        ProjectMember targetMember = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(memberUser)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.findByIdAndProjectId(101L, 10L)).willReturn(Optional.of(targetMember));
+
+        projectService.removeMember(1L, 10L, 101L);
+
+        verify(projectMemberRepository).delete(targetMember);
+    }
+
+    @Test
+    void removeMemberThrowsWhenRemovingLastOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.findByIdAndProjectId(100L, 10L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.countByProjectIdAndRole(10L, ProjectRole.OWNER)).willReturn(1L);
+
+        assertThatThrownBy(() -> projectService.removeMember(1L, 10L, 100L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CANNOT_REMOVE_LAST_OWNER);
+
+        verify(projectMemberRepository, never()).delete(any(ProjectMember.class));
     }
 
     private User activeUser(Long id, String email, String nickname) {

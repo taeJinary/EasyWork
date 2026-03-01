@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.project.service;
 
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.request.ChangeMemberRoleRequest;
 import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
@@ -148,6 +149,35 @@ public class ProjectService {
                 .toList();
     }
 
+    @Transactional
+    public ProjectMemberResponse changeMemberRole(
+            Long userId,
+            Long projectId,
+            Long memberId,
+            ChangeMemberRoleRequest request
+    ) {
+        findActiveProject(projectId);
+        ProjectMember myMembership = findMembership(projectId, userId);
+        ensureOwner(myMembership);
+
+        ProjectMember targetMember = findProjectMember(projectId, memberId);
+        validateLastOwnerConstraint(projectId, targetMember, request.role());
+        targetMember.changeRole(request.role(), LocalDateTime.now());
+
+        return toProjectMemberResponse(targetMember);
+    }
+
+    @Transactional
+    public void removeMember(Long userId, Long projectId, Long memberId) {
+        findActiveProject(projectId);
+        ProjectMember myMembership = findMembership(projectId, userId);
+        ensureOwner(myMembership);
+
+        ProjectMember targetMember = findProjectMember(projectId, memberId);
+        validateLastOwnerConstraint(projectId, targetMember, null);
+        projectMemberRepository.delete(targetMember);
+    }
+
     private ProjectListItemResponse toProjectListItem(ProjectMember projectMember) {
         Project project = projectMember.getProject();
         long memberCount = projectMemberRepository.countByProjectId(project.getId());
@@ -184,6 +214,26 @@ public class ProjectService {
     private ProjectMember findMembership(Long projectId, Long userId) {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private ProjectMember findProjectMember(Long projectId, Long memberId) {
+        return projectMemberRepository.findByIdAndProjectId(memberId, projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private void validateLastOwnerConstraint(Long projectId, ProjectMember targetMember, ProjectRole requestedRole) {
+        if (targetMember.getRole() != ProjectRole.OWNER) {
+            return;
+        }
+
+        if (requestedRole == ProjectRole.OWNER) {
+            return;
+        }
+
+        long ownerCount = projectMemberRepository.countByProjectIdAndRole(projectId, ProjectRole.OWNER);
+        if (ownerCount <= 1) {
+            throw new BusinessException(ErrorCode.CANNOT_REMOVE_LAST_OWNER);
+        }
     }
 
     private void ensureOwner(ProjectMember membership) {
