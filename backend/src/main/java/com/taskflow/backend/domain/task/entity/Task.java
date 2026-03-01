@@ -116,6 +116,16 @@ public class Task extends BaseEntity {
         this.dueDate = dueDate;
     }
 
+    public void move(TaskStatus toStatus, int targetPosition, LocalDateTime changedAt) {
+        this.status = toStatus;
+        this.position = targetPosition;
+        this.completedAt = toStatus == TaskStatus.DONE ? changedAt : null;
+    }
+
+    public void reassignPosition(int position) {
+        this.position = position;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }

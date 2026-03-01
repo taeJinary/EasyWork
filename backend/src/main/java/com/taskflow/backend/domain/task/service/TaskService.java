@@ -7,11 +7,13 @@ import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.request.MoveTaskRequest;
 import com.taskflow.backend.domain.task.dto.request.UpdateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskMoveResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
@@ -22,6 +24,7 @@ import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -92,6 +95,29 @@ public class TaskService {
         replaceTaskLabels(task, projectId, request.labelIds());
 
         return getTaskDetail(userId, taskId);
+    }
+
+    @Transactional
+    public TaskMoveResponse moveTask(Long userId, Long taskId, MoveTaskRequest request) {
+        Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+
+        Long projectId = task.getProject().getId();
+        findMembership(projectId, userId);
+        validateTaskVersion(task, request.version());
+
+        TaskStatus fromStatus = task.getStatus();
+        TaskStatus toStatus = request.toStatus();
+        int targetPosition = request.targetPosition();
+
+        if (fromStatus == toStatus) {
+            moveWithinSameColumn(task, projectId, fromStatus, targetPosition);
+        } else {
+            moveAcrossColumns(task, projectId, fromStatus, toStatus, targetPosition);
+        }
+
+        taskRepository.flush();
+        return toTaskMoveResponse(task);
     }
 
     public TaskDetailResponse getTaskDetail(Long userId, Long taskId) {
@@ -211,6 +237,58 @@ public class TaskService {
     private ProjectMember findMembership(Long projectId, Long userId) {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private void moveWithinSameColumn(
+            Task movingTask,
+            Long projectId,
+            TaskStatus status,
+            int targetPosition
+    ) {
+        List<Task> columnTasks = new ArrayList<>(
+                taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(projectId, status)
+        );
+        columnTasks.removeIf(task -> task.getId().equals(movingTask.getId()));
+
+        int normalizedTargetPosition = normalizeTargetPosition(targetPosition, columnTasks.size());
+        columnTasks.add(normalizedTargetPosition, movingTask);
+        reassignPositions(columnTasks);
+    }
+
+    private void moveAcrossColumns(
+            Task movingTask,
+            Long projectId,
+            TaskStatus fromStatus,
+            TaskStatus toStatus,
+            int targetPosition
+    ) {
+        List<Task> sourceTasks = new ArrayList<>(
+                taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(projectId, fromStatus)
+        );
+        sourceTasks.removeIf(task -> task.getId().equals(movingTask.getId()));
+        reassignPositions(sourceTasks);
+
+        List<Task> targetTasks = new ArrayList<>(
+                taskRepository.findAllByProjectIdAndStatusAndDeletedAtIsNullOrderByPositionAsc(projectId, toStatus)
+        );
+        int normalizedTargetPosition = normalizeTargetPosition(targetPosition, targetTasks.size());
+
+        movingTask.move(toStatus, normalizedTargetPosition, LocalDateTime.now());
+        targetTasks.add(normalizedTargetPosition, movingTask);
+        reassignPositions(targetTasks);
+    }
+
+    private int normalizeTargetPosition(int targetPosition, int columnSize) {
+        if (targetPosition < 0) {
+            return 0;
+        }
+        return Math.min(targetPosition, columnSize);
+    }
+
+    private void reassignPositions(List<Task> tasks) {
+        for (int i = 0; i < tasks.size(); i++) {
+            tasks.get(i).reassignPosition(i);
+        }
     }
 
     private User resolveAssignee(Long projectId, Long assigneeUserId) {
@@ -393,6 +471,16 @@ public class TaskService {
                 task.getPosition(),
                 task.getVersion(),
                 assigneeResponse
+        );
+    }
+
+    private TaskMoveResponse toTaskMoveResponse(Task task) {
+        return new TaskMoveResponse(
+                task.getId(),
+                task.getStatus(),
+                task.getPosition(),
+                task.getVersion(),
+                task.getCompletedAt()
         );
     }
 
