@@ -3,6 +3,8 @@ package com.taskflow.backend.domain.task.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.service.TaskService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -145,5 +147,48 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.data.columns[0].tasks[0].commentCount").value(0));
 
         then(taskService).should().getTaskBoard(1L, 10L, 2L, TaskPriority.HIGH, 1L, "API");
+    }
+
+    @Test
+    void getTasksReturnsPagedResponse() throws Exception {
+        TaskListItemResponse item = new TaskListItemResponse(
+                100L,
+                "로그인 API 구현",
+                TaskStatus.TODO,
+                TaskPriority.HIGH,
+                LocalDate.of(2026, 3, 10),
+                0,
+                0L,
+                new TaskListItemResponse.AssigneeResponse(2L, "팀원")
+        );
+        TaskListResponse response = new TaskListResponse(
+                List.of(item),
+                0,
+                20,
+                1L,
+                1,
+                true,
+                true
+        );
+
+        given(taskService.getTasks(1L, 10L, 0, 20, TaskStatus.TODO, "updatedAt", "DESC", "로그인"))
+                .willReturn(response);
+
+        mockMvc.perform(get("/projects/10/tasks")
+                        .principal(principalAuth())
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("status", "TODO")
+                        .param("sortBy", "updatedAt")
+                        .param("direction", "DESC")
+                        .param("keyword", "로그인"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].taskId").value(100L))
+                .andExpect(jsonPath("$.data.content[0].status").value("TODO"))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        then(taskService).should().getTasks(1L, 10L, 0, 20, TaskStatus.TODO, "updatedAt", "DESC", "로그인");
     }
 }
