@@ -11,6 +11,8 @@ import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +22,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -76,9 +77,10 @@ public class AuthController {
 
     @PostMapping("/token/reissue")
     public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
-            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletRequest request,
             HttpServletResponse response
     ) {
+        String refreshToken = resolveRefreshToken(request);
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
@@ -96,9 +98,10 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestHeader(name = AUTHORIZATION_HEADER, required = false) String authorizationHeader,
-            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletRequest request,
             HttpServletResponse response
     ) {
+        String refreshToken = resolveRefreshToken(request);
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
@@ -112,6 +115,20 @@ public class AuthController {
     private String resolveAccessToken(String authorizationHeader) {
         if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
             return authorizationHeader.substring(BEARER_PREFIX.length());
+        }
+        return null;
+    }
+
+    private String resolveRefreshToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if (refreshTokenCookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
         }
         return null;
     }
