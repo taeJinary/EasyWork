@@ -15,8 +15,10 @@ import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
+import com.taskflow.backend.domain.task.entity.TaskStatusHistory;
 import com.taskflow.backend.domain.task.repository.TaskLabelRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
+import com.taskflow.backend.domain.task.repository.TaskStatusHistoryRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
@@ -31,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -61,6 +64,9 @@ class TaskServiceTest {
 
     @Mock
     private LabelRepository labelRepository;
+
+    @Mock
+    private TaskStatusHistoryRepository taskStatusHistoryRepository;
 
     @InjectMocks
     private TaskService taskService;
@@ -540,10 +546,21 @@ class TaskServiceTest {
                 .colorHex("#2563EB")
                 .build();
 
+        TaskStatusHistory history = TaskStatusHistory.create(
+                task,
+                TaskStatus.TODO,
+                TaskStatus.IN_PROGRESS,
+                assignee
+        );
+        ReflectionTestUtils.setField(history, "id", 200L);
+        ReflectionTestUtils.setField(history, "createdAt", LocalDateTime.of(2026, 3, 2, 9, 0));
+
         given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L)))
                 .willReturn(List.of(TaskLabel.create(task, backendLabel)));
+        given(taskStatusHistoryRepository.findTop10ByTaskIdOrderByCreatedAtDesc(1000L))
+                .willReturn(List.of(history));
 
         TaskDetailResponse response = taskService.getTaskDetail(1L, 1000L);
 
@@ -557,7 +574,13 @@ class TaskServiceTest {
         assertThat(response.labels()).hasSize(1);
         assertThat(response.labels().getFirst().labelId()).isEqualTo(1L);
         assertThat(response.commentCount()).isEqualTo(0L);
-        assertThat(response.recentStatusHistories()).isEmpty();
+        assertThat(response.recentStatusHistories()).hasSize(1);
+        assertThat(response.recentStatusHistories().getFirst().historyId()).isEqualTo(200L);
+        assertThat(response.recentStatusHistories().getFirst().fromStatus()).isEqualTo(TaskStatus.TODO);
+        assertThat(response.recentStatusHistories().getFirst().toStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(response.recentStatusHistories().getFirst().changedBy().userId()).isEqualTo(2L);
+        assertThat(response.recentStatusHistories().getFirst().changedAt())
+                .isEqualTo(LocalDateTime.of(2026, 3, 2, 9, 0));
     }
 
     @Test
@@ -943,6 +966,7 @@ class TaskServiceTest {
         assertThat(taskA.getPosition()).isEqualTo(1);
         assertThat(taskC.getPosition()).isEqualTo(2);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(taskStatusHistoryRepository, never()).save(any(TaskStatusHistory.class));
     }
 
     @Test
@@ -1024,6 +1048,15 @@ class TaskServiceTest {
         assertThat(movingTask.getCompletedAt()).isNotNull();
         assertThat(sourceTask.getPosition()).isEqualTo(0);
         assertThat(doneTask.getPosition()).isEqualTo(0);
+
+        ArgumentCaptor<TaskStatusHistory> historyCaptor = ArgumentCaptor.forClass(TaskStatusHistory.class);
+        verify(taskStatusHistoryRepository).save(historyCaptor.capture());
+
+        TaskStatusHistory savedHistory = historyCaptor.getValue();
+        assertThat(savedHistory.getTask()).isEqualTo(movingTask);
+        assertThat(savedHistory.getFromStatus()).isEqualTo(TaskStatus.TODO);
+        assertThat(savedHistory.getToStatus()).isEqualTo(TaskStatus.DONE);
+        assertThat(savedHistory.getChangedBy()).isEqualTo(actor);
     }
 
     @Test
