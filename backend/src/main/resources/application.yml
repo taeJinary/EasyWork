@@ -39,6 +39,13 @@ jwt:
   access-token-expiration: 1800000      # 30분 (ms)
   refresh-token-expiration: 1209600000  # 14일 (ms)
 
+app:
+  cookie:
+    refresh-token-name: refresh_token
+    refresh-token-path: /api/v1/auth
+    secure: false
+    same-site: Lax
+
 # === Logging ===
 logging:
   level:

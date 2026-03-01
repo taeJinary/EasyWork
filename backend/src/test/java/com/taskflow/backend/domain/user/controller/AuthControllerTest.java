@@ -2,15 +2,14 @@ package com.taskflow.backend.domain.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
-import com.taskflow.backend.domain.user.dto.request.LogoutRequest;
-import com.taskflow.backend.domain.user.dto.request.ReissueRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
-import com.taskflow.backend.domain.user.dto.response.LoginResponse;
-import com.taskflow.backend.domain.user.dto.response.ReissueResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.service.AuthService;
+import com.taskflow.backend.domain.user.service.model.LoginTokens;
+import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,7 +22,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,52 +76,65 @@ class AuthControllerTest {
     @Test
     void loginReturnsTokenPayload() throws Exception {
         LoginRequest request = new LoginRequest("user@example.com", "Pass123!");
-        LoginResponse response = new LoginResponse(
+        LoginTokens tokens = new LoginTokens(
                 "access-token",
                 "refresh-token",
-                "Bearer",
                 1800000L,
                 new AuthUserResponse(1L, "user@example.com", "tester", null, "ROLE_USER")
         );
 
-        given(authService.login(any(LoginRequest.class))).willReturn(response);
+        given(authService.login(any(LoginRequest.class))).willReturn(tokens);
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.data.user.userId").value(1L));
     }
 
     @Test
     void reissueReturnsNewTokens() throws Exception {
-        ReissueRequest request = new ReissueRequest("refresh-token");
-        ReissueResponse response = new ReissueResponse("new-access", "new-refresh", "Bearer", 1800000L);
+        ReissueTokens tokens = new ReissueTokens("new-access", "new-refresh", 1800000L);
 
-        given(authService.reissue(any(ReissueRequest.class))).willReturn(response);
+        given(authService.reissue(eq("refresh-token"))).willReturn(tokens);
 
         mockMvc.perform(post("/auth/token/reissue")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(new Cookie("refresh_token", "refresh-token")))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.accessToken").value("new-access"));
+                .andExpect(jsonPath("$.data.accessToken").value("new-access"))
+                .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
+    }
+
+    @Test
+    void reissueReturnsUnauthorizedWhenCookieIsMissing() throws Exception {
+        mockMvc.perform(post("/auth/token/reissue"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
     }
 
     @Test
     void logoutReturnsOkResponse() throws Exception {
-        LogoutRequest request = new LogoutRequest("refresh-token");
-
         mockMvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer access-token")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(new Cookie("refresh_token", "refresh-token")))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("로그아웃되었습니다."));
 
-        then(authService).should().logout(eq("access-token"), any(LogoutRequest.class));
+        then(authService).should().logout(eq("access-token"), eq("refresh-token"));
     }
 }

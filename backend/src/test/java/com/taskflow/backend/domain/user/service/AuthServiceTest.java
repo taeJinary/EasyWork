@@ -1,14 +1,12 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
-import com.taskflow.backend.domain.user.dto.request.LogoutRequest;
-import com.taskflow.backend.domain.user.dto.request.ReissueRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
-import com.taskflow.backend.domain.user.dto.response.LoginResponse;
-import com.taskflow.backend.domain.user.dto.response.ReissueResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.user.service.model.LoginTokens;
+import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
 import com.taskflow.backend.global.common.enums.Role;
@@ -109,11 +107,11 @@ class AuthServiceTest {
                 .thenReturn("access-token");
         when(jwtTokenProvider.generateRefreshToken(user.getId())).thenReturn("refresh-token");
 
-        LoginResponse response = authService.login(request);
+        LoginTokens response = authService.login(request);
 
         assertThat(response.accessToken()).isEqualTo("access-token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
-        assertThat(response.tokenType()).isEqualTo("Bearer");
+        assertThat(response.expiresIn()).isEqualTo(1800000L);
         assertThat(response.user().userId()).isEqualTo(user.getId());
 
         verify(redisService).setValue(
@@ -173,20 +171,20 @@ class AuthServiceTest {
     @Test
     void reissueRotatesTokensWhenRefreshTokenIsValid() {
         User user = activeUser();
-        ReissueRequest request = new ReissueRequest("old-refresh-token");
+        String refreshToken = "old-refresh-token";
 
-        when(jwtTokenProvider.getUserId(request.refreshToken())).thenReturn(user.getId());
+        when(jwtTokenProvider.getUserId(refreshToken)).thenReturn(user.getId());
         when(redisService.getValue("auth:refresh:" + user.getId())).thenReturn(Optional.of("old-refresh-token"));
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole()))
                 .thenReturn("new-access-token");
         when(jwtTokenProvider.generateRefreshToken(user.getId())).thenReturn("new-refresh-token");
 
-        ReissueResponse response = authService.reissue(request);
+        ReissueTokens response = authService.reissue(refreshToken);
 
         assertThat(response.accessToken()).isEqualTo("new-access-token");
         assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
-        assertThat(response.accessTokenExpiresIn()).isEqualTo(1800000L);
+        assertThat(response.expiresIn()).isEqualTo(1800000L);
 
         verify(redisService).setValue(
                 "auth:refresh:" + user.getId(),
@@ -197,12 +195,12 @@ class AuthServiceTest {
 
     @Test
     void reissueThrowsWhenRefreshTokenDoesNotMatchStoredToken() {
-        ReissueRequest request = new ReissueRequest("unknown-refresh-token");
+        String refreshToken = "unknown-refresh-token";
 
-        when(jwtTokenProvider.getUserId(request.refreshToken())).thenReturn(1L);
+        when(jwtTokenProvider.getUserId(refreshToken)).thenReturn(1L);
         when(redisService.getValue("auth:refresh:1")).thenReturn(Optional.of("different-refresh-token"));
 
-        assertThatThrownBy(() -> authService.reissue(request))
+        assertThatThrownBy(() -> authService.reissue(refreshToken))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.TOKEN_INVALID);
@@ -210,13 +208,11 @@ class AuthServiceTest {
 
     @Test
     void logoutBlacklistsAccessTokenAndDeletesStoredRefreshToken() {
-        LogoutRequest request = new LogoutRequest("refresh-token");
-
         when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
         when(jwtTokenProvider.getRemainingExpiration("access-token")).thenReturn(5000L);
-        when(jwtTokenProvider.getUserId(request.refreshToken())).thenReturn(1L);
+        when(jwtTokenProvider.getUserId("refresh-token")).thenReturn(1L);
 
-        authService.logout("access-token", request);
+        authService.logout("access-token", "refresh-token");
 
         verify(redisService).setValue(
                 "auth:blacklist:access-token",

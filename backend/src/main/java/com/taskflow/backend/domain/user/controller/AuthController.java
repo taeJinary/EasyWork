@@ -1,19 +1,26 @@
 package com.taskflow.backend.domain.user.controller;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
-import com.taskflow.backend.domain.user.dto.request.LogoutRequest;
-import com.taskflow.backend.domain.user.dto.request.ReissueRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.LoginResponse;
 import com.taskflow.backend.domain.user.dto.response.ReissueResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.service.AuthService;
+import com.taskflow.backend.domain.user.service.model.LoginTokens;
+import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.common.dto.ApiResponse;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +33,19 @@ public class AuthController {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final long ONE_SECOND_IN_MILLIS = 1000L;
+
+    @Value("${app.cookie.refresh-token-name:refresh_token}")
+    private String refreshTokenCookieName;
+
+    @Value("${app.cookie.refresh-token-path:/api/v1/auth}")
+    private String refreshTokenCookiePath;
+
+    @Value("${app.cookie.secure:false}")
+    private boolean refreshTokenCookieSecure;
+
+    @Value("${app.cookie.same-site:Lax}")
+    private String refreshTokenCookieSameSite;
 
     private final AuthService authService;
 
@@ -40,27 +60,52 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response
     ) {
-        LoginResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        LoginTokens tokens = authService.login(request);
+        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.expiresIn());
+
+        LoginResponse loginResponse = new LoginResponse(
+                tokens.accessToken(),
+                tokens.expiresIn(),
+                tokens.user()
+        );
+        return ResponseEntity.ok(ApiResponse.success(loginResponse));
     }
 
     @PostMapping("/token/reissue")
     public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
-            @Valid @RequestBody ReissueRequest request
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response
     ) {
-        ReissueResponse response = authService.reissue(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        ReissueTokens tokens = authService.reissue(refreshToken);
+        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.expiresIn());
+
+        ReissueResponse reissueResponse = new ReissueResponse(
+                tokens.accessToken(),
+                tokens.expiresIn()
+        );
+        return ResponseEntity.ok(ApiResponse.success(reissueResponse));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestHeader(name = AUTHORIZATION_HEADER, required = false) String authorizationHeader,
-            @Valid @RequestBody LogoutRequest request
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response
     ) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
         String accessToken = resolveAccessToken(authorizationHeader);
-        authService.logout(accessToken, request);
+        authService.logout(accessToken, refreshToken);
+        expireRefreshTokenCookie(response);
         return ResponseEntity.ok(ApiResponse.success(null, "로그아웃되었습니다."));
     }
 
@@ -69,6 +114,29 @@ public class AuthController {
             return authorizationHeader.substring(BEARER_PREFIX.length());
         }
         return null;
+    }
+
+    private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken, long expiresInMillis) {
+        long maxAgeSeconds = Math.max(expiresInMillis / ONE_SECOND_IN_MILLIS, 0);
+        ResponseCookie cookie = ResponseCookie.from(refreshTokenCookieName, refreshToken)
+                .httpOnly(true)
+                .secure(refreshTokenCookieSecure)
+                .sameSite(refreshTokenCookieSameSite)
+                .path(refreshTokenCookiePath)
+                .maxAge(maxAgeSeconds)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void expireRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(refreshTokenCookieName, "")
+                .httpOnly(true)
+                .secure(refreshTokenCookieSecure)
+                .sameSite(refreshTokenCookieSameSite)
+                .path(refreshTokenCookiePath)
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }
 
