@@ -22,7 +22,7 @@ class SecurityConfigIntegrationTest {
 
     @Test
     void loginEndpointPermitsAnonymousRequest() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -30,13 +30,13 @@ class SecurityConfigIntegrationTest {
 
     @Test
     void logoutEndpointRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/auth/logout"))
+        mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void usersMeEndpointReturns401ForAnonymousRequest() throws Exception {
-        mockMvc.perform(get("/api/users/me"))
+        mockMvc.perform(get("/users/me"))
                 .andExpect(status().isUnauthorized());
     }
 }

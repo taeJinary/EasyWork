@@ -51,7 +51,8 @@ class JwtAuthenticationFilterTest {
     @Test
     void authExcludedPathPassesWithoutToken() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/auth/login");
+        request.setRequestURI("/api/v1/auth/login");
+        request.setServletPath("/auth/login");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -75,7 +76,8 @@ class JwtAuthenticationFilterTest {
         String token = jwtTokenProvider.generateAccessToken(1L, user.getEmail(), user.getRole());
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/private/ping");
+        request.setRequestURI("/api/v1/projects/1");
+        request.setServletPath("/projects/1");
         request.addHeader("Authorization", "Bearer " + token);
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -90,7 +92,8 @@ class JwtAuthenticationFilterTest {
     @Test
     void invalidTokenDoesNotSetAuthentication() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/private/ping");
+        request.setRequestURI("/api/v1/projects/1");
+        request.setServletPath("/projects/1");
         request.addHeader("Authorization", "Bearer invalid.token");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -115,7 +118,8 @@ class JwtAuthenticationFilterTest {
         when(redisService.hasKey("auth:blacklist:" + token)).thenReturn(true);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/private/ping");
+        request.setRequestURI("/api/v1/projects/1");
+        request.setServletPath("/projects/1");
         request.addHeader("Authorization", "Bearer " + token);
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();

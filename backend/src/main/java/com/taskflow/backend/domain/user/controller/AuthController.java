@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -46,7 +46,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PostMapping("/reissue")
+    @PostMapping("/token/reissue")
     public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
             @Valid @RequestBody ReissueRequest request
     ) {
