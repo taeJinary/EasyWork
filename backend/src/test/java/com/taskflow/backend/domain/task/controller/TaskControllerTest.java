@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.task.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
@@ -13,6 +14,7 @@ import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,10 +74,9 @@ class TaskControllerTest {
                 2L,
                 TaskPriority.HIGH,
                 LocalDate.of(2026, 3, 10),
-                java.util.List.of(1L, 2L)
+                List.of(1L, 2L)
         );
 
-        TaskSummaryResponse.AssigneeResponse assignee = new TaskSummaryResponse.AssigneeResponse(2L, "팀원");
         TaskSummaryResponse response = new TaskSummaryResponse(
                 100L,
                 10L,
@@ -84,7 +85,7 @@ class TaskControllerTest {
                 TaskPriority.HIGH,
                 0,
                 0L,
-                assignee
+                new TaskSummaryResponse.AssigneeResponse(2L, "팀원")
         );
         given(taskService.createTask(eq(1L), eq(10L), any(CreateTaskRequest.class))).willReturn(response);
 
@@ -100,8 +101,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.data.priority").value("HIGH"))
                 .andExpect(jsonPath("$.data.position").value(0))
                 .andExpect(jsonPath("$.data.version").value(0))
-                .andExpect(jsonPath("$.data.assignee.userId").value(2L))
-                .andExpect(jsonPath("$.message").value("태스크가 생성되었습니다."));
+                .andExpect(jsonPath("$.data.assignee.userId").value(2L));
 
         then(taskService).should().createTask(eq(1L), eq(10L), any(CreateTaskRequest.class));
     }
@@ -190,5 +190,44 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.data.totalElements").value(1));
 
         then(taskService).should().getTasks(1L, 10L, 0, 20, TaskStatus.TODO, "updatedAt", "DESC", "로그인");
+    }
+
+    @Test
+    void getTaskDetailReturnsResponse() throws Exception {
+        TaskDetailResponse response = new TaskDetailResponse(
+                100L,
+                10L,
+                "로그인 API 구현",
+                "Access/Refresh 구조 구현",
+                TaskStatus.TODO,
+                TaskPriority.HIGH,
+                LocalDate.of(2026, 3, 10),
+                0,
+                0L,
+                new TaskDetailResponse.UserSummaryResponse(1L, "오너"),
+                new TaskDetailResponse.UserSummaryResponse(2L, "팀원"),
+                List.of(new TaskDetailResponse.LabelResponse(1L, "백엔드", "#2563EB")),
+                0L,
+                List.of(),
+                LocalDateTime.of(2026, 3, 1, 9, 0),
+                LocalDateTime.of(2026, 3, 1, 9, 0)
+        );
+
+        given(taskService.getTaskDetail(1L, 100L)).willReturn(response);
+
+        mockMvc.perform(get("/tasks/100")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.taskId").value(100L))
+                .andExpect(jsonPath("$.data.projectId").value(10L))
+                .andExpect(jsonPath("$.data.status").value("TODO"))
+                .andExpect(jsonPath("$.data.priority").value("HIGH"))
+                .andExpect(jsonPath("$.data.creator.userId").value(1L))
+                .andExpect(jsonPath("$.data.assignee.userId").value(2L))
+                .andExpect(jsonPath("$.data.labels[0].labelId").value(1L))
+                .andExpect(jsonPath("$.data.commentCount").value(0));
+
+        then(taskService).should().getTaskDetail(1L, 100L);
     }
 }

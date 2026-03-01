@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.task.controller;
 
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.service.TaskService;
@@ -86,6 +87,18 @@ public class TaskController {
                 sortBy,
                 direction,
                 keyword
+        );
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/tasks/{taskId}")
+    public ResponseEntity<ApiResponse<TaskDetailResponse>> getTaskDetail(
+            Authentication authentication,
+            @PathVariable Long taskId
+    ) {
+        TaskDetailResponse response = taskService.getTaskDetail(
+                extractUserId(authentication),
+                taskId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
     }

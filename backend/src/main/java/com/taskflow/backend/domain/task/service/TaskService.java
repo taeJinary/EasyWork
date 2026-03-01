@@ -8,6 +8,7 @@ import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListItemResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
@@ -66,6 +67,23 @@ public class TaskService {
         syncTaskLabels(savedTask, projectId, request.labelIds());
 
         return toTaskSummaryResponse(savedTask);
+    }
+
+    public TaskDetailResponse getTaskDetail(Long userId, Long taskId) {
+        Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        findMembership(task.getProject().getId(), userId);
+
+        List<TaskBoardResponse.LabelResponse> boardLabels = mapLabelsByTaskId(List.of(task)).getOrDefault(taskId, List.of());
+        List<TaskDetailResponse.LabelResponse> labels = boardLabels.stream()
+                .map(label -> new TaskDetailResponse.LabelResponse(
+                        label.labelId(),
+                        label.name(),
+                        label.colorHex()
+                ))
+                .toList();
+
+        return toTaskDetailResponse(task, labels);
     }
 
     public TaskBoardResponse getTaskBoard(
@@ -318,6 +336,41 @@ public class TaskService {
                 task.getPosition(),
                 task.getVersion(),
                 assigneeResponse
+        );
+    }
+
+    private TaskDetailResponse toTaskDetailResponse(
+            Task task,
+            List<TaskDetailResponse.LabelResponse> labels
+    ) {
+        TaskDetailResponse.UserSummaryResponse creator = new TaskDetailResponse.UserSummaryResponse(
+                task.getCreator().getId(),
+                task.getCreator().getNickname()
+        );
+        TaskDetailResponse.UserSummaryResponse assignee = task.getAssignee() == null
+                ? null
+                : new TaskDetailResponse.UserSummaryResponse(
+                        task.getAssignee().getId(),
+                        task.getAssignee().getNickname()
+                );
+
+        return new TaskDetailResponse(
+                task.getId(),
+                task.getProject().getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStatus(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getPosition(),
+                task.getVersion(),
+                creator,
+                assignee,
+                labels,
+                0L,
+                List.of(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
         );
     }
 }

@@ -8,6 +8,7 @@ import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
 import com.taskflow.backend.domain.task.dto.response.TaskBoardResponse;
+import com.taskflow.backend.domain.task.dto.response.TaskDetailResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskListResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.entity.Task;
@@ -488,6 +489,108 @@ class TaskServiceTest {
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> taskService.getTasks(1L, 10L, 0, 20, null, null, null, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
+    }
+
+    @Test
+    void getTaskDetailReturnsMetadataForProjectMember() {
+        User creator = activeUser(1L, "owner@example.com", "오너");
+        User assignee = activeUser(2L, "member@example.com", "팀원");
+
+        Project project = Project.builder()
+                .id(10L)
+                .owner(creator)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(creator)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(creator)
+                .assignee(assignee)
+                .title("로그인 API 구현")
+                .description("Access/Refresh 구조 구현")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(0L)
+                .build();
+        Label backendLabel = Label.builder()
+                .id(1L)
+                .project(project)
+                .name("백엔드")
+                .colorHex("#2563EB")
+                .build();
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L)))
+                .willReturn(List.of(TaskLabel.create(task, backendLabel)));
+
+        TaskDetailResponse response = taskService.getTaskDetail(1L, 1000L);
+
+        assertThat(response.taskId()).isEqualTo(1000L);
+        assertThat(response.projectId()).isEqualTo(10L);
+        assertThat(response.title()).isEqualTo("로그인 API 구현");
+        assertThat(response.status()).isEqualTo(TaskStatus.TODO);
+        assertThat(response.priority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(response.creator().userId()).isEqualTo(1L);
+        assertThat(response.assignee().userId()).isEqualTo(2L);
+        assertThat(response.labels()).hasSize(1);
+        assertThat(response.labels().getFirst().labelId()).isEqualTo(1L);
+        assertThat(response.commentCount()).isEqualTo(0L);
+        assertThat(response.recentStatusHistories()).isEmpty();
+    }
+
+    @Test
+    void getTaskDetailThrowsWhenTaskNotFound() {
+        given(taskRepository.findByIdAndDeletedAtIsNull(9999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.getTaskDetail(1L, 9999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TASK_NOT_FOUND);
+    }
+
+    @Test
+    void getTaskDetailThrowsWhenNotProjectMember() {
+        User creator = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(creator)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(creator)
+                .assignee(null)
+                .title("로그인 API 구현")
+                .description("설명")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(0L)
+                .build();
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.getTaskDetail(2L, 1000L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
