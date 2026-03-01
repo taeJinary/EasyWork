@@ -39,6 +39,8 @@ public enum ErrorCode {
     TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "태스크를 찾을 수 없습니다."),
     TASK_CONFLICT(HttpStatus.CONFLICT, "태스크 수정 충돌이 발생했습니다."),
     INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "잘못된 상태 변경입니다."),
+    LABEL_NOT_FOUND(HttpStatus.NOT_FOUND, "라벨을 찾을 수 없습니다."),
+    LABEL_NAME_DUPLICATE(HttpStatus.CONFLICT, "프로젝트 내 라벨명이 중복됩니다."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),

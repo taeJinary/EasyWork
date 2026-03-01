@@ -1,0 +1,103 @@
+package com.taskflow.backend.domain.task.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskflow.backend.domain.task.dto.request.CreateTaskRequest;
+import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
+import com.taskflow.backend.domain.task.service.TaskService;
+import com.taskflow.backend.global.auth.CustomUserDetails;
+import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
+import com.taskflow.backend.global.common.enums.TaskPriority;
+import com.taskflow.backend.global.common.enums.TaskStatus;
+import com.taskflow.backend.global.common.enums.UserStatus;
+import java.time.LocalDate;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(TaskController.class)
+@AutoConfigureMockMvc(addFilters = false)
+class TaskControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private TaskService taskService;
+
+    @MockBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    private UsernamePasswordAuthenticationToken principalAuth() {
+        CustomUserDetails principal = new CustomUserDetails(
+                1L,
+                "owner@example.com",
+                "encoded",
+                "ROLE_USER",
+                UserStatus.ACTIVE
+        );
+
+        return new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
+    }
+
+    @Test
+    void createTaskReturnsCreatedResponse() throws Exception {
+        CreateTaskRequest request = new CreateTaskRequest(
+                "로그인 API 구현",
+                "Access/Refresh 구조 구현",
+                2L,
+                TaskPriority.HIGH,
+                LocalDate.of(2026, 3, 10),
+                java.util.List.of(1L, 2L)
+        );
+
+        TaskSummaryResponse.AssigneeResponse assignee = new TaskSummaryResponse.AssigneeResponse(2L, "팀원");
+        TaskSummaryResponse response = new TaskSummaryResponse(
+                100L,
+                10L,
+                "로그인 API 구현",
+                TaskStatus.TODO,
+                TaskPriority.HIGH,
+                0,
+                0L,
+                assignee
+        );
+        given(taskService.createTask(eq(1L), eq(10L), any(CreateTaskRequest.class))).willReturn(response);
+
+        mockMvc.perform(post("/projects/10/tasks")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.taskId").value(100L))
+                .andExpect(jsonPath("$.data.projectId").value(10L))
+                .andExpect(jsonPath("$.data.status").value("TODO"))
+                .andExpect(jsonPath("$.data.priority").value("HIGH"))
+                .andExpect(jsonPath("$.data.position").value(0))
+                .andExpect(jsonPath("$.data.version").value(0))
+                .andExpect(jsonPath("$.data.assignee.userId").value(2L))
+                .andExpect(jsonPath("$.message").value("태스크가 생성되었습니다."));
+
+        then(taskService).should().createTask(eq(1L), eq(10L), any(CreateTaskRequest.class));
+    }
+}
