@@ -16,6 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,7 +25,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "project_invitations")
+@Table(
+        name = "project_invitations",
+        uniqueConstraints = @UniqueConstraint(name = "uk_project_invitation_pending_key", columnNames = "pending_key")
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder(access = AccessLevel.PRIVATE)
@@ -60,6 +64,9 @@ public class ProjectInvitation extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "pending_key", unique = true, length = 100)
+    private String pendingKey;
+
     public static ProjectInvitation create(
             Project project,
             User inviter,
@@ -75,27 +82,39 @@ public class ProjectInvitation extends BaseEntity {
                 .role(role)
                 .status(status)
                 .expiresAt(expiresAt)
+                .pendingKey(status == InvitationStatus.PENDING ? buildPendingKey(project, invitee) : null)
                 .build();
     }
 
     public void accept(LocalDateTime respondedAt) {
-        this.status = InvitationStatus.ACCEPTED;
-        this.respondedAt = respondedAt;
+        applyStatusChange(InvitationStatus.ACCEPTED, respondedAt);
     }
 
     public void reject(LocalDateTime respondedAt) {
-        this.status = InvitationStatus.REJECTED;
-        this.respondedAt = respondedAt;
+        applyStatusChange(InvitationStatus.REJECTED, respondedAt);
     }
 
     public void cancel(LocalDateTime respondedAt) {
-        this.status = InvitationStatus.CANCELED;
-        this.respondedAt = respondedAt;
+        applyStatusChange(InvitationStatus.CANCELED, respondedAt);
     }
 
     public void expire(LocalDateTime respondedAt) {
-        this.status = InvitationStatus.EXPIRED;
+        applyStatusChange(InvitationStatus.EXPIRED, respondedAt);
+    }
+
+    private void applyStatusChange(InvitationStatus nextStatus, LocalDateTime respondedAt) {
+        this.status = nextStatus;
         this.respondedAt = respondedAt;
+        if (nextStatus != InvitationStatus.PENDING) {
+            this.pendingKey = null;
+        }
+    }
+
+    private static String buildPendingKey(Project project, User invitee) {
+        if (project.getId() == null || invitee.getId() == null) {
+            return null;
+        }
+        return project.getId() + ":" + invitee.getId();
     }
 
     public boolean isPending() {
