@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,5 +64,26 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
     void actuatorInfoEndpointPermitsAnonymousRequest() throws Exception {
         mockMvc.perform(get("/actuator/info"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void wsHandshakeEndpointPermitsAnonymousRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/ws").contextPath("/api/v1"))
+                .andExpect(anyOf(status().isBadRequest(), status().isSwitchingProtocols()));
+    }
+
+    private ResultMatcher anyOf(ResultMatcher... matchers) {
+        return result -> {
+            AssertionError last = null;
+            for (ResultMatcher matcher : matchers) {
+                try {
+                    matcher.match(result);
+                    return;
+                } catch (AssertionError error) {
+                    last = error;
+                }
+            }
+            throw last != null ? last : new AssertionError("No matcher provided");
+        };
     }
 }
