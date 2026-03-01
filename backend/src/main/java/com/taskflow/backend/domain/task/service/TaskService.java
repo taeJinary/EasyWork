@@ -17,8 +17,10 @@ import com.taskflow.backend.domain.task.dto.response.TaskMoveResponse;
 import com.taskflow.backend.domain.task.dto.response.TaskSummaryResponse;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
+import com.taskflow.backend.domain.task.entity.TaskStatusHistory;
 import com.taskflow.backend.domain.task.repository.TaskLabelRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
+import com.taskflow.backend.domain.task.repository.TaskStatusHistoryRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
@@ -46,6 +48,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskLabelRepository taskLabelRepository;
     private final LabelRepository labelRepository;
+    private final TaskStatusHistoryRepository taskStatusHistoryRepository;
 
     @Transactional
     public TaskSummaryResponse createTask(Long userId, Long projectId, CreateTaskRequest request) {
@@ -105,7 +108,7 @@ public class TaskService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
 
         Long projectId = task.getProject().getId();
-        findMembership(projectId, userId);
+        ProjectMember actorMembership = findMembership(projectId, userId);
         validateTaskVersion(task, request.version());
 
         TaskStatus fromStatus = task.getStatus();
@@ -116,6 +119,12 @@ public class TaskService {
             moveWithinSameColumn(task, projectId, fromStatus, targetPosition);
         } else {
             moveAcrossColumns(task, projectId, fromStatus, toStatus, targetPosition);
+            taskStatusHistoryRepository.save(TaskStatusHistory.create(
+                    task,
+                    fromStatus,
+                    toStatus,
+                    actorMembership.getUser()
+            ));
         }
 
         task.getProject().touch(LocalDateTime.now());
@@ -127,6 +136,8 @@ public class TaskService {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
         findMembership(task.getProject().getId(), userId);
+        List<TaskStatusHistory> statusHistories = taskStatusHistoryRepository
+                .findTop10ByTaskIdOrderByCreatedAtDesc(taskId);
 
         List<TaskBoardResponse.LabelResponse> boardLabels = mapLabelsByTaskId(List.of(task)).getOrDefault(taskId, List.of());
         List<TaskDetailResponse.LabelResponse> labels = boardLabels.stream()
@@ -137,7 +148,7 @@ public class TaskService {
                 ))
                 .toList();
 
-        return toTaskDetailResponse(task, labels);
+        return toTaskDetailResponse(task, labels, statusHistories == null ? List.of() : statusHistories);
     }
 
     public TaskBoardResponse getTaskBoard(
@@ -489,7 +500,8 @@ public class TaskService {
 
     private TaskDetailResponse toTaskDetailResponse(
             Task task,
-            List<TaskDetailResponse.LabelResponse> labels
+            List<TaskDetailResponse.LabelResponse> labels,
+            List<TaskStatusHistory> statusHistories
     ) {
         TaskDetailResponse.UserSummaryResponse creator = new TaskDetailResponse.UserSummaryResponse(
                 task.getCreator().getId(),
@@ -516,9 +528,29 @@ public class TaskService {
                 assignee,
                 labels,
                 0L,
-                List.of(),
+                toStatusHistoryResponses(statusHistories),
                 task.getCreatedAt(),
                 task.getUpdatedAt()
         );
+    }
+
+    private List<TaskDetailResponse.StatusHistoryResponse> toStatusHistoryResponses(
+            List<TaskStatusHistory> statusHistories
+    ) {
+        if (statusHistories == null || statusHistories.isEmpty()) {
+            return List.of();
+        }
+        return statusHistories.stream()
+                .map(history -> new TaskDetailResponse.StatusHistoryResponse(
+                        history.getId(),
+                        history.getFromStatus(),
+                        history.getToStatus(),
+                        new TaskDetailResponse.UserSummaryResponse(
+                                history.getChangedBy().getId(),
+                                history.getChangedBy().getNickname()
+                        ),
+                        history.getCreatedAt()
+                ))
+                .toList();
     }
 }
