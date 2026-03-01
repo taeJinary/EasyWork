@@ -1,8 +1,10 @@
 package com.taskflow.backend.domain.project.controller;
 
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
+import com.taskflow.backend.domain.project.dto.response.ProjectMemberResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectSummaryResponse;
 import com.taskflow.backend.domain.project.service.ProjectService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -10,11 +12,14 @@ import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,6 +60,34 @@ public class ProjectController {
             @PathVariable Long projectId
     ) {
         ProjectDetailResponse response = projectService.getProjectDetail(extractUserId(authentication), projectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/{projectId}")
+    public ResponseEntity<ApiResponse<ProjectSummaryResponse>> updateProject(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @Valid @RequestBody UpdateProjectRequest request
+    ) {
+        ProjectSummaryResponse response = projectService.updateProject(extractUserId(authentication), projectId, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "프로젝트가 수정되었습니다."));
+    }
+
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<ApiResponse<Void>> deleteProject(
+            Authentication authentication,
+            @PathVariable Long projectId
+    ) {
+        projectService.deleteProject(extractUserId(authentication), projectId);
+        return ResponseEntity.ok(ApiResponse.success(null, "프로젝트가 삭제되었습니다."));
+    }
+
+    @GetMapping("/{projectId}/members")
+    public ResponseEntity<ApiResponse<List<ProjectMemberResponse>>> getProjectMembers(
+            Authentication authentication,
+            @PathVariable Long projectId
+    ) {
+        List<ProjectMemberResponse> response = projectService.getProjectMembers(extractUserId(authentication), projectId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

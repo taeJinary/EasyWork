@@ -1,9 +1,11 @@
 package com.taskflow.backend.domain.project.service;
 
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
+import com.taskflow.backend.domain.project.dto.response.ProjectMemberResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectSummaryResponse;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
@@ -84,11 +86,8 @@ public class ProjectService {
     }
 
     public ProjectDetailResponse getProjectDetail(Long userId, Long projectId) {
-        Project project = projectRepository.findByIdAndDeletedAtIsNull(projectId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
-
-        ProjectMember myMembership = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+        Project project = findActiveProject(projectId);
+        ProjectMember myMembership = findMembership(projectId, userId);
 
         List<ProjectMember> members = projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(projectId);
 
@@ -115,6 +114,40 @@ public class ProjectService {
         );
     }
 
+    @Transactional
+    public ProjectSummaryResponse updateProject(Long userId, Long projectId, UpdateProjectRequest request) {
+        Project project = findActiveProject(projectId);
+        ProjectMember membership = findMembership(projectId, userId);
+        ensureOwner(membership);
+
+        project.update(request.name(), request.description());
+
+        return new ProjectSummaryResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                membership.getRole()
+        );
+    }
+
+    @Transactional
+    public void deleteProject(Long userId, Long projectId) {
+        Project project = findActiveProject(projectId);
+        ProjectMember membership = findMembership(projectId, userId);
+        ensureOwner(membership);
+
+        project.softDelete();
+    }
+
+    public List<ProjectMemberResponse> getProjectMembers(Long userId, Long projectId) {
+        findActiveProject(projectId);
+        findMembership(projectId, userId);
+
+        return projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(projectId).stream()
+                .map(this::toProjectMemberResponse)
+                .toList();
+    }
+
     private ProjectListItemResponse toProjectListItem(ProjectMember projectMember) {
         Project project = projectMember.getProject();
         long memberCount = projectMemberRepository.countByProjectId(project.getId());
@@ -130,6 +163,33 @@ public class ProjectService {
                 0,
                 project.getUpdatedAt()
         );
+    }
+
+    private ProjectMemberResponse toProjectMemberResponse(ProjectMember projectMember) {
+        return new ProjectMemberResponse(
+                projectMember.getId(),
+                projectMember.getUser().getId(),
+                projectMember.getUser().getEmail(),
+                projectMember.getUser().getNickname(),
+                projectMember.getRole(),
+                projectMember.getJoinedAt()
+        );
+    }
+
+    private Project findActiveProject(Long projectId) {
+        return projectRepository.findByIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+    }
+
+    private ProjectMember findMembership(Long projectId, Long userId) {
+        return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private void ensureOwner(ProjectMember membership) {
+        if (membership.getRole() != ProjectRole.OWNER) {
+            throw new BusinessException(ErrorCode.ONLY_OWNER_ALLOWED);
+        }
     }
 
     private User findActiveUser(Long userId) {

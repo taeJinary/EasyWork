@@ -1,7 +1,9 @@
 package com.taskflow.backend.domain.project.service;
 
 import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.request.UpdateProjectRequest;
 import com.taskflow.backend.domain.project.dto.response.ProjectDetailResponse;
+import com.taskflow.backend.domain.project.dto.response.ProjectMemberResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectListResponse;
 import com.taskflow.backend.domain.project.dto.response.ProjectSummaryResponse;
 import com.taskflow.backend.domain.project.entity.Project;
@@ -28,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -163,6 +166,180 @@ class ProjectServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
+    }
+
+    @Test
+    void updateProjectUpdatesNameAndDescriptionWhenOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("초기 설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        UpdateProjectRequest request = new UpdateProjectRequest("TaskFlow V2", "설명을 수정했습니다.");
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+
+        ProjectSummaryResponse response = projectService.updateProject(1L, 10L, request);
+
+        assertThat(response.projectId()).isEqualTo(10L);
+        assertThat(response.name()).isEqualTo("TaskFlow V2");
+        assertThat(response.description()).isEqualTo("설명을 수정했습니다.");
+        assertThat(project.getName()).isEqualTo("TaskFlow V2");
+    }
+
+    @Test
+    void updateProjectThrowsWhenNotOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User memberUser = activeUser(2L, "member@example.com", "팀원");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("초기 설명")
+                .build();
+        ProjectMember member = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(memberUser)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+        UpdateProjectRequest request = new UpdateProjectRequest("TaskFlow V2", "설명을 수정했습니다.");
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> projectService.updateProject(2L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ONLY_OWNER_ALLOWED);
+    }
+
+    @Test
+    void deleteProjectSoftDeletesWhenOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+
+        projectService.deleteProject(1L, 10L);
+
+        assertThat(project.isDeleted()).isTrue();
+    }
+
+    @Test
+    void deleteProjectThrowsWhenNotOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User memberUser = activeUser(2L, "member@example.com", "팀원");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember member = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(memberUser)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> projectService.deleteProject(2L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ONLY_OWNER_ALLOWED);
+
+        assertThat(project.isDeleted()).isFalse();
+    }
+
+    @Test
+    void getProjectMembersReturnsMemberListWhenProjectMember() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User memberUser = activeUser(2L, "member@example.com", "팀원");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        ProjectMember member = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(memberUser)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 30))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMember));
+        given(projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(10L)).willReturn(List.of(ownerMember, member));
+
+        List<ProjectMemberResponse> response = projectService.getProjectMembers(1L, 10L);
+
+        assertThat(response).hasSize(2);
+        assertThat(response.getFirst().role()).isEqualTo(ProjectRole.OWNER);
+        assertThat(response.get(1).role()).isEqualTo(ProjectRole.MEMBER);
+    }
+
+    @Test
+    void getProjectMembersThrowsWhenNotProjectMember() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("설명")
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectService.getProjectMembers(1L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
+
+        verify(projectMemberRepository, never()).findAllByProjectIdOrderByJoinedAtAsc(10L);
     }
 
     private User activeUser(Long id, String email, String nickname) {
