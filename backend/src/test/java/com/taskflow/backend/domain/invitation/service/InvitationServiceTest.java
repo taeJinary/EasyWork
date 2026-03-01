@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.invitation.service;
 
 import com.taskflow.backend.domain.invitation.dto.request.CreateInvitationRequest;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
@@ -30,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class InvitationServiceTest {
@@ -183,6 +186,163 @@ class InvitationServiceTest {
         assertThat(response.content().getFirst().inviterNickname()).isEqualTo("오너");
         assertThat(response.page()).isEqualTo(0);
         assertThat(response.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void acceptInvitationCreatesMemberAndMarksAccepted() {
+        User invitee = activeUser(2L, "member@example.com", "팀원");
+        User inviter = activeUser(1L, "owner@example.com", "오너");
+        Project project = project(10L, inviter);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                inviter,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.empty());
+        given(projectMemberRepository.save(any(ProjectMember.class))).willAnswer(invocation -> {
+            ProjectMember member = invocation.getArgument(0);
+            return ProjectMember.builder()
+                    .id(500L)
+                    .project(member.getProject())
+                    .user(member.getUser())
+                    .role(member.getRole())
+                    .joinedAt(member.getJoinedAt())
+                    .updatedAt(member.getUpdatedAt())
+                    .build();
+        });
+
+        InvitationActionResponse response = invitationService.acceptInvitation(2L, 10L);
+
+        assertThat(response.projectId()).isEqualTo(10L);
+        assertThat(response.memberId()).isEqualTo(500L);
+        assertThat(response.status()).isEqualTo(InvitationStatus.ACCEPTED);
+        assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.ACCEPTED);
+    }
+
+    @Test
+    void acceptInvitationThrowsWhenNotInvitee() {
+        User invitee = activeUser(2L, "member@example.com", "팀원");
+        User inviter = activeUser(1L, "owner@example.com", "오너");
+        Project project = project(10L, inviter);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                inviter,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        assertThatThrownBy(() -> invitationService.acceptInvitation(3L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verify(projectMemberRepository, never()).save(any(ProjectMember.class));
+    }
+
+    @Test
+    void rejectInvitationMarksRejected() {
+        User invitee = activeUser(2L, "member@example.com", "팀원");
+        User inviter = activeUser(1L, "owner@example.com", "오너");
+        Project project = project(10L, inviter);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                inviter,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        InvitationActionResponse response = invitationService.rejectInvitation(2L, 10L);
+
+        assertThat(response.projectId()).isEqualTo(10L);
+        assertThat(response.status()).isEqualTo(InvitationStatus.REJECTED);
+        assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.REJECTED);
+    }
+
+    @Test
+    void cancelInvitationMarksCanceledWhenOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User invitee = activeUser(2L, "member@example.com", "팀원");
+        Project project = project(10L, owner);
+        ProjectMember ownerMembership = ownerMember(100L, project, owner);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                owner,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        InvitationActionResponse response = invitationService.cancelInvitation(1L, 10L, 10L);
+
+        assertThat(response.projectId()).isEqualTo(10L);
+        assertThat(response.status()).isEqualTo(InvitationStatus.CANCELED);
+        assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.CANCELED);
+    }
+
+    @Test
+    void cancelInvitationThrowsWhenNotOwner() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User member = activeUser(2L, "member@example.com", "팀원");
+        Project project = project(10L, owner);
+        ProjectMember memberMembership = memberMember(101L, project, member);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                owner,
+                member,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(memberMembership));
+
+        assertThatThrownBy(() -> invitationService.cancelInvitation(2L, 10L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ONLY_OWNER_ALLOWED);
+    }
+
+    @Test
+    void acceptInvitationThrowsWhenAlreadyProcessed() {
+        User invitee = activeUser(2L, "member@example.com", "팀원");
+        User inviter = activeUser(1L, "owner@example.com", "오너");
+        Project project = project(10L, inviter);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                inviter,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.REJECTED,
+                LocalDateTime.now().plusDays(7)
+        );
+
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        assertThatThrownBy(() -> invitationService.acceptInvitation(2L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVITATION_ALREADY_PROCESSED);
+
+        verify(projectMemberRepository, never()).save(any(ProjectMember.class));
     }
 
     private User activeUser(Long id, String email, String nickname) {
