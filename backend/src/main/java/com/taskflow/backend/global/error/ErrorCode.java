@@ -27,6 +27,7 @@ public enum ErrorCode {
     MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 프로젝트 멤버입니다."),
     MEMBER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "멤버 초대 한도를 초과했습니다."),
     NOT_PROJECT_MEMBER(HttpStatus.FORBIDDEN, "프로젝트 멤버가 아닙니다."),
+    ONLY_OWNER_ALLOWED(HttpStatus.FORBIDDEN, "OWNER만 가능한 작업입니다."),
     INSUFFICIENT_PERMISSION(HttpStatus.FORBIDDEN, "권한이 부족합니다."),
 
     // Task
