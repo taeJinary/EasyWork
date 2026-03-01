@@ -20,6 +20,7 @@ import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,7 +77,12 @@ public class InvitationService {
                 expiresAt
         );
 
-        ProjectInvitation saved = projectInvitationRepository.save(invitation);
+        ProjectInvitation saved;
+        try {
+            saved = projectInvitationRepository.saveAndFlush(invitation);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
         return new InvitationSummaryResponse(
                 saved.getId(),
                 project.getId(),

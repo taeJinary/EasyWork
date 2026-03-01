@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,7 +67,8 @@ class InvitationServiceTest {
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.empty());
         given(projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(10L, 2L, InvitationStatus.PENDING))
                 .willReturn(Optional.empty());
-        given(projectInvitationRepository.save(any(ProjectInvitation.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(projectInvitationRepository.saveAndFlush(any(ProjectInvitation.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
 
         InvitationSummaryResponse response = invitationService.createInvitation(1L, 10L, request);
 
@@ -161,6 +163,29 @@ class InvitationServiceTest {
     }
 
     @Test
+    void createInvitationThrowsConflictWhenConcurrentPendingInsertOccurs() {
+        User owner = activeUser(1L, "owner@example.com", "오너");
+        User invitee = activeUser(2L, "member@example.com", "팀원");
+        Project project = project(10L, owner);
+        ProjectMember ownerMembership = ownerMember(100L, project, owner);
+        CreateInvitationRequest request = new CreateInvitationRequest("member@example.com", ProjectRole.MEMBER);
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+        given(userRepository.findByEmail("member@example.com")).willReturn(Optional.of(invitee));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.empty());
+        given(projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(10L, 2L, InvitationStatus.PENDING))
+                .willReturn(Optional.empty());
+        given(projectInvitationRepository.saveAndFlush(any(ProjectInvitation.class)))
+                .willThrow(new DataIntegrityViolationException("duplicate key"));
+
+        assertThatThrownBy(() -> invitationService.createInvitation(1L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONFLICT);
+    }
+
+    @Test
     void createInvitationNormalizesExpiredPendingAndCreatesNewInvitation() {
         User owner = activeUser(1L, "owner@example.com", "owner");
         User invitee = activeUser(2L, "member@example.com", "invitee");
@@ -182,7 +207,7 @@ class InvitationServiceTest {
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.empty());
         given(projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(10L, 2L, InvitationStatus.PENDING))
                 .willReturn(Optional.of(expiredPending));
-        given(projectInvitationRepository.save(any(ProjectInvitation.class)))
+        given(projectInvitationRepository.saveAndFlush(any(ProjectInvitation.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
         InvitationSummaryResponse response = invitationService.createInvitation(1L, 10L, request);
