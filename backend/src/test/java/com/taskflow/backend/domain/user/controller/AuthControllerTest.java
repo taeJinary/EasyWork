@@ -50,7 +50,7 @@ class AuthControllerTest {
 
         given(authService.signup(any(SignupRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -64,7 +64,7 @@ class AuthControllerTest {
     void signupReturnsBadRequestWhenValidationFails() throws Exception {
         SignupRequest request = new SignupRequest("invalid", "short", "a");
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -85,7 +85,7 @@ class AuthControllerTest {
 
         given(authService.login(any(LoginRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -101,7 +101,7 @@ class AuthControllerTest {
 
         given(authService.reissue(any(ReissueRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/api/auth/reissue")
+        mockMvc.perform(post("/auth/token/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -113,7 +113,7 @@ class AuthControllerTest {
     void logoutReturnsOkResponse() throws Exception {
         LogoutRequest request = new LogoutRequest("refresh-token");
 
-        mockMvc.perform(post("/api/auth/logout")
+        mockMvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

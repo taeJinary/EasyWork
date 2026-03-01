@@ -21,10 +21,6 @@ spring:
       host: localhost
       port: 6379
       password: ""
-  security:
-    oauth2:
-      client:
-        registration: {}
 
 jwt:
   secret: test-secret-key-for-jwt-signing-minimum-32chars
@@ -37,3 +33,5 @@ logging:
 
 server:
   port: 0
+  servlet:
+    context-path: /api/v1

@@ -33,26 +33,6 @@ spring:
       port: 6379
       password: ""
 
-  # === File Upload ===
-  servlet:
-    multipart:
-      max-file-size: 5MB
-      max-request-size: 10MB
-
-  # === OAuth2 ===
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: email, profile
-          github:
-            client-id: ${GITHUB_CLIENT_ID}
-            client-secret: ${GITHUB_CLIENT_SECRET}
-            scope: user:email, read:user
-
 # === JWT ===
 jwt:
   secret: ${JWT_SECRET:my-very-long-secret-key-for-development-only-32chars-minimum}
@@ -71,4 +51,4 @@ logging:
 server:
   port: 8080
   servlet:
-    context-path: /
+    context-path: /api/v1

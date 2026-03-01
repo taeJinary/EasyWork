@@ -60,7 +60,7 @@ class UserControllerTest {
                 principal.getAuthorities()
         );
 
-        mockMvc.perform(get("/api/users/me").principal(auth))
+        mockMvc.perform(get("/users/me").principal(auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.userId").value(1L))
