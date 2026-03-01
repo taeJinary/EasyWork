@@ -45,6 +45,10 @@ app:
     refresh-token-path: /api/v1/auth
     secure: false
     same-site: Lax
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
   invitation:
     expires-days: 7
 
@@ -61,3 +65,12 @@ server:
   port: 8080
   servlet:
     context-path: /api/v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

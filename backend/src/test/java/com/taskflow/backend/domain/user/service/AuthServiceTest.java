@@ -21,6 +21,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -106,12 +108,13 @@ class AuthServiceTest {
         User user = activeUser();
         LoginRequest request = new LoginRequest(user.getEmail(), "Pass123!");
 
-        when(redisService.hasKey("auth:login-lock:" + user.getEmail())).thenReturn(false);
+        when(redisService.hasKey("login:lock:" + user.getEmail())).thenReturn(false);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
         when(jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole()))
                 .thenReturn("access-token");
-        when(jwtTokenProvider.generateRefreshToken(user.getId())).thenReturn("refresh-token");
+        when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(user.getId()), anyString()))
+                .thenReturn("refresh-token");
 
         LoginTokens response = authService.login(request);
 
@@ -121,13 +124,15 @@ class AuthServiceTest {
         assertThat(response.refreshTokenExpiresIn()).isEqualTo(1209600000L);
         assertThat(response.user().userId()).isEqualTo(user.getId());
 
+        ArgumentCaptor<String> refreshKeyCaptor = ArgumentCaptor.forClass(String.class);
         verify(redisService).setValue(
-                "auth:refresh:" + user.getId(),
-                "refresh-token",
-                Duration.ofMillis(1209600000L)
+                refreshKeyCaptor.capture(),
+                org.mockito.ArgumentMatchers.eq("refresh-token"),
+                org.mockito.ArgumentMatchers.eq(Duration.ofMillis(1209600000L))
         );
-        verify(redisService).delete("auth:login-fail:" + user.getEmail());
-        verify(redisService).delete("auth:login-lock:" + user.getEmail());
+        assertThat(refreshKeyCaptor.getValue()).startsWith("refresh:" + user.getId() + ":");
+        verify(redisService).delete("login:fail:" + user.getEmail());
+        verify(redisService).delete("login:lock:" + user.getEmail());
     }
 
     @Test
@@ -135,19 +140,19 @@ class AuthServiceTest {
         User user = activeUser();
         LoginRequest request = new LoginRequest(user.getEmail(), "wrong-password");
 
-        when(redisService.hasKey("auth:login-lock:" + user.getEmail())).thenReturn(false);
+        when(redisService.hasKey("login:lock:" + user.getEmail())).thenReturn(false);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(false);
-        when(redisService.increment("auth:login-fail:" + user.getEmail())).thenReturn(1L);
+        when(redisService.increment("login:fail:" + user.getEmail())).thenReturn(1L);
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
 
-        verify(redisService).expire("auth:login-fail:" + user.getEmail(), Duration.ofMinutes(5));
+        verify(redisService).expire("login:fail:" + user.getEmail(), Duration.ofMinutes(5));
         verify(redisService, never()).setValue(
-                "auth:login-lock:" + user.getEmail(),
+                "login:lock:" + user.getEmail(),
                 "LOCKED",
                 Duration.ofMinutes(5)
         );
@@ -158,10 +163,10 @@ class AuthServiceTest {
         User user = activeUser();
         LoginRequest request = new LoginRequest(user.getEmail(), "wrong-password");
 
-        when(redisService.hasKey("auth:login-lock:" + user.getEmail())).thenReturn(false);
+        when(redisService.hasKey("login:lock:" + user.getEmail())).thenReturn(false);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(false);
-        when(redisService.increment("auth:login-fail:" + user.getEmail())).thenReturn(5L);
+        when(redisService.increment("login:fail:" + user.getEmail())).thenReturn(5L);
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BusinessException.class)
@@ -169,7 +174,7 @@ class AuthServiceTest {
                 .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
 
         verify(redisService).setValue(
-                "auth:login-lock:" + user.getEmail(),
+                "login:lock:" + user.getEmail(),
                 "LOCKED",
                 Duration.ofMinutes(5)
         );
@@ -181,11 +186,12 @@ class AuthServiceTest {
         String refreshToken = "old-refresh-token";
 
         when(jwtTokenProvider.getUserId(refreshToken)).thenReturn(user.getId());
-        when(redisService.getValue("auth:refresh:" + user.getId())).thenReturn(Optional.of("old-refresh-token"));
+        when(jwtTokenProvider.getSessionId(refreshToken)).thenReturn("sid-123");
+        when(redisService.getValue("refresh:" + user.getId() + ":sid-123")).thenReturn(Optional.of("old-refresh-token"));
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole()))
                 .thenReturn("new-access-token");
-        when(jwtTokenProvider.generateRefreshToken(user.getId())).thenReturn("new-refresh-token");
+        when(jwtTokenProvider.generateRefreshToken(user.getId(), "sid-123")).thenReturn("new-refresh-token");
 
         ReissueTokens response = authService.reissue(refreshToken);
 
@@ -195,7 +201,7 @@ class AuthServiceTest {
         assertThat(response.refreshTokenExpiresIn()).isEqualTo(1209600000L);
 
         verify(redisService).setValue(
-                "auth:refresh:" + user.getId(),
+                "refresh:" + user.getId() + ":sid-123",
                 "new-refresh-token",
                 Duration.ofMillis(1209600000L)
         );
@@ -206,7 +212,8 @@ class AuthServiceTest {
         String refreshToken = "unknown-refresh-token";
 
         when(jwtTokenProvider.getUserId(refreshToken)).thenReturn(1L);
-        when(redisService.getValue("auth:refresh:1")).thenReturn(Optional.of("different-refresh-token"));
+        when(jwtTokenProvider.getSessionId(refreshToken)).thenReturn("sid-123");
+        when(redisService.getValue("refresh:1:sid-123")).thenReturn(Optional.of("different-refresh-token"));
 
         assertThatThrownBy(() -> authService.reissue(refreshToken))
                 .isInstanceOf(BusinessException.class)
@@ -217,17 +224,19 @@ class AuthServiceTest {
     @Test
     void logoutBlacklistsAccessTokenAndDeletesStoredRefreshToken() {
         when(jwtTokenProvider.validateToken("access-token")).thenReturn(true);
+        when(jwtTokenProvider.getTokenId("access-token")).thenReturn("access-jti");
         when(jwtTokenProvider.getRemainingExpiration("access-token")).thenReturn(5000L);
         when(jwtTokenProvider.getUserId("refresh-token")).thenReturn(1L);
+        when(jwtTokenProvider.getSessionId("refresh-token")).thenReturn("sid-123");
 
         authService.logout("access-token", "refresh-token");
 
         verify(redisService).setValue(
-                "auth:blacklist:access-token",
+                "blacklist:access-jti",
                 "logout",
                 Duration.ofMillis(5000L)
         );
-        verify(redisService).delete("auth:refresh:1");
+        verify(redisService).delete("refresh:1:sid-123");
     }
 
     private User activeUser() {

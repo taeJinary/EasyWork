@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class UserService {
 
-    private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:";
 
     private final UserRepository userRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
@@ -60,7 +60,7 @@ public class UserService {
         String encodedNewPassword = passwordEncoder.encode(request.newPassword());
         user.changePassword(encodedNewPassword);
         passwordHistoryRepository.save(PasswordHistory.create(user, encodedNewPassword));
-        redisService.delete(refreshTokenKey(userId));
+        redisService.deleteByPattern(refreshTokenKeyPattern(userId));
     }
 
     @Transactional
@@ -72,7 +72,7 @@ public class UserService {
         }
 
         user.softDelete();
-        redisService.delete(refreshTokenKey(userId));
+        redisService.deleteByPattern(refreshTokenKeyPattern(userId));
     }
 
     private User findActiveUser(Long userId) {
@@ -85,8 +85,8 @@ public class UserService {
         return user;
     }
 
-    private String refreshTokenKey(Long userId) {
-        return REFRESH_TOKEN_KEY_PREFIX + userId;
+    private String refreshTokenKeyPattern(Long userId) {
+        return REFRESH_TOKEN_KEY_PREFIX + userId + ":*";
     }
 }
 

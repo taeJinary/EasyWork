@@ -19,6 +19,7 @@ import com.taskflow.backend.infra.redis.RedisService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,10 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AuthService {
 
-    private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
-    private static final String LOGIN_FAIL_KEY_PREFIX = "auth:login-fail:";
-    private static final String LOGIN_LOCK_KEY_PREFIX = "auth:login-lock:";
-    private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:";
+    private static final String LOGIN_FAIL_KEY_PREFIX = "login:fail:";
+    private static final String LOGIN_LOCK_KEY_PREFIX = "login:lock:";
+    private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
     private static final int MAX_LOGIN_ATTEMPTS = 5;
     private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(5);
 
@@ -85,10 +86,11 @@ public class AuthService {
         clearLoginFailure(email);
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+        String sessionId = UUID.randomUUID().toString();
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), sessionId);
 
         redisService.setValue(
-                refreshTokenKey(user.getId()),
+                refreshTokenKey(user.getId(), sessionId),
                 refreshToken,
                 Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
         );
@@ -105,7 +107,8 @@ public class AuthService {
     @Transactional
     public ReissueTokens reissue(String refreshToken) {
         Long userId = extractUserIdFromToken(refreshToken);
-        String tokenKey = refreshTokenKey(userId);
+        String sessionId = extractSessionIdFromRefreshToken(refreshToken);
+        String tokenKey = refreshTokenKey(userId, sessionId);
 
         String storedToken = redisService.getValue(tokenKey).orElse(null);
         if (storedToken == null || !storedToken.equals(refreshToken)) {
@@ -120,7 +123,7 @@ public class AuthService {
         }
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), sessionId);
 
         redisService.setValue(
                 tokenKey,
@@ -140,9 +143,10 @@ public class AuthService {
     public void logout(String accessToken, String refreshToken) {
         if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
             long remainingExpiration = jwtTokenProvider.getRemainingExpiration(accessToken);
-            if (remainingExpiration > 0) {
+            String accessTokenId = jwtTokenProvider.getTokenId(accessToken);
+            if (remainingExpiration > 0 && accessTokenId != null && !accessTokenId.isBlank()) {
                 redisService.setValue(
-                        blackListKey(accessToken),
+                        blackListKey(accessTokenId),
                         "logout",
                         Duration.ofMillis(remainingExpiration)
                 );
@@ -150,7 +154,8 @@ public class AuthService {
         }
 
         Long userId = extractUserIdFromToken(refreshToken);
-        redisService.delete(refreshTokenKey(userId));
+        String sessionId = extractSessionIdFromRefreshToken(refreshToken);
+        redisService.delete(refreshTokenKey(userId, sessionId));
     }
 
     private void ensureNotLocked(String email) {
@@ -189,8 +194,22 @@ public class AuthService {
         }
     }
 
-    private String refreshTokenKey(Long userId) {
-        return REFRESH_TOKEN_KEY_PREFIX + userId;
+    private String extractSessionIdFromRefreshToken(String refreshToken) {
+        try {
+            String sessionId = jwtTokenProvider.getSessionId(refreshToken);
+            if (sessionId == null || sessionId.isBlank()) {
+                throw new BusinessException(ErrorCode.TOKEN_INVALID);
+            }
+            return sessionId;
+        } catch (ExpiredJwtException ex) {
+            throw new BusinessException(ErrorCode.TOKEN_EXPIRED);
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+    }
+
+    private String refreshTokenKey(Long userId, String sessionId) {
+        return REFRESH_TOKEN_KEY_PREFIX + userId + ":" + sessionId;
     }
 
     private String loginFailKey(String email) {
@@ -201,8 +220,8 @@ public class AuthService {
         return LOGIN_LOCK_KEY_PREFIX + email;
     }
 
-    private String blackListKey(String accessToken) {
-        return BLACKLIST_KEY_PREFIX + accessToken;
+    private String blackListKey(String accessTokenId) {
+        return BLACKLIST_KEY_PREFIX + accessTokenId;
     }
 }
 

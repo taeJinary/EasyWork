@@ -52,4 +52,16 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
         mockMvc.perform(get("/invitations/me"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void actuatorHealthEndpointPermitsAnonymousRequest() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void actuatorInfoEndpointPermitsAnonymousRequest() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk());
+    }
 }
