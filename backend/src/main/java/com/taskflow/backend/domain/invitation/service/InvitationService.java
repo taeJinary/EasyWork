@@ -36,6 +36,7 @@ public class InvitationService {
     private final ProjectInvitationRepository projectInvitationRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final InvitationEmailService invitationEmailService;
 
     @Value("${app.invitation.expires-days:7}")
     private long invitationExpiresDays;
@@ -87,6 +88,7 @@ public class InvitationService {
         }
         project.touch(now);
         notificationService.createInvitationNotification(saved);
+        invitationEmailService.sendInvitationCreatedEmail(saved);
 
         return new InvitationSummaryResponse(
                 saved.getId(),
