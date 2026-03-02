@@ -12,6 +12,7 @@ import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
@@ -51,6 +52,9 @@ class InvitationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private InvitationService invitationService;
 
@@ -81,6 +85,7 @@ class InvitationServiceTest {
         assertThat(response.role()).isEqualTo(ProjectRole.MEMBER);
         assertThat(response.status()).isEqualTo(InvitationStatus.PENDING);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(notificationService).createInvitationNotification(any(ProjectInvitation.class));
     }
 
     @Test

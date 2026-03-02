@@ -7,6 +7,7 @@ import com.taskflow.backend.domain.invitation.dto.response.InvitationListRespons
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
 import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
@@ -34,6 +35,7 @@ public class InvitationService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Value("${app.invitation.expires-days:7}")
     private long invitationExpiresDays;
@@ -84,6 +86,7 @@ public class InvitationService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
         project.touch(now);
+        notificationService.createInvitationNotification(saved);
 
         return new InvitationSummaryResponse(
                 saved.getId(),

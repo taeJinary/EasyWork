@@ -7,25 +7,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CommonEnumsTest {
 
     @Test
-    void 태스크_상태_ENUM은_명세값을_가진다() {
+    void taskStatusEnumMatchesSpecification() {
         assertThat(TaskStatus.values())
                 .containsExactly(TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.DONE);
     }
 
     @Test
-    void 태스크_우선순위_ENUM은_명세값을_가진다() {
+    void taskPriorityEnumMatchesSpecification() {
         assertThat(TaskPriority.values())
                 .containsExactly(TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH, TaskPriority.URGENT);
     }
 
     @Test
-    void 프로젝트_권한_ENUM은_명세값을_가진다() {
+    void projectRoleEnumMatchesSpecification() {
         assertThat(ProjectRole.values())
                 .containsExactly(ProjectRole.OWNER, ProjectRole.MEMBER);
     }
 
     @Test
-    void 알림_타입_ENUM은_명세값을_가진다() {
+    void notificationTypeEnumMatchesSpecification() {
         assertThat(NotificationType.values())
                 .containsExactly(
                         NotificationType.TASK_ASSIGNED,
@@ -37,7 +37,7 @@ class CommonEnumsTest {
     }
 
     @Test
-    void 초대_상태_ENUM은_명세값을_가진다() {
+    void invitationStatusEnumMatchesSpecification() {
         assertThat(InvitationStatus.values())
                 .containsExactly(
                         InvitationStatus.PENDING,
@@ -49,7 +49,18 @@ class CommonEnumsTest {
     }
 
     @Test
-    void 사용자_권한_및_상태_ENUM은_명세값을_가진다() {
+    void notificationReferenceTypeEnumMatchesSpecification() {
+        assertThat(NotificationReferenceType.values())
+                .containsExactly(
+                        NotificationReferenceType.PROJECT,
+                        NotificationReferenceType.TASK,
+                        NotificationReferenceType.INVITATION,
+                        NotificationReferenceType.COMMENT
+                );
+    }
+
+    @Test
+    void roleAndUserStatusEnumMatchSpecification() {
         assertThat(Role.values()).containsExactly(Role.ROLE_USER, Role.ROLE_ADMIN);
         assertThat(UserStatus.values()).containsExactly(UserStatus.ACTIVE, UserStatus.LOCKED, UserStatus.DELETED);
     }
