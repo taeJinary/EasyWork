@@ -55,6 +55,9 @@ class InvitationServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private InvitationEmailService invitationEmailService;
+
     @InjectMocks
     private InvitationService invitationService;
 
@@ -86,6 +89,7 @@ class InvitationServiceTest {
         assertThat(response.status()).isEqualTo(InvitationStatus.PENDING);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
         verify(notificationService).createInvitationNotification(any(ProjectInvitation.class));
+        verify(invitationEmailService).sendInvitationCreatedEmail(any(ProjectInvitation.class));
     }
 
     @Test
