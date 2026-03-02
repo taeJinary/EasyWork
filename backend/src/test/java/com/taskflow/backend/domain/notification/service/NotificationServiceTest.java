@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.notification.dto.response.NotificationCreatedEventPayload;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListResponse;
 import com.taskflow.backend.domain.notification.dto.response.NotificationReadAllResponse;
@@ -9,6 +10,7 @@ import com.taskflow.backend.domain.notification.dto.response.NotificationUnreadC
 import com.taskflow.backend.domain.notification.entity.Notification;
 import com.taskflow.backend.domain.notification.repository.NotificationRepository;
 import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.global.common.enums.InvitationStatus;
@@ -16,6 +18,8 @@ import com.taskflow.backend.global.common.enums.NotificationReferenceType;
 import com.taskflow.backend.global.common.enums.NotificationType;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
+import com.taskflow.backend.global.common.enums.TaskPriority;
+import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
@@ -23,6 +27,7 @@ import com.taskflow.backend.global.websocket.dto.WebSocketEventMessage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +45,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -282,6 +289,149 @@ class NotificationServiceTest {
         assertThat(payload.type()).isEqualTo(NotificationType.INVITATION_ACCEPTED);
         assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.INVITATION);
         assertThat(payload.referenceId()).isEqualTo(77L);
+    }
+
+    @Test
+    void createTaskAssignedNotificationSavesEntityAndPublishesRealtimeEvent() {
+        User actor = activeUser(1L, "owner@example.com", "owner");
+        User assignee = activeUser(2L, "assignee@example.com", "assignee");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        Task task = Task.builder()
+                .id(100L)
+                .project(project)
+                .creator(actor)
+                .assignee(assignee)
+                .title("Implement websocket")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .position(0)
+                .version(0L)
+                .build();
+        LocalDateTime createdAt = LocalDateTime.of(2026, 3, 2, 22, 0);
+        given(notificationRepository.save(any(Notification.class))).willAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", 903L);
+            ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+            return notification;
+        });
+
+        notificationService.createTaskAssignedNotification(task, actor);
+
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        Notification saved = notificationCaptor.getValue();
+        assertThat(saved.getUser().getId()).isEqualTo(2L);
+        assertThat(saved.getType()).isEqualTo(NotificationType.TASK_ASSIGNED);
+        assertThat(saved.getReferenceType()).isEqualTo(NotificationReferenceType.TASK);
+        assertThat(saved.getReferenceId()).isEqualTo(100L);
+
+        ArgumentCaptor<WebSocketEventMessage> eventCaptor = ArgumentCaptor.forClass(WebSocketEventMessage.class);
+        verify(messagingTemplate).convertAndSendToUser(
+                eq("assignee@example.com"),
+                eq("/queue/notifications"),
+                eventCaptor.capture()
+        );
+        WebSocketEventMessage<?> eventMessage = eventCaptor.getValue();
+        assertThat(eventMessage.type()).isEqualTo("NOTIFICATION_CREATED");
+        assertThat(eventMessage.projectId()).isEqualTo(10L);
+        assertThat(eventMessage.actor().userId()).isEqualTo(1L);
+
+        NotificationCreatedEventPayload payload = (NotificationCreatedEventPayload) eventMessage.payload();
+        assertThat(payload.type()).isEqualTo(NotificationType.TASK_ASSIGNED);
+        assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.TASK);
+        assertThat(payload.referenceId()).isEqualTo(100L);
+    }
+
+    @Test
+    void createTaskAssignedNotificationDoesNothingWhenAssigneeIsActor() {
+        User actor = activeUser(1L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        Task task = Task.builder()
+                .id(100L)
+                .project(project)
+                .creator(actor)
+                .assignee(actor)
+                .title("Implement websocket")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .position(0)
+                .version(0L)
+                .build();
+
+        notificationService.createTaskAssignedNotification(task, actor);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+        verify(messagingTemplate, never()).convertAndSendToUser(any(), any(), any());
+    }
+
+    @Test
+    void createCommentCreatedNotificationCreatesNotificationsForCreatorAndAssignee() {
+        User creator = activeUser(1L, "creator@example.com", "creator");
+        User assignee = activeUser(2L, "assignee@example.com", "assignee");
+        User actor = activeUser(3L, "commenter@example.com", "commenter");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(creator)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        Task task = Task.builder()
+                .id(100L)
+                .project(project)
+                .creator(creator)
+                .assignee(assignee)
+                .title("Implement websocket")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, actor, "Looks good");
+        ReflectionTestUtils.setField(comment, "id", 555L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 3, 2, 22, 10);
+        final long[] idSequence = {1000L};
+        given(notificationRepository.save(any(Notification.class))).willAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", idSequence[0]++);
+            ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+            return notification;
+        });
+
+        notificationService.createCommentCreatedNotification(comment, actor);
+
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository, times(2)).save(notificationCaptor.capture());
+        List<Notification> savedNotifications = notificationCaptor.getAllValues();
+        assertThat(savedNotifications).hasSize(2);
+        assertThat(savedNotifications).allMatch(notification -> notification.getType() == NotificationType.COMMENT_CREATED);
+        assertThat(savedNotifications).allMatch(notification -> notification.getReferenceType() == NotificationReferenceType.COMMENT);
+        assertThat(savedNotifications).allMatch(notification -> notification.getReferenceId().equals(555L));
+        assertThat(savedNotifications.stream().map(notification -> notification.getUser().getId()))
+                .containsExactlyInAnyOrder(1L, 2L);
+
+        ArgumentCaptor<String> userCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<WebSocketEventMessage> eventCaptor = ArgumentCaptor.forClass(WebSocketEventMessage.class);
+        verify(messagingTemplate, times(2)).convertAndSendToUser(
+                userCaptor.capture(),
+                eq("/queue/notifications"),
+                eventCaptor.capture()
+        );
+        assertThat(Set.copyOf(userCaptor.getAllValues()))
+                .containsExactlyInAnyOrder("creator@example.com", "assignee@example.com");
+        assertThat(eventCaptor.getAllValues()).allMatch(event -> event.type().equals("NOTIFICATION_CREATED"));
     }
 
     @Test

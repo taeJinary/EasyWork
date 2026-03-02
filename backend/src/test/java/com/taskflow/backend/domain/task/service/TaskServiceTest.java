@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.task.service;
 
 import com.taskflow.backend.domain.label.entity.Label;
 import com.taskflow.backend.domain.label.repository.LabelRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
@@ -68,6 +69,9 @@ class TaskServiceTest {
 
     @Mock
     private TaskStatusHistoryRepository taskStatusHistoryRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private ProjectBoardEventPublisher projectBoardEventPublisher;
@@ -159,6 +163,7 @@ class TaskServiceTest {
         assertThat(response.assignee()).isNotNull();
         assertThat(response.assignee().userId()).isEqualTo(2L);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(notificationService).createTaskAssignedNotification(savedTask, creator);
         verify(taskLabelRepository).saveAll(anyList());
         verify(projectBoardEventPublisher).publishTaskCreated(savedTask, creator);
     }
@@ -722,6 +727,7 @@ class TaskServiceTest {
 
         verify(taskLabelRepository).deleteAllByTaskId(1000L);
         verify(taskLabelRepository).saveAll(anyList());
+        verify(notificationService).createTaskAssignedNotification(task, actor);
         verify(projectBoardEventPublisher).publishTaskUpdated(task, actor);
     }
 
