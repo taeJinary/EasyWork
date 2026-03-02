@@ -150,6 +150,28 @@ class WebSocketAuthChannelInterceptorTest {
     }
 
     @Test
+    void subscribeUnknownDestinationThrowsForbidden() {
+        Message<?> message = subscribeMessage("/topic/notifications/global", authPrincipal(1L, "user@example.com"));
+
+        assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void subscribePersonalNotificationQueueWithInvalidPrincipalThrowsUnauthorized() {
+        UsernamePasswordAuthenticationToken invalidPrincipal =
+                new UsernamePasswordAuthenticationToken("user@example.com", null);
+        Message<?> message = subscribeMessage("/user/queue/notifications", invalidPrincipal);
+
+        assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+    }
+
+    @Test
     void subscribeProjectTopicAllowsProjectMember() {
         Message<?> message = subscribeMessage("/topic/projects/10/board", authPrincipal(1L, "user@example.com"));
 
