@@ -1,6 +1,6 @@
 package com.taskflow.backend.domain.invitation.service;
 
-import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -10,6 +10,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Service
@@ -31,7 +33,7 @@ public class SmtpInvitationEmailService implements InvitationEmailService {
     private String acceptBaseUrl;
 
     @Override
-    public void sendInvitationCreatedEmail(ProjectInvitation invitation) {
+    public void sendInvitationCreatedEmail(InvitationCreatedEvent event) {
         if (!emailEnabled) {
             return;
         }
@@ -41,14 +43,12 @@ public class SmtpInvitationEmailService implements InvitationEmailService {
             return;
         }
 
-        String recipient = invitation.getInvitee().getEmail();
+        String recipient = event.inviteeEmail();
         if (!StringUtils.hasText(recipient)) {
             return;
         }
 
-        String projectName = invitation.getProject().getName();
-        String inviterNickname = invitation.getInviter().getNickname();
-        String invitationLink = buildInvitationLink(invitation.getId());
+        String invitationLink = buildInvitationLink(event.invitationId());
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
@@ -64,27 +64,38 @@ public class SmtpInvitationEmailService implements InvitationEmailService {
                 Accept invitation:
                 %s
                 """.formatted(
-                projectName,
-                inviterNickname,
-                invitation.getRole().name(),
+                event.projectName(),
+                event.inviterNickname(),
+                event.role().name(),
                 invitationLink
         ));
 
         try {
             javaMailSender.send(message);
         } catch (MailException exception) {
-            log.warn("Failed to send invitation email. invitationId={}, to={}", invitation.getId(), recipient, exception);
+            log.warn("Failed to send invitation email. invitationId={}, to={}", event.invitationId(), recipient, exception);
         }
     }
 
     private String buildInvitationLink(Long invitationId) {
         if (acceptBaseUrl.contains("{invitationId}")) {
-            return acceptBaseUrl.replace("{invitationId}", String.valueOf(invitationId));
+            return UriComponentsBuilder.fromUriString(acceptBaseUrl)
+                    .buildAndExpand(invitationId)
+                    .toUriString();
         }
 
-        String normalizedBase = acceptBaseUrl.endsWith("/")
-                ? acceptBaseUrl.substring(0, acceptBaseUrl.length() - 1)
-                : acceptBaseUrl;
-        return normalizedBase + "/" + invitationId;
+        UriComponents base = UriComponentsBuilder.fromUriString(acceptBaseUrl).build(true);
+
+        UriComponentsBuilder linkBuilder = UriComponentsBuilder.newInstance()
+                .scheme(base.getScheme())
+                .userInfo(base.getUserInfo())
+                .host(base.getHost())
+                .port(base.getPort())
+                .path(base.getPath())
+                .pathSegment(String.valueOf(invitationId))
+                .queryParams(base.getQueryParams())
+                .fragment(base.getFragment());
+
+        return linkBuilder.build(true).toUriString();
     }
 }

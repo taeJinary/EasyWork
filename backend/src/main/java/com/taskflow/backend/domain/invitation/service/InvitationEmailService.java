@@ -1,9 +1,9 @@
 package com.taskflow.backend.domain.invitation.service;
 
-import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 
 public interface InvitationEmailService {
 
-    void sendInvitationCreatedEmail(ProjectInvitation invitation);
+    void sendInvitationCreatedEmail(InvitationCreatedEvent event);
 }
 
