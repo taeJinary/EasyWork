@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.notification.dto.response.NotificationCreatedEventPayload;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListItemResponse;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListResponse;
 import com.taskflow.backend.domain.notification.dto.response.NotificationReadAllResponse;
@@ -14,12 +15,14 @@ import com.taskflow.backend.global.common.enums.NotificationReferenceType;
 import com.taskflow.backend.global.common.enums.NotificationType;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.websocket.dto.WebSocketEventMessage;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +32,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private static final int DEFAULT_SIZE = 20;
+    private static final String USER_NOTIFICATION_DESTINATION = "/queue/notifications";
+    private static final String NOTIFICATION_CREATED_EVENT_TYPE = "NOTIFICATION_CREATED";
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public NotificationListResponse getNotifications(Long userId, int page, int size, boolean unreadOnly) {
         findActiveUser(userId);
@@ -112,7 +118,59 @@ public class NotificationService {
                 NotificationReferenceType.INVITATION,
                 invitation.getId()
         );
-        notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        publishNotificationCreatedEvent(
+                saved,
+                invitation.getProject().getId(),
+                invitation.getInviter()
+        );
+    }
+
+    @Transactional
+    public void createInvitationAcceptedNotification(ProjectInvitation invitation) {
+        Notification notification = Notification.create(
+                invitation.getInviter(),
+                NotificationType.INVITATION_ACCEPTED,
+                "Invitation accepted",
+                invitation.getInvitee().getNickname() + " accepted invitation to " + invitation.getProject().getName(),
+                NotificationReferenceType.INVITATION,
+                invitation.getId()
+        );
+        Notification saved = notificationRepository.save(notification);
+        publishNotificationCreatedEvent(
+                saved,
+                invitation.getProject().getId(),
+                invitation.getInvitee()
+        );
+    }
+
+    private void publishNotificationCreatedEvent(Notification notification, Long projectId, User actor) {
+        LocalDateTime occurredAt = notification.getCreatedAt() != null
+                ? notification.getCreatedAt()
+                : LocalDateTime.now();
+
+        NotificationCreatedEventPayload payload = new NotificationCreatedEventPayload(
+                notification.getId(),
+                notification.getType(),
+                notification.getTitle(),
+                notification.getContent(),
+                notification.getReferenceType(),
+                notification.getReferenceId()
+        );
+
+        WebSocketEventMessage<NotificationCreatedEventPayload> message = new WebSocketEventMessage<>(
+                NOTIFICATION_CREATED_EVENT_TYPE,
+                projectId,
+                occurredAt,
+                new WebSocketEventMessage.EventActor(actor.getId(), actor.getNickname()),
+                payload
+        );
+
+        messagingTemplate.convertAndSendToUser(
+                notification.getUser().getEmail(),
+                USER_NOTIFICATION_DESTINATION,
+                message
+        );
     }
 
     private User findActiveUser(Long userId) {

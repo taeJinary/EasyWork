@@ -316,6 +316,7 @@ class InvitationServiceTest {
         assertThat(response.status()).isEqualTo(InvitationStatus.ACCEPTED);
         assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.ACCEPTED);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(notificationService).createInvitationAcceptedNotification(invitation);
     }
 
     @Test
