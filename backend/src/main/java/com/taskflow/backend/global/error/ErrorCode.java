@@ -44,7 +44,8 @@ public enum ErrorCode {
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
-
+    // Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Notification not found."),
     // Common
     FORBIDDEN(HttpStatus.FORBIDDEN, "권한이 부족합니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "리소스를 찾을 수 없습니다."),
