@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.comment.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.comment.dto.request.CreateCommentRequest;
+import com.taskflow.backend.domain.comment.dto.request.UpdateCommentRequest;
 import com.taskflow.backend.domain.comment.dto.response.CommentListResponse;
 import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
 import com.taskflow.backend.domain.comment.service.CommentService;
@@ -23,7 +24,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -133,5 +136,58 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.data.hasNext").value(true));
 
         then(commentService).should().getComments(1L, 100L, 160L, 20);
+    }
+
+    @Test
+    void updateCommentReturnsResponse() throws Exception {
+        UpdateCommentRequest request = new UpdateCommentRequest("수정된 댓글");
+        CommentResponse response = new CommentResponse(
+                150L,
+                new CommentResponse.AuthorResponse(1L, "owner"),
+                "수정된 댓글",
+                LocalDateTime.of(2026, 3, 2, 10, 0),
+                LocalDateTime.of(2026, 3, 2, 10, 5),
+                true
+        );
+        given(commentService.updateComment(eq(1L), eq(150L), any(UpdateCommentRequest.class))).willReturn(response);
+
+        mockMvc.perform(patch("/comments/150")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.commentId").value(150L))
+                .andExpect(jsonPath("$.data.content").value("수정된 댓글"))
+                .andExpect(jsonPath("$.data.editable").value(true));
+
+        then(commentService).should().updateComment(eq(1L), eq(150L), any(UpdateCommentRequest.class));
+    }
+
+    @Test
+    void updateCommentReturnsBadRequestWhenContentMissing() throws Exception {
+        String invalidJson = """
+                {
+                  "content": " "
+                }
+                """;
+
+        mockMvc.perform(patch("/comments/150")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void deleteCommentReturnsResponse() throws Exception {
+        mockMvc.perform(delete("/comments/150")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        then(commentService).should().deleteComment(1L, 150L);
     }
 }

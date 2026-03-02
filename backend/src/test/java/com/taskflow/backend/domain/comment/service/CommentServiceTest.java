@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.comment.service;
 
 import com.taskflow.backend.domain.comment.dto.request.CreateCommentRequest;
+import com.taskflow.backend.domain.comment.dto.request.UpdateCommentRequest;
 import com.taskflow.backend.domain.comment.dto.response.CommentListResponse;
 import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
 import com.taskflow.backend.domain.comment.entity.Comment;
@@ -248,6 +249,218 @@ class CommentServiceTest {
         assertThat(response.content().getFirst().commentId()).isEqualTo(150L);
         assertThat(response.hasNext()).isFalse();
         assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
+    void updateCommentUpdatesContentWhenAuthor() {
+        User actor = activeUser(1L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(actor)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(actor)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(actor)
+                .title("task")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, actor, "before");
+        ReflectionTestUtils.setField(comment, "id", 150L);
+        ReflectionTestUtils.setField(comment, "createdAt", LocalDateTime.of(2026, 3, 2, 10, 0));
+        ReflectionTestUtils.setField(comment, "updatedAt", LocalDateTime.of(2026, 3, 2, 10, 0));
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
+
+        given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        CommentResponse response = commentService.updateComment(1L, 150L, new UpdateCommentRequest("after"));
+
+        assertThat(comment.getContent()).isEqualTo("after");
+        assertThat(response.content()).isEqualTo("after");
+        assertThat(response.editable()).isTrue();
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+    }
+
+    @Test
+    void updateCommentThrowsWhenNotAuthor() {
+        User author = activeUser(1L, "author@example.com", "author");
+        User member = activeUser(2L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(author)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(member)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(author)
+                .title("task")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, author, "before");
+        ReflectionTestUtils.setField(comment, "id", 150L);
+
+        given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> commentService.updateComment(2L, 150L, new UpdateCommentRequest("after")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INSUFFICIENT_PERMISSION);
+    }
+
+    @Test
+    void deleteCommentDeletesWhenAuthor() {
+        User author = activeUser(1L, "author@example.com", "author");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(author)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(author)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(author)
+                .title("task")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, author, "comment");
+        ReflectionTestUtils.setField(comment, "id", 150L);
+        LocalDateTime beforeActivityAt = LocalDateTime.of(2026, 3, 1, 8, 0);
+        ReflectionTestUtils.setField(project, "updatedAt", beforeActivityAt);
+
+        given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        commentService.deleteComment(1L, 150L);
+
+        verify(commentRepository).delete(comment);
+        assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+    }
+
+    @Test
+    void deleteCommentDeletesWhenOwner() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User author = activeUser(2L, "author@example.com", "author");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember ownerMembership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(author)
+                .title("task")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, author, "comment");
+        ReflectionTestUtils.setField(comment, "id", 150L);
+
+        given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+
+        commentService.deleteComment(1L, 150L);
+
+        verify(commentRepository).delete(comment);
+    }
+
+    @Test
+    void deleteCommentThrowsWhenNoPermission() {
+        User author = activeUser(1L, "author@example.com", "author");
+        User member = activeUser(2L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(author)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(101L)
+                .project(project)
+                .user(member)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(author)
+                .title("task")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, author, "comment");
+        ReflectionTestUtils.setField(comment, "id", 150L);
+
+        given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 2L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> commentService.deleteComment(2L, 150L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INSUFFICIENT_PERMISSION);
+
+        verify(commentRepository, never()).delete(any(Comment.class));
     }
 
     private User activeUser(Long id, String email, String nickname) {

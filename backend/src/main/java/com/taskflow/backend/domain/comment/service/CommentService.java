@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.comment.service;
 
 import com.taskflow.backend.domain.comment.dto.request.CreateCommentRequest;
+import com.taskflow.backend.domain.comment.dto.request.UpdateCommentRequest;
 import com.taskflow.backend.domain.comment.dto.response.CommentListResponse;
 import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
 import com.taskflow.backend.domain.comment.entity.Comment;
@@ -9,6 +10,7 @@ import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
+import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
@@ -67,9 +69,52 @@ public class CommentService {
         return new CommentListResponse(content, nextCursor, hasNext);
     }
 
+    @Transactional
+    public CommentResponse updateComment(Long userId, Long commentId, UpdateCommentRequest request) {
+        Comment comment = findComment(commentId);
+        Long projectId = comment.getTask().getProject().getId();
+        findMembership(projectId, userId);
+        ensureAuthor(userId, comment);
+
+        comment.updateContent(request.content());
+        comment.getTask().getProject().touch(LocalDateTime.now());
+
+        return toCommentResponse(comment, userId);
+    }
+
+    @Transactional
+    public void deleteComment(Long userId, Long commentId) {
+        Comment comment = findComment(commentId);
+        Long projectId = comment.getTask().getProject().getId();
+        ProjectMember membership = findMembership(projectId, userId);
+        ensureAuthorOrOwner(userId, membership, comment);
+
+        commentRepository.delete(comment);
+        comment.getTask().getProject().touch(LocalDateTime.now());
+    }
+
     private ProjectMember findMembership(Long projectId, Long userId) {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private Comment findComment(Long commentId) {
+        return commentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
+    }
+
+    private void ensureAuthor(Long userId, Comment comment) {
+        if (!comment.getAuthor().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+    }
+
+    private void ensureAuthorOrOwner(Long userId, ProjectMember membership, Comment comment) {
+        boolean isAuthor = comment.getAuthor().getId().equals(userId);
+        boolean isOwner = membership.getRole() == ProjectRole.OWNER;
+        if (!isAuthor && !isOwner) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
     }
 
     private CommentResponse toCommentResponse(Comment comment, Long userId) {
