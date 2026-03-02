@@ -15,9 +15,19 @@ class ApplicationConfigSecurityPolicyTest {
     void applicationYmlUsesEnvironmentVariablesForDatasourceCredentials() throws IOException {
         String content = read("src/main/resources/application.yml");
 
-        assertThat(content).contains("${DB_USERNAME:");
-        assertThat(content).contains("${DB_PASSWORD:");
+        assertThat(content).contains("username: ${DB_USERNAME}");
+        assertThat(content).contains("password: ${DB_PASSWORD}");
+        assertThat(content).doesNotContain("${DB_USERNAME:root}");
+        assertThat(content).doesNotContain("${DB_PASSWORD:}");
         assertThat(content).doesNotContain("password: root1234");
+    }
+
+    @Test
+    void applicationYmlRequiresJwtSecretFromEnvironmentWithoutFallback() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("secret: ${JWT_SECRET}");
+        assertThat(content).doesNotContain("secret: ${JWT_SECRET:");
     }
 
     @Test
