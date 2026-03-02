@@ -27,6 +27,7 @@ import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -67,6 +68,9 @@ class TaskServiceTest {
 
     @Mock
     private TaskStatusHistoryRepository taskStatusHistoryRepository;
+
+    @Mock
+    private ProjectBoardEventPublisher projectBoardEventPublisher;
 
     @InjectMocks
     private TaskService taskService;
@@ -156,6 +160,7 @@ class TaskServiceTest {
         assertThat(response.assignee().userId()).isEqualTo(2L);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
         verify(taskLabelRepository).saveAll(anyList());
+        verify(projectBoardEventPublisher).publishTaskCreated(savedTask, creator);
     }
 
     @Test
@@ -717,6 +722,7 @@ class TaskServiceTest {
 
         verify(taskLabelRepository).deleteAllByTaskId(1000L);
         verify(taskLabelRepository).saveAll(anyList());
+        verify(projectBoardEventPublisher).publishTaskUpdated(task, actor);
     }
 
     @Test
@@ -1057,6 +1063,12 @@ class TaskServiceTest {
         assertThat(savedHistory.getFromStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(savedHistory.getToStatus()).isEqualTo(TaskStatus.DONE);
         assertThat(savedHistory.getChangedBy()).isEqualTo(actor);
+        verify(projectBoardEventPublisher).publishTaskMoved(
+                movingTask,
+                actor,
+                TaskStatus.TODO,
+                TaskStatus.DONE
+        );
     }
 
     @Test
@@ -1166,6 +1178,7 @@ class TaskServiceTest {
 
         assertThat(task.getDeletedAt()).isNotNull();
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(projectBoardEventPublisher).publishTaskDeleted(task, actor);
     }
 
     @Test

@@ -13,6 +13,7 @@ import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class CommentService {
     private final TaskRepository taskRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final CommentRepository commentRepository;
+    private final ProjectBoardEventPublisher projectBoardEventPublisher;
 
     @Transactional
     public CommentResponse createComment(Long userId, Long taskId, CreateCommentRequest request) {
@@ -44,6 +46,7 @@ public class CommentService {
                 request.content()
         ));
         task.getProject().touch(LocalDateTime.now());
+        projectBoardEventPublisher.publishCommentCreated(saved, membership.getUser());
         return toCommentResponse(saved, userId);
     }
 
