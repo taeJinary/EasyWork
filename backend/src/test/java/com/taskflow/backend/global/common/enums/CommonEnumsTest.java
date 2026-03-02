@@ -63,4 +63,10 @@ class CommonEnumsTest {
         assertThat(Role.values()).containsExactly(Role.ROLE_USER, Role.ROLE_ADMIN);
         assertThat(UserStatus.values()).containsExactly(UserStatus.ACTIVE, UserStatus.LOCKED, UserStatus.DELETED);
     }
+
+    @Test
+    void oauthProviderEnumMatchesSpecification() {
+        assertThat(OAuthProvider.values())
+                .containsExactly(OAuthProvider.GOOGLE, OAuthProvider.KAKAO, OAuthProvider.NAVER);
+    }
 }

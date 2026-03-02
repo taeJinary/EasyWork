@@ -62,6 +62,19 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    void oauthLoginExcludedPathPassesWithoutToken() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/v1/auth/oauth/login");
+        request.setServletPath("/auth/oauth/login");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthenticationFilter.doFilter(request, response, chain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
     void validBearerTokenSetsAuthentication() throws Exception {
         User user = User.builder()
                 .id(1L)
