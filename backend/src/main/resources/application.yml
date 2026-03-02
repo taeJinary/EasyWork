@@ -59,6 +59,9 @@ app:
   oauth:
     google:
       user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  attachment:
+    storage:
+      root-path: ./storage/task-attachments
 
 # === Logging ===
 logging:

@@ -42,3 +42,4 @@ docker-compose.override.yml
 *.tmp
 *.swp
 Task.md
+storage/

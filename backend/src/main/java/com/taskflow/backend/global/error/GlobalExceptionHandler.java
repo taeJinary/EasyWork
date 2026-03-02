@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @Slf4j
 @RestControllerAdvice
@@ -52,6 +53,17 @@ public class GlobalExceptionHandler {
                         violation.getMessage()
                 ))
                 .toList();
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ApiResponse.failure(ErrorCode.INVALID_INPUT, errors));
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingServletRequestPartException(
+            MissingServletRequestPartException ex
+    ) {
+        List<ApiResponse.ErrorDetail> errors = List.of(
+                new ApiResponse.ErrorDetail(ex.getRequestPartName(), null, "필수 요청 파트가 누락되었습니다.")
+        );
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ApiResponse.failure(ErrorCode.INVALID_INPUT, errors));
     }
