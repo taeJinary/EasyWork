@@ -2,6 +2,8 @@ spring:
   config:
     activate:
       on-profile: local
+  jpa:
+    show-sql: true
 
 app:
   cookie:
@@ -9,3 +11,10 @@ app:
     refresh-token-path: /api/v1/auth
     secure: false
     same-site: Lax
+
+logging:
+  level:
+    root: INFO
+    com.taskflow: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

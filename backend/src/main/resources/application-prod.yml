@@ -2,6 +2,8 @@ spring:
   config:
     activate:
       on-profile: prod
+  jpa:
+    show-sql: false
 
 app:
   cookie:
@@ -9,3 +11,8 @@ app:
     refresh-token-path: /api/v1/auth
     secure: true
     same-site: Lax
+
+logging:
+  level:
+    root: INFO
+    com.taskflow: INFO
