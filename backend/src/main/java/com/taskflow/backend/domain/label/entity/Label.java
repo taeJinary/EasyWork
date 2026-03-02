@@ -45,4 +45,9 @@ public class Label extends BaseEntity {
 
     @Column(nullable = false, length = 7)
     private String colorHex;
+
+    public void update(String name, String colorHex) {
+        this.name = name;
+        this.colorHex = colorHex;
+    }
 }
