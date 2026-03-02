@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
@@ -8,10 +9,13 @@ import com.taskflow.backend.domain.user.entity.PasswordHistory;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
+import com.taskflow.backend.domain.user.service.oauth.OAuthProfile;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
+import com.taskflow.backend.global.common.enums.OAuthProvider;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
@@ -24,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +48,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final RedisService redisService;
+    private final OAuthClientRegistry oauthClientRegistry;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -84,24 +90,27 @@ public class AuthService {
         }
 
         clearLoginFailure(email);
+        return issueLoginTokens(user);
+    }
 
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String sessionId = UUID.randomUUID().toString();
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), sessionId);
+    @Transactional
+    public LoginTokens oauthLogin(OAuthLoginRequest request) {
+        OAuthProvider provider = request.provider();
+        OAuthProfile profile = oauthClientRegistry.getClient(provider).fetchProfile(request.accessToken());
+        validateOAuthProfile(profile);
 
-        redisService.setValue(
-                refreshTokenKey(user.getId(), sessionId),
-                refreshToken,
-                Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
-        );
+        User user = userRepository.findByProviderAndProviderId(provider.name(), profile.providerId())
+                .orElseGet(() -> createOAuthUser(provider, profile));
 
-        return new LoginTokens(
-                accessToken,
-                refreshToken,
-                jwtProperties.getAccessTokenExpiration(),
-                jwtProperties.getRefreshTokenExpiration(),
-                AuthUserResponse.from(user)
-        );
+        if (user.isDeleted()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
+        }
+
+        if (user.isLocked()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
+        return issueLoginTokens(user);
     }
 
     @Transactional
@@ -222,6 +231,62 @@ public class AuthService {
 
     private String blackListKey(String accessTokenId) {
         return BLACKLIST_KEY_PREFIX + accessTokenId;
+    }
+
+    private LoginTokens issueLoginTokens(User user) {
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
+        String sessionId = UUID.randomUUID().toString();
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), sessionId);
+
+        redisService.setValue(
+                refreshTokenKey(user.getId(), sessionId),
+                refreshToken,
+                Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
+        );
+
+        return new LoginTokens(
+                accessToken,
+                refreshToken,
+                jwtProperties.getAccessTokenExpiration(),
+                jwtProperties.getRefreshTokenExpiration(),
+                AuthUserResponse.from(user)
+        );
+    }
+
+    private User createOAuthUser(OAuthProvider provider, OAuthProfile profile) {
+        userRepository.findByEmail(profile.email())
+                .ifPresent(existingUser -> {
+                    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+                });
+
+        User user = User.builder()
+                .email(profile.email())
+                .nickname(resolveOAuthNickname(profile.nickname(), profile.email()))
+                .provider(provider.name())
+                .providerId(profile.providerId())
+                .role(Role.ROLE_USER)
+                .build();
+        return userRepository.save(user);
+    }
+
+    private void validateOAuthProfile(OAuthProfile profile) {
+        if (!StringUtils.hasText(profile.providerId()) || !StringUtils.hasText(profile.email())) {
+            throw new BusinessException(ErrorCode.OAUTH_PROFILE_INVALID);
+        }
+    }
+
+    private String resolveOAuthNickname(String nickname, String email) {
+        String resolved = nickname;
+        if (!StringUtils.hasText(resolved)) {
+            int atIndex = email.indexOf('@');
+            resolved = atIndex > 0 ? email.substring(0, atIndex) : email;
+        }
+
+        String trimmed = resolved.trim();
+        if (trimmed.length() > 20) {
+            return trimmed.substring(0, 20);
+        }
+        return trimmed;
     }
 }
 

@@ -1,16 +1,21 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.entity.PasswordHistory;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.user.service.oauth.OAuthClient;
+import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
+import com.taskflow.backend.domain.user.service.oauth.OAuthProfile;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
+import com.taskflow.backend.global.common.enums.OAuthProvider;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
@@ -56,6 +61,12 @@ class AuthServiceTest {
 
     @Mock
     private RedisService redisService;
+
+    @Mock
+    private OAuthClientRegistry oauthClientRegistry;
+
+    @Mock
+    private OAuthClient oauthClient;
 
     @InjectMocks
     private AuthService authService;
@@ -219,6 +230,86 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.TOKEN_INVALID);
+    }
+
+    @Test
+    void oauthLoginReturnsTokensForExistingProviderUser() {
+        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+        OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
+        User oauthUser = User.builder()
+                .id(2L)
+                .email("oauth@example.com")
+                .nickname("oauth-user")
+                .provider("GOOGLE")
+                .providerId("google-123")
+                .role(Role.ROLE_USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
+        when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
+        when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.of(oauthUser));
+        when(jwtTokenProvider.generateAccessToken(2L, "oauth@example.com", Role.ROLE_USER))
+                .thenReturn("oauth-access-jwt");
+        when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
+                .thenReturn("oauth-refresh-token");
+
+        LoginTokens response = authService.oauthLogin(request);
+
+        assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
+        assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
+        assertThat(response.user().email()).isEqualTo("oauth@example.com");
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void oauthLoginCreatesUserWhenProviderUserDoesNotExist() {
+        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+        OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
+
+        when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
+        when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
+        when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("oauth@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .id(2L)
+                    .email(user.getEmail())
+                    .nickname(user.getNickname())
+                    .provider(user.getProvider())
+                    .providerId(user.getProviderId())
+                    .role(user.getRole())
+                    .status(user.getStatus())
+                    .build();
+        });
+        when(jwtTokenProvider.generateAccessToken(2L, "oauth@example.com", Role.ROLE_USER))
+                .thenReturn("oauth-access-jwt");
+        when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
+                .thenReturn("oauth-refresh-token");
+
+        LoginTokens response = authService.oauthLogin(request);
+
+        assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
+        assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
+        assertThat(response.user().email()).isEqualTo("oauth@example.com");
+        verify(passwordHistoryRepository, never()).save(any(PasswordHistory.class));
+    }
+
+    @Test
+    void oauthLoginThrowsWhenEmailAlreadyExistsWithAnotherAccount() {
+        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+        OAuthProfile profile = new OAuthProfile("google-123", "user@example.com", "oauth-user");
+
+        when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
+        when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
+        when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(activeUser()));
+
+        assertThatThrownBy(() -> authService.oauthLogin(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
     }
 
     @Test

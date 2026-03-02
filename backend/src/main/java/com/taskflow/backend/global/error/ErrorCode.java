@@ -16,6 +16,9 @@ public enum ErrorCode {
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "계정이 잠겨있습니다."),
     ACCOUNT_DELETED(HttpStatus.UNAUTHORIZED, "탈퇴한 계정입니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
+    OAUTH_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 OAuth 제공자입니다."),
+    OAUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "유효하지 않은 OAuth 토큰입니다."),
+    OAUTH_PROFILE_INVALID(HttpStatus.BAD_REQUEST, "OAuth 프로필 정보가 올바르지 않습니다."),
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),

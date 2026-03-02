@@ -2,12 +2,14 @@ package com.taskflow.backend.domain.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.service.AuthService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
+import com.taskflow.backend.global.common.enums.OAuthProvider;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -130,6 +132,32 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void oauthLoginReturnsTokenPayload() throws Exception {
+        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+        LoginTokens tokens = new LoginTokens(
+                "oauth-access-token",
+                "oauth-refresh-token",
+                1800000L,
+                1209600000L,
+                new AuthUserResponse(2L, "oauth@example.com", "oauth-user", null, "ROLE_USER")
+        );
+
+        given(authService.oauthLogin(eq(request))).willReturn(tokens);
+
+        mockMvc.perform(post("/auth/oauth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("rt_custom=")))
+                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
+                .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
+                .andExpect(jsonPath("$.data.user.userId").value(2L));
     }
 
     @Test

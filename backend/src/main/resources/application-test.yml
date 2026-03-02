@@ -39,6 +39,9 @@ app:
       - http://127.0.0.1:5173
   invitation:
     expires-days: 7
+  oauth:
+    google:
+      user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
 
 logging:
   level:
