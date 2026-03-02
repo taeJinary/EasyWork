@@ -31,7 +31,8 @@ class CommonEnumsTest {
                         NotificationType.PROJECT_INVITED,
                         NotificationType.INVITATION_ACCEPTED,
                         NotificationType.TASK_ASSIGNED,
-                        NotificationType.COMMENT_CREATED
+                        NotificationType.COMMENT_CREATED,
+                        NotificationType.COMMENT_MENTIONED
                 );
     }
 

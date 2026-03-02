@@ -10,6 +10,8 @@ import com.taskflow.backend.domain.notification.dto.response.NotificationUnreadC
 import com.taskflow.backend.domain.notification.entity.Notification;
 import com.taskflow.backend.domain.notification.repository.NotificationRepository;
 import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.project.entity.ProjectMember;
+import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
@@ -57,6 +59,9 @@ class NotificationServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ProjectMemberRepository projectMemberRepository;
 
     @Mock
     private SimpMessagingTemplate messagingTemplate;
@@ -435,6 +440,103 @@ class NotificationServiceTest {
     }
 
     @Test
+    void createCommentCreatedNotificationExcludesMentionRecipients() {
+        User creator = activeUser(1L, "creator@example.com", "creator");
+        User assignee = activeUser(2L, "assignee@example.com", "assignee");
+        User actor = activeUser(3L, "commenter@example.com", "commenter");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(creator)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        Task task = Task.builder()
+                .id(100L)
+                .project(project)
+                .creator(creator)
+                .assignee(assignee)
+                .title("Implement websocket")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, actor, "Looks good");
+        ReflectionTestUtils.setField(comment, "id", 556L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 3, 2, 22, 20);
+        given(notificationRepository.save(any(Notification.class))).willAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", 1100L);
+            ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+            return notification;
+        });
+
+        notificationService.createCommentCreatedNotification(comment, actor, Set.of(1L));
+
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        Notification saved = notificationCaptor.getValue();
+        assertThat(saved.getUser().getId()).isEqualTo(2L);
+        assertThat(saved.getType()).isEqualTo(NotificationType.COMMENT_CREATED);
+        verify(messagingTemplate).convertAndSendToUser(eq("assignee@example.com"), eq("/queue/notifications"), any());
+    }
+
+    @Test
+    void createCommentMentionNotificationsCreatesNotificationsForMentionedMembers() {
+        User creator = activeUser(1L, "creator@example.com", "creator");
+        User actor = activeUser(2L, "actor@example.com", "actor");
+        User mentioned = activeUser(3L, "mentioned@example.com", "alex");
+        User other = activeUser(4L, "other@example.com", "other");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(creator)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        Task task = Task.builder()
+                .id(100L)
+                .project(project)
+                .creator(creator)
+                .assignee(other)
+                .title("Implement websocket")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .position(0)
+                .version(0L)
+                .build();
+        Comment comment = Comment.create(task, actor, "Please check this @alex and @ghost, thanks @alex");
+        ReflectionTestUtils.setField(comment, "id", 557L);
+
+        ProjectMember actorMembership = member(201L, project, actor, ProjectRole.MEMBER);
+        ProjectMember mentionedMembership = member(202L, project, mentioned, ProjectRole.MEMBER);
+        ProjectMember otherMembership = member(203L, project, other, ProjectRole.MEMBER);
+
+        LocalDateTime createdAt = LocalDateTime.of(2026, 3, 2, 22, 30);
+        given(projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(10L))
+                .willReturn(List.of(actorMembership, mentionedMembership, otherMembership));
+        given(notificationRepository.save(any(Notification.class))).willAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", 1200L);
+            ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+            return notification;
+        });
+
+        Set<Long> mentionedUserIds = notificationService.createCommentMentionNotifications(comment, actor);
+
+        assertThat(mentionedUserIds).containsExactly(3L);
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        Notification saved = notificationCaptor.getValue();
+        assertThat(saved.getUser().getId()).isEqualTo(3L);
+        assertThat(saved.getType()).isEqualTo(NotificationType.COMMENT_MENTIONED);
+        assertThat(saved.getReferenceType()).isEqualTo(NotificationReferenceType.COMMENT);
+        assertThat(saved.getReferenceId()).isEqualTo(557L);
+        verify(messagingTemplate).convertAndSendToUser(eq("mentioned@example.com"), eq("/queue/notifications"), any());
+    }
+
+    @Test
     void getNotificationsThrowsWhenUserDeleted() {
         User deletedUser = User.builder()
                 .id(1L)
@@ -463,6 +565,17 @@ class NotificationServiceTest {
                 .provider("LOCAL")
                 .role(Role.ROLE_USER)
                 .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    private ProjectMember member(Long id, Project project, User user, ProjectRole role) {
+        return ProjectMember.builder()
+                .id(id)
+                .project(project)
+                .user(user)
+                .role(role)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
                 .build();
     }
 }

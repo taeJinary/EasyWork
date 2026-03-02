@@ -24,6 +24,7 @@ import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -90,7 +91,7 @@ class CommentServiceTest {
                 .position(0)
                 .version(0L)
                 .build();
-        Comment savedComment = Comment.create(task, actor, "로그인 실패");
+        Comment savedComment = Comment.create(task, actor, "濡쒓렇???ㅽ뙣");
         ReflectionTestUtils.setField(savedComment, "id", 150L);
         ReflectionTestUtils.setField(savedComment, "createdAt", LocalDateTime.of(2026, 3, 2, 10, 0));
         ReflectionTestUtils.setField(savedComment, "updatedAt", LocalDateTime.of(2026, 3, 2, 10, 0));
@@ -100,15 +101,17 @@ class CommentServiceTest {
         given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(commentRepository.save(any(Comment.class))).willReturn(savedComment);
+        given(notificationService.createCommentMentionNotifications(savedComment, actor)).willReturn(Set.of());
 
-        CommentResponse response = commentService.createComment(1L, 1000L, new CreateCommentRequest("로그인 실패"));
+        CommentResponse response = commentService.createComment(1L, 1000L, new CreateCommentRequest("濡쒓렇???ㅽ뙣"));
 
         assertThat(response.commentId()).isEqualTo(150L);
         assertThat(response.author().userId()).isEqualTo(1L);
-        assertThat(response.content()).isEqualTo("로그인 실패");
+        assertThat(response.content()).isEqualTo("濡쒓렇???ㅽ뙣");
         assertThat(response.editable()).isTrue();
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
-        verify(notificationService).createCommentCreatedNotification(savedComment, actor);
+        verify(notificationService).createCommentMentionNotifications(savedComment, actor);
+        verify(notificationService).createCommentCreatedNotification(savedComment, actor, Set.of());
         verify(projectBoardEventPublisher).publishCommentCreated(savedComment, actor);
     }
 
@@ -485,3 +488,5 @@ class CommentServiceTest {
                 .build();
     }
 }
+
+
