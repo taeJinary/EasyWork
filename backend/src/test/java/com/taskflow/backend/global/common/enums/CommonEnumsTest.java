@@ -28,11 +28,10 @@ class CommonEnumsTest {
     void notificationTypeEnumMatchesSpecification() {
         assertThat(NotificationType.values())
                 .containsExactly(
-                        NotificationType.TASK_ASSIGNED,
-                        NotificationType.TASK_STATUS_CHANGED,
-                        NotificationType.COMMENT_ADDED,
                         NotificationType.PROJECT_INVITED,
-                        NotificationType.MEMBER_REMOVED
+                        NotificationType.INVITATION_ACCEPTED,
+                        NotificationType.TASK_ASSIGNED,
+                        NotificationType.COMMENT_CREATED
                 );
     }
 

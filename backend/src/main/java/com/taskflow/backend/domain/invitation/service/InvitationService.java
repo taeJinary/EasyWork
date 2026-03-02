@@ -173,6 +173,7 @@ public class InvitationService {
 
         invitation.accept(LocalDateTime.now());
         invitation.getProject().touch(LocalDateTime.now());
+        notificationService.createInvitationAcceptedNotification(invitation);
 
         return new InvitationActionResponse(
                 invitation.getId(),
