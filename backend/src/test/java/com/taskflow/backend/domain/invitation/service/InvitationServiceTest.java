@@ -4,6 +4,7 @@ import com.taskflow.backend.domain.invitation.dto.request.CreateInvitationReques
 import com.taskflow.backend.domain.invitation.dto.response.InvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
+import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
 import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
 import com.taskflow.backend.domain.project.entity.Project;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -56,7 +58,7 @@ class InvitationServiceTest {
     private NotificationService notificationService;
 
     @Mock
-    private InvitationEmailService invitationEmailService;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private InvitationService invitationService;
@@ -89,7 +91,7 @@ class InvitationServiceTest {
         assertThat(response.status()).isEqualTo(InvitationStatus.PENDING);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
         verify(notificationService).createInvitationNotification(any(ProjectInvitation.class));
-        verify(invitationEmailService).sendInvitationCreatedEmail(any(ProjectInvitation.class));
+        verify(applicationEventPublisher).publishEvent(any(InvitationCreatedEvent.class));
     }
 
     @Test

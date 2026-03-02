@@ -5,6 +5,7 @@ import com.taskflow.backend.domain.invitation.dto.response.InvitationActionRespo
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
 import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
+import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
 import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
 import com.taskflow.backend.domain.notification.service.NotificationService;
@@ -23,6 +24,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +38,7 @@ public class InvitationService {
     private final ProjectInvitationRepository projectInvitationRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
-    private final InvitationEmailService invitationEmailService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Value("${app.invitation.expires-days:7}")
     private long invitationExpiresDays;
@@ -88,7 +90,13 @@ public class InvitationService {
         }
         project.touch(now);
         notificationService.createInvitationNotification(saved);
-        invitationEmailService.sendInvitationCreatedEmail(saved);
+        applicationEventPublisher.publishEvent(new InvitationCreatedEvent(
+                saved.getId(),
+                saved.getInvitee().getEmail(),
+                saved.getProject().getName(),
+                saved.getInviter().getNickname(),
+                saved.getRole()
+        ));
 
         return new InvitationSummaryResponse(
                 saved.getId(),
