@@ -19,6 +19,8 @@ public interface ProjectInvitationRepository extends JpaRepository<ProjectInvita
 
     List<ProjectInvitation> findAllByInviteeIdOrderByCreatedAtDesc(Long inviteeId);
 
+    long countByInviteeIdAndStatusAndExpiresAtAfter(Long inviteeId, InvitationStatus status, LocalDateTime expiresAt);
+
     long countByProjectIdAndStatusAndExpiresAtAfter(Long projectId, InvitationStatus status, LocalDateTime expiresAt);
 }
 
