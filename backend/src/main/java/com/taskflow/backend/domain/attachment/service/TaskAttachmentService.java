@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.dto.response.TaskAttachmentResponse;
 import com.taskflow.backend.domain.attachment.entity.TaskAttachment;
+import com.taskflow.backend.domain.attachment.event.TaskAttachmentDeletedEvent;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentRepository;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
@@ -14,11 +15,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -33,6 +37,7 @@ public class TaskAttachmentService {
     private final ProjectMemberRepository projectMemberRepository;
     private final TaskAttachmentRepository taskAttachmentRepository;
     private final TaskAttachmentStorage taskAttachmentStorage;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public TaskAttachmentResponse uploadAttachment(Long userId, Long taskId, MultipartFile file) {
@@ -43,20 +48,25 @@ public class TaskAttachmentService {
         TaskAttachmentStorage.StoredAttachment storedAttachment =
                 taskAttachmentStorage.store(task.getProject().getId(), file);
 
-        String originalFilename = file.getOriginalFilename();
-        TaskAttachment attachment = TaskAttachment.create(
-                task,
-                membership.getUser(),
-                StringUtils.hasText(originalFilename) ? originalFilename : storedAttachment.storedFilename(),
-                storedAttachment.storedFilename(),
-                storedAttachment.storagePath(),
-                storedAttachment.contentType(),
-                storedAttachment.sizeBytes()
-        );
+        try {
+            String originalFilename = file.getOriginalFilename();
+            TaskAttachment attachment = TaskAttachment.create(
+                    task,
+                    membership.getUser(),
+                    StringUtils.hasText(originalFilename) ? originalFilename : storedAttachment.storedFilename(),
+                    storedAttachment.storedFilename(),
+                    storedAttachment.storagePath(),
+                    storedAttachment.contentType(),
+                    storedAttachment.sizeBytes()
+            );
 
-        TaskAttachment saved = taskAttachmentRepository.save(attachment);
-        task.getProject().touch(LocalDateTime.now());
-        return toResponse(saved);
+            TaskAttachment saved = taskAttachmentRepository.save(attachment);
+            task.getProject().touch(LocalDateTime.now());
+            return toResponse(saved);
+        } catch (RuntimeException exception) {
+            cleanupStoredFile(storedAttachment.storagePath());
+            throw exception;
+        }
     }
 
     public List<TaskAttachmentResponse> getTaskAttachments(Long userId, Long taskId) {
@@ -80,9 +90,11 @@ public class TaskAttachmentService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
-        taskAttachmentStorage.delete(attachment.getStoragePath());
         taskAttachmentRepository.delete(attachment);
         attachment.getTask().getProject().touch(LocalDateTime.now());
+        applicationEventPublisher.publishEvent(
+                new TaskAttachmentDeletedEvent(attachment.getId(), attachment.getStoragePath())
+        );
     }
 
     private Task findActiveTask(Long taskId) {
@@ -134,5 +146,13 @@ public class TaskAttachmentService {
                 attachment.getUploader().getNickname(),
                 attachment.getCreatedAt()
         );
+    }
+
+    private void cleanupStoredFile(String storagePath) {
+        try {
+            taskAttachmentStorage.delete(storagePath);
+        } catch (Exception exception) {
+            log.warn("Failed to cleanup stored attachment file. storagePath={}", storagePath, exception);
+        }
     }
 }

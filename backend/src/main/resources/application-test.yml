@@ -21,6 +21,10 @@ spring:
       host: ${TEST_REDIS_HOST:localhost}
       port: ${TEST_REDIS_PORT:6379}
       password: ${TEST_REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 jwt:
   secret: test-secret-key-for-jwt-signing-minimum-32chars

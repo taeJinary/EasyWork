@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.dto.response.TaskAttachmentResponse;
 import com.taskflow.backend.domain.attachment.entity.TaskAttachment;
+import com.taskflow.backend.domain.attachment.event.TaskAttachmentDeletedEvent;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentRepository;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
@@ -22,7 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +52,9 @@ class TaskAttachmentServiceTest {
 
     @Mock
     private TaskAttachmentStorage taskAttachmentStorage;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private TaskAttachmentService taskAttachmentService;
@@ -130,6 +136,37 @@ class TaskAttachmentServiceTest {
     }
 
     @Test
+    void uploadAttachmentDeletesStoredFileWhenRepositorySaveFails() {
+        User uploader = activeUser(1L, "uploader@example.com", "uploader");
+        Project project = project(10L, uploader);
+        Task task = task(100L, project, uploader);
+        ProjectMember membership = membership(1000L, project, uploader, ProjectRole.MEMBER);
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "report.pdf",
+                "application/pdf",
+                "hello".getBytes()
+        );
+        TaskAttachmentStorage.StoredAttachment storedAttachment = new TaskAttachmentStorage.StoredAttachment(
+                "task-attachments/10/abc-report.pdf",
+                "abc-report.pdf",
+                "application/pdf",
+                5L
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskAttachmentStorage.store(eq(10L), any(MultipartFile.class))).willReturn(storedAttachment);
+        given(taskAttachmentRepository.save(any(TaskAttachment.class))).willThrow(new RuntimeException("db fail"));
+
+        assertThatThrownBy(() -> taskAttachmentService.uploadAttachment(1L, 100L, multipartFile))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("db fail");
+
+        verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
+    }
+
+    @Test
     void getTaskAttachmentsReturnsLatestFirst() {
         User uploader = activeUser(1L, "uploader@example.com", "uploader");
         Project project = project(10L, uploader);
@@ -172,7 +209,7 @@ class TaskAttachmentServiceTest {
     }
 
     @Test
-    void deleteAttachmentDeletesWhenUploader() {
+    void deleteAttachmentPublishesDeleteEventWhenUploader() {
         User uploader = activeUser(1L, "uploader@example.com", "uploader");
         Project project = project(10L, uploader);
         Task task = task(100L, project, uploader);
@@ -193,8 +230,14 @@ class TaskAttachmentServiceTest {
 
         taskAttachmentService.deleteAttachment(1L, 2000L);
 
-        verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
         verify(taskAttachmentRepository).delete(attachment);
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(TaskAttachmentDeletedEvent.class);
+        TaskAttachmentDeletedEvent deletedEvent = (TaskAttachmentDeletedEvent) eventCaptor.getValue();
+        assertThat(deletedEvent.attachmentId()).isEqualTo(2000L);
+        assertThat(deletedEvent.storagePath()).isEqualTo("task-attachments/10/abc-report.pdf");
+        verify(taskAttachmentStorage, never()).delete(any());
     }
 
     @Test
