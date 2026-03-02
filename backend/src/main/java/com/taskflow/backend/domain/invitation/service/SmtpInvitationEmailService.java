@@ -10,8 +10,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -80,22 +80,15 @@ public class SmtpInvitationEmailService implements InvitationEmailService {
     private String buildInvitationLink(Long invitationId) {
         if (acceptBaseUrl.contains("{invitationId}")) {
             return UriComponentsBuilder.fromUriString(acceptBaseUrl)
-                    .buildAndExpand(invitationId)
+                    .buildAndExpand(Map.of("invitationId", invitationId))
+                    .encode()
                     .toUriString();
         }
 
-        UriComponents base = UriComponentsBuilder.fromUriString(acceptBaseUrl).build(true);
-
-        UriComponentsBuilder linkBuilder = UriComponentsBuilder.newInstance()
-                .scheme(base.getScheme())
-                .userInfo(base.getUserInfo())
-                .host(base.getHost())
-                .port(base.getPort())
-                .path(base.getPath())
+        return UriComponentsBuilder.fromUriString(acceptBaseUrl)
                 .pathSegment(String.valueOf(invitationId))
-                .queryParams(base.getQueryParams())
-                .fragment(base.getFragment());
-
-        return linkBuilder.build(true).toUriString();
+                .build()
+                .encode()
+                .toUriString();
     }
 }
