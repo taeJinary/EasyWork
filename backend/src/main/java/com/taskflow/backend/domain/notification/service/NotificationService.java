@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.notification.dto.response.NotificationCreatedEventPayload;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListItemResponse;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListResponse;
@@ -9,6 +10,7 @@ import com.taskflow.backend.domain.notification.dto.response.NotificationReadRes
 import com.taskflow.backend.domain.notification.dto.response.NotificationUnreadCountResponse;
 import com.taskflow.backend.domain.notification.entity.Notification;
 import com.taskflow.backend.domain.notification.repository.NotificationRepository;
+import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.global.common.enums.NotificationReferenceType;
@@ -17,7 +19,9 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.websocket.dto.WebSocketEventMessage;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -142,6 +146,54 @@ public class NotificationService {
                 invitation.getProject().getId(),
                 invitation.getInvitee()
         );
+    }
+
+    @Transactional
+    public void createTaskAssignedNotification(Task task, User actor) {
+        User assignee = task.getAssignee();
+        if (assignee == null || assignee.getId().equals(actor.getId())) {
+            return;
+        }
+
+        Notification notification = Notification.create(
+                assignee,
+                NotificationType.TASK_ASSIGNED,
+                "Task assigned",
+                actor.getNickname() + " assigned task: " + task.getTitle(),
+                NotificationReferenceType.TASK,
+                task.getId()
+        );
+        Notification saved = notificationRepository.save(notification);
+        publishNotificationCreatedEvent(saved, task.getProject().getId(), actor);
+    }
+
+    @Transactional
+    public void createCommentCreatedNotification(Comment comment, User actor) {
+        Task task = comment.getTask();
+        Map<Long, User> recipients = new LinkedHashMap<>();
+
+        addRecipient(recipients, task.getCreator(), actor);
+        addRecipient(recipients, task.getAssignee(), actor);
+
+        for (User recipient : recipients.values()) {
+            Notification notification = Notification.create(
+                    recipient,
+                    NotificationType.COMMENT_CREATED,
+                    "Comment added",
+                    actor.getNickname() + " commented on task: " + task.getTitle(),
+                    NotificationReferenceType.COMMENT,
+                    comment.getId()
+            );
+            Notification saved = notificationRepository.save(notification);
+            publishNotificationCreatedEvent(saved, task.getProject().getId(), actor);
+        }
+    }
+
+    private void addRecipient(Map<Long, User> recipients, User candidate, User actor) {
+        if (candidate == null || candidate.getId().equals(actor.getId())) {
+            return;
+        }
+        recipients.putIfAbsent(candidate.getId(), candidate);
     }
 
     private void publishNotificationCreatedEvent(Notification notification, Long projectId, User actor) {

@@ -6,6 +6,7 @@ import com.taskflow.backend.domain.comment.dto.response.CommentListResponse;
 import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
 import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.comment.repository.CommentRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.task.entity.Task;
@@ -32,6 +33,7 @@ public class CommentService {
     private final TaskRepository taskRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final CommentRepository commentRepository;
+    private final NotificationService notificationService;
     private final ProjectBoardEventPublisher projectBoardEventPublisher;
 
     @Transactional
@@ -46,6 +48,7 @@ public class CommentService {
                 request.content()
         ));
         task.getProject().touch(LocalDateTime.now());
+        notificationService.createCommentCreatedNotification(saved, membership.getUser());
         projectBoardEventPublisher.publishCommentCreated(saved, membership.getUser());
         return toCommentResponse(saved, userId);
     }

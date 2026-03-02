@@ -6,6 +6,7 @@ import com.taskflow.backend.domain.comment.dto.response.CommentListResponse;
 import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
 import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.comment.repository.CommentRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
@@ -50,6 +51,9 @@ class CommentServiceTest {
 
     @Mock
     private CommentRepository commentRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private ProjectBoardEventPublisher projectBoardEventPublisher;
@@ -104,6 +108,7 @@ class CommentServiceTest {
         assertThat(response.content()).isEqualTo("로그인 실패");
         assertThat(response.editable()).isTrue();
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(notificationService).createCommentCreatedNotification(savedComment, actor);
         verify(projectBoardEventPublisher).publishCommentCreated(savedComment, actor);
     }
 

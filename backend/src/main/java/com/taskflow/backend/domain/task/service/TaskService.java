@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.task.service;
 
 import com.taskflow.backend.domain.label.entity.Label;
 import com.taskflow.backend.domain.label.repository.LabelRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
@@ -51,6 +52,7 @@ public class TaskService {
     private final TaskLabelRepository taskLabelRepository;
     private final LabelRepository labelRepository;
     private final TaskStatusHistoryRepository taskStatusHistoryRepository;
+    private final NotificationService notificationService;
     private final ProjectBoardEventPublisher projectBoardEventPublisher;
 
     @Transactional
@@ -77,6 +79,7 @@ public class TaskService {
 
         syncTaskLabels(savedTask, projectId, request.labelIds());
         project.touch(LocalDateTime.now());
+        notificationService.createTaskAssignedNotification(savedTask, creator);
         projectBoardEventPublisher.publishTaskCreated(savedTask, creator);
 
         return toTaskSummaryResponse(savedTask);
@@ -91,6 +94,7 @@ public class TaskService {
         ProjectMember actorMembership = findMembership(projectId, userId);
         validateTaskVersion(task, request.version());
 
+        User previousAssignee = task.getAssignee();
         User assignee = resolveAssignee(projectId, request.assigneeUserId());
         task.update(
                 request.title(),
@@ -102,6 +106,9 @@ public class TaskService {
 
         replaceTaskLabels(task, projectId, request.labelIds());
         task.getProject().touch(LocalDateTime.now());
+        if (isAssigneeChanged(previousAssignee, assignee)) {
+            notificationService.createTaskAssignedNotification(task, actorMembership.getUser());
+        }
         projectBoardEventPublisher.publishTaskUpdated(task, actorMembership.getUser());
 
         return getTaskDetail(userId, taskId);
@@ -337,6 +344,12 @@ public class TaskService {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, assigneeUserId)
                 .map(ProjectMember::getUser)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private boolean isAssigneeChanged(User previousAssignee, User currentAssignee) {
+        Long previousAssigneeId = previousAssignee == null ? null : previousAssignee.getId();
+        Long currentAssigneeId = currentAssignee == null ? null : currentAssignee.getId();
+        return !java.util.Objects.equals(previousAssigneeId, currentAssigneeId);
     }
 
     private void syncTaskLabels(Task task, Long projectId, List<Long> labelIds) {
