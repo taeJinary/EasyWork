@@ -9,6 +9,7 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.infra.redis.RedisService;
 import java.security.Principal;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,10 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
+    private static final String USER_DESTINATION_PREFIX = "/user/";
+    private static final Set<String> ALLOWED_USER_DESTINATIONS = Set.of(
+            "/user/queue/notifications"
+    );
     private static final Pattern PROJECT_BOARD_DESTINATION = Pattern.compile("^/topic/projects/(\\d+)/board$");
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -96,6 +101,14 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             return;
         }
 
+        if (destination.startsWith(USER_DESTINATION_PREFIX)) {
+            if (!ALLOWED_USER_DESTINATIONS.contains(destination)) {
+                throw new BusinessException(ErrorCode.FORBIDDEN);
+            }
+            extractUserId(principal);
+            return;
+        }
+
         Matcher matcher = PROJECT_BOARD_DESTINATION.matcher(destination);
         if (matcher.matches()) {
             Long userId = extractUserId(principal);
@@ -104,7 +117,10 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             if (!isMember) {
                 throw new BusinessException(ErrorCode.FORBIDDEN);
             }
+            return;
         }
+
+        throw new BusinessException(ErrorCode.FORBIDDEN);
     }
 
     private Long extractUserId(Principal principal) {

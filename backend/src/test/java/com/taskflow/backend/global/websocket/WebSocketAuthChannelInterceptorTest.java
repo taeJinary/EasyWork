@@ -23,6 +23,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -118,11 +119,7 @@ class WebSocketAuthChannelInterceptorTest {
 
     @Test
     void subscribeProjectTopicThrowsForbiddenWhenNotProjectMember() {
-        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
-        accessor.setDestination("/topic/projects/10/board");
-        accessor.setUser(authPrincipal(1L, "user@example.com"));
-        accessor.setLeaveMutable(true);
-        Message<?> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+        Message<?> message = subscribeMessage("/topic/projects/10/board", authPrincipal(1L, "user@example.com"));
 
         given(projectMemberRepository.existsByProjectIdAndUserId(10L, 1L)).willReturn(false);
 
@@ -132,11 +129,72 @@ class WebSocketAuthChannelInterceptorTest {
                 .isEqualTo(ErrorCode.FORBIDDEN);
     }
 
+    @Test
+    void subscribePersonalNotificationQueueIsAllowedForAuthenticatedUser() {
+        Authentication principal = authPrincipal(1L, "user@example.com");
+        Message<?> message = subscribeMessage("/user/queue/notifications", principal);
+
+        Message<?> result = interceptor.preSend(message, messageChannel);
+
+        assertThat(result).isSameAs(message);
+    }
+
+    @Test
+    void subscribePersonalQueueWithUserScopedPathThrowsForbidden() {
+        Message<?> message = subscribeMessage("/user/2/queue/notifications", authPrincipal(1L, "user@example.com"));
+
+        assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void subscribeUnknownDestinationThrowsForbidden() {
+        Message<?> message = subscribeMessage("/topic/notifications/global", authPrincipal(1L, "user@example.com"));
+
+        assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void subscribePersonalNotificationQueueWithInvalidPrincipalThrowsUnauthorized() {
+        UsernamePasswordAuthenticationToken invalidPrincipal =
+                new UsernamePasswordAuthenticationToken("user@example.com", null);
+        Message<?> message = subscribeMessage("/user/queue/notifications", invalidPrincipal);
+
+        assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+    }
+
+    @Test
+    void subscribeProjectTopicAllowsProjectMember() {
+        Message<?> message = subscribeMessage("/topic/projects/10/board", authPrincipal(1L, "user@example.com"));
+
+        given(projectMemberRepository.existsByProjectIdAndUserId(10L, 1L)).willReturn(true);
+
+        Message<?> result = interceptor.preSend(message, messageChannel);
+
+        assertThat(result).isSameAs(message);
+    }
+
     private Message<?> connectMessage(String authorizationHeader) {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
         if (authorizationHeader != null) {
             accessor.addNativeHeader("Authorization", authorizationHeader);
         }
+        accessor.setLeaveMutable(true);
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
+    private Message<?> subscribeMessage(String destination, Authentication principal) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setDestination(destination);
+        accessor.setUser(principal);
         accessor.setLeaveMutable(true);
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }
