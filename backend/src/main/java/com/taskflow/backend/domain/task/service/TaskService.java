@@ -27,6 +27,7 @@ import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +51,7 @@ public class TaskService {
     private final TaskLabelRepository taskLabelRepository;
     private final LabelRepository labelRepository;
     private final TaskStatusHistoryRepository taskStatusHistoryRepository;
+    private final ProjectBoardEventPublisher projectBoardEventPublisher;
 
     @Transactional
     public TaskSummaryResponse createTask(Long userId, Long projectId, CreateTaskRequest request) {
@@ -75,6 +77,7 @@ public class TaskService {
 
         syncTaskLabels(savedTask, projectId, request.labelIds());
         project.touch(LocalDateTime.now());
+        projectBoardEventPublisher.publishTaskCreated(savedTask, creator);
 
         return toTaskSummaryResponse(savedTask);
     }
@@ -85,7 +88,7 @@ public class TaskService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
 
         Long projectId = task.getProject().getId();
-        findMembership(projectId, userId);
+        ProjectMember actorMembership = findMembership(projectId, userId);
         validateTaskVersion(task, request.version());
 
         User assignee = resolveAssignee(projectId, request.assigneeUserId());
@@ -99,6 +102,7 @@ public class TaskService {
 
         replaceTaskLabels(task, projectId, request.labelIds());
         task.getProject().touch(LocalDateTime.now());
+        projectBoardEventPublisher.publishTaskUpdated(task, actorMembership.getUser());
 
         return getTaskDetail(userId, taskId);
     }
@@ -119,6 +123,7 @@ public class TaskService {
 
         task.delete(LocalDateTime.now());
         task.getProject().touch(LocalDateTime.now());
+        projectBoardEventPublisher.publishTaskDeleted(task, membership.getUser());
     }
 
     @Transactional
@@ -148,6 +153,7 @@ public class TaskService {
 
         task.getProject().touch(LocalDateTime.now());
         taskRepository.flush();
+        projectBoardEventPublisher.publishTaskMoved(task, actorMembership.getUser(), fromStatus, toStatus);
         return toTaskMoveResponse(task);
     }
 

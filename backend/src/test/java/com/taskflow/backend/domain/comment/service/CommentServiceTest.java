@@ -19,6 +19,7 @@ import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +50,9 @@ class CommentServiceTest {
 
     @Mock
     private CommentRepository commentRepository;
+
+    @Mock
+    private ProjectBoardEventPublisher projectBoardEventPublisher;
 
     @InjectMocks
     private CommentService commentService;
@@ -100,6 +104,7 @@ class CommentServiceTest {
         assertThat(response.content()).isEqualTo("로그인 실패");
         assertThat(response.editable()).isTrue();
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
+        verify(projectBoardEventPublisher).publishCommentCreated(savedComment, actor);
     }
 
     @Test
