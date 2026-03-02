@@ -30,6 +30,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
+    private static final String PERSONAL_NOTIFICATION_DESTINATION = "/user/queue/notifications";
+    private static final String USER_DESTINATION_PREFIX = "/user/";
     private static final Pattern PROJECT_BOARD_DESTINATION = Pattern.compile("^/topic/projects/(\\d+)/board$");
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -94,6 +96,13 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         String destination = accessor.getDestination();
         if (destination == null) {
             return;
+        }
+
+        if (PERSONAL_NOTIFICATION_DESTINATION.equals(destination)) {
+            return;
+        }
+        if (destination.startsWith(USER_DESTINATION_PREFIX)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
         Matcher matcher = PROJECT_BOARD_DESTINATION.matcher(destination);
