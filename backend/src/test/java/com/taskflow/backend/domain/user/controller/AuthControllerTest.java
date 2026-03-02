@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -143,5 +144,28 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("로그아웃되었습니다."));
 
         then(authService).should().logout(eq("access-token"), eq("refresh-token"));
+    }
+
+    @Test
+    void logoutReturnsUnauthorizedWhenAuthorizationHeaderIsMissing() throws Exception {
+        mockMvc.perform(post("/auth/logout")
+                        .cookie(new Cookie("rt_custom", "refresh-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+
+        then(authService).should(never()).logout(any(), any());
+    }
+
+    @Test
+    void logoutReturnsUnauthorizedWhenAuthorizationHeaderIsInvalid() throws Exception {
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Basic access-token")
+                        .cookie(new Cookie("rt_custom", "refresh-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+
+        then(authService).should(never()).logout(any(), any());
     }
 }

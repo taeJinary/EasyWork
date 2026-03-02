@@ -21,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -113,10 +114,14 @@ public class AuthController {
     }
 
     private String resolveAccessToken(String authorizationHeader) {
-        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
-            return authorizationHeader.substring(BEARER_PREFIX.length());
+        if (!StringUtils.hasText(authorizationHeader) || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return null;
+        String accessToken = authorizationHeader.substring(BEARER_PREFIX.length());
+        if (!StringUtils.hasText(accessToken)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        return accessToken;
     }
 
     private String resolveRefreshToken(HttpServletRequest request) {
