@@ -46,6 +46,24 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("org.hibernate.type.descriptor.sql.BasicBinder: TRACE");
     }
 
+    @Test
+    void applicationYmlDefinesMultipartFileSizeLimitsForAttachments() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("multipart:");
+        assertThat(content).contains("max-file-size: 10MB");
+        assertThat(content).contains("max-request-size: 10MB");
+    }
+
+    @Test
+    void applicationTestYmlDefinesMultipartFileSizeLimitsForAttachments() throws IOException {
+        String content = read("src/main/resources/application-test.yml");
+
+        assertThat(content).contains("multipart:");
+        assertThat(content).contains("max-file-size: 10MB");
+        assertThat(content).contains("max-request-size: 10MB");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

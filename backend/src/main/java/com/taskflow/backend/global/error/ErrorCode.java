@@ -47,6 +47,7 @@ public enum ErrorCode {
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부파일을 찾을 수 없습니다."),
     // Notification
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Notification not found."),
     // Common
