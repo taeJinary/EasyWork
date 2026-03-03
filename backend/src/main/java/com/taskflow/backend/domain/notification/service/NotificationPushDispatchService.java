@@ -23,9 +23,10 @@ public class NotificationPushDispatchService {
     private final NotificationPushTokenRepository notificationPushTokenRepository;
     private final NotificationPushSender notificationPushSender;
 
-    public void send(Notification notification) {
+    public boolean send(Notification notification) {
         List<NotificationPushToken> tokens =
                 notificationPushTokenRepository.findAllByUserIdAndIsActiveTrue(notification.getUser().getId());
+        boolean hasTransientFailure = false;
 
         for (NotificationPushToken token : tokens) {
             try {
@@ -46,6 +47,7 @@ public class NotificationPushDispatchService {
                         exception.getMessage()
                 );
             } catch (Exception exception) {
+                hasTransientFailure = true;
                 log.warn(
                         "Failed to send push notification. notificationId={}, userId={}, tokenHash={}",
                         notification.getId(),
@@ -55,6 +57,8 @@ public class NotificationPushDispatchService {
                 );
             }
         }
+
+        return hasTransientFailure;
     }
 
     String tokenHash(String token) {

@@ -69,6 +69,9 @@ class NotificationServiceTest {
     @Mock
     private NotificationPushDispatchService notificationPushDispatchService;
 
+    @Mock
+    private NotificationPushRetryService notificationPushRetryService;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -239,6 +242,39 @@ class NotificationServiceTest {
         assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.INVITATION);
         assertThat(payload.referenceId()).isEqualTo(44L);
         verify(notificationPushDispatchService).send(any(Notification.class));
+    }
+
+    @Test
+    void createInvitationNotificationEnqueuesRetryWhenPushDispatchHasTransientFailure() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User invitee = activeUser(2L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                owner,
+                invitee,
+                ProjectRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+        ReflectionTestUtils.setField(invitation, "id", 55L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 3, 3, 9, 0);
+        given(notificationRepository.save(any(Notification.class))).willAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", 905L);
+            ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+            return notification;
+        });
+        given(notificationPushDispatchService.send(any(Notification.class))).willReturn(true);
+
+        notificationService.createInvitationNotification(invitation);
+
+        verify(notificationPushRetryService).enqueueFailure(any(Notification.class), eq("Transient push delivery failure"));
     }
 
     @Test
