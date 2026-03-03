@@ -21,6 +21,9 @@ spring:
       host: ${TEST_REDIS_HOST:localhost}
       port: ${TEST_REDIS_PORT:6379}
       password: ${TEST_REDIS_PASSWORD:}
+  task:
+    scheduling:
+      enabled: false
   servlet:
     multipart:
       max-file-size: 10MB
@@ -101,6 +104,13 @@ app:
       fcm:
         endpoint: https://fcm.googleapis.com/fcm/send
         server-key: test-fcm-server-key
+  retry-queue:
+    maintenance:
+      enabled: true
+      interval-ms: 300000
+      retention-days: 7
+      pending-warn-threshold: 100
+      delete-batch-size: 200
 
 logging:
   level:

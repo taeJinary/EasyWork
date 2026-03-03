@@ -54,6 +54,21 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
     }
 
     @Test
+    void oauthCodeLoginWithNaverRequiresState() throws Exception {
+        mockMvc.perform(post("/auth/oauth/code/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "NAVER",
+                                  "authorizationCode": "valid-auth-code"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("OAUTH_TOKEN_INVALID"));
+    }
+
+    @Test
     void logoutEndpointRequiresAuthentication() throws Exception {
         mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isUnauthorized());
