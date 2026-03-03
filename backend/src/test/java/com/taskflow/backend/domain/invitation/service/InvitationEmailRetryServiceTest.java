@@ -1,11 +1,19 @@
 package com.taskflow.backend.domain.invitation.service;
 
 import com.taskflow.backend.domain.invitation.entity.InvitationEmailRetryJob;
+import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
 import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import com.taskflow.backend.domain.invitation.repository.InvitationEmailRetryJobRepository;
+import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
+import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.common.enums.ProjectRole;
+import com.taskflow.backend.global.common.enums.Role;
+import com.taskflow.backend.global.common.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,6 +37,9 @@ class InvitationEmailRetryServiceTest {
 
     @Mock
     private InvitationEmailService invitationEmailService;
+
+    @Mock
+    private ProjectInvitationRepository projectInvitationRepository;
 
     @InjectMocks
     private InvitationEmailRetryService invitationEmailRetryService;
@@ -81,6 +92,8 @@ class InvitationEmailRetryServiceTest {
                 any(LocalDateTime.class),
                 any(Pageable.class)
         )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L))
+                .willReturn(Optional.of(invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().plusDays(1))));
 
         invitationEmailRetryService.retryPendingEmails(50);
 
@@ -105,6 +118,8 @@ class InvitationEmailRetryServiceTest {
                 any(LocalDateTime.class),
                 any(Pageable.class)
         )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L))
+                .willReturn(Optional.of(invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().plusDays(1))));
         willThrow(new RuntimeException("temporary smtp failure"))
                 .given(invitationEmailService)
                 .sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
@@ -118,6 +133,58 @@ class InvitationEmailRetryServiceTest {
         verify(invitationEmailRetryJobRepository).save(job);
     }
 
+    @Test
+    void retryPendingEmailsSkipsWhenInvitationAlreadyProcessed() {
+        InvitationEmailRetryJob job = InvitationEmailRetryJob.createPending(
+                10L,
+                "invitee@example.com",
+                "TaskFlow",
+                "owner",
+                ProjectRole.MEMBER,
+                LocalDateTime.now().minusMinutes(1),
+                "smtp down"
+        );
+        ProjectInvitation invitation = invitation(10L, InvitationStatus.ACCEPTED, LocalDateTime.now().plusDays(1));
+
+        given(invitationEmailRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        invitationEmailRetryService.retryPendingEmails(50);
+
+        assertThat(job.getCompletedAt()).isNotNull();
+        verify(invitationEmailService, never()).sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
+        verify(invitationEmailRetryJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingEmailsSkipsWhenInvitationExpired() {
+        InvitationEmailRetryJob job = InvitationEmailRetryJob.createPending(
+                10L,
+                "invitee@example.com",
+                "TaskFlow",
+                "owner",
+                ProjectRole.MEMBER,
+                LocalDateTime.now().minusMinutes(1),
+                "smtp down"
+        );
+        ProjectInvitation invitation = invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().minusMinutes(5));
+
+        given(invitationEmailRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L)).willReturn(Optional.of(invitation));
+
+        invitationEmailRetryService.retryPendingEmails(50);
+
+        assertThat(job.getCompletedAt()).isNotNull();
+        verify(invitationEmailService, never()).sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
+        verify(invitationEmailRetryJobRepository).save(job);
+    }
+
     private InvitationCreatedEvent invitationCreatedEvent(Long invitationId) {
         return new InvitationCreatedEvent(
                 invitationId,
@@ -126,5 +193,40 @@ class InvitationEmailRetryServiceTest {
                 "owner",
                 ProjectRole.MEMBER
         );
+    }
+
+    private ProjectInvitation invitation(Long invitationId, InvitationStatus status, LocalDateTime expiresAt) {
+        User inviter = activeUser(1L, "owner@example.com", "owner");
+        User invitee = activeUser(2L, "invitee@example.com", "invitee");
+        Project project = Project.builder()
+                .id(100L)
+                .owner(inviter)
+                .name("TaskFlow")
+                .description("project")
+                .build();
+
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                inviter,
+                invitee,
+                ProjectRole.MEMBER,
+                status,
+                expiresAt
+        );
+
+        org.springframework.test.util.ReflectionTestUtils.setField(invitation, "id", invitationId);
+        return invitation;
+    }
+
+    private User activeUser(Long id, String email, String nickname) {
+        return User.builder()
+                .id(id)
+                .email(email)
+                .password("encoded")
+                .nickname(nickname)
+                .provider("LOCAL")
+                .role(Role.ROLE_USER)
+                .status(UserStatus.ACTIVE)
+                .build();
     }
 }

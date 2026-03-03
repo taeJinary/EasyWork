@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.invitation.service;
 import com.taskflow.backend.domain.invitation.entity.InvitationEmailRetryJob;
 import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import com.taskflow.backend.domain.invitation.repository.InvitationEmailRetryJobRepository;
+import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class InvitationEmailRetryService {
     private static final int DEFAULT_BATCH_SIZE = 50;
 
     private final InvitationEmailRetryJobRepository invitationEmailRetryJobRepository;
+    private final ProjectInvitationRepository projectInvitationRepository;
     private final InvitationEmailService invitationEmailService;
 
     @Value("${app.invitation.email.retry.delay-seconds:300}")
@@ -59,6 +61,12 @@ public class InvitationEmailRetryService {
     }
 
     private void processJob(InvitationEmailRetryJob job) {
+        if (shouldSkipRetry(job)) {
+            job.markCompleted(LocalDateTime.now());
+            invitationEmailRetryJobRepository.save(job);
+            return;
+        }
+
         InvitationCreatedEvent event = new InvitationCreatedEvent(
                 job.getInvitationId(),
                 job.getInviteeEmail(),
@@ -85,5 +93,11 @@ public class InvitationEmailRetryService {
                     exception
             );
         }
+    }
+
+    private boolean shouldSkipRetry(InvitationEmailRetryJob job) {
+        return projectInvitationRepository.findById(job.getInvitationId())
+                .map(invitation -> !invitation.isPending() || invitation.getExpiresAt().isBefore(LocalDateTime.now()))
+                .orElse(true);
     }
 }
