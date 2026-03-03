@@ -16,6 +16,9 @@ import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.workspace.entity.Workspace;
+import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberRepository;
+import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
 import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.TaskStatus;
@@ -38,13 +41,18 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
+    private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Transactional
     public ProjectSummaryResponse createProject(Long userId, CreateProjectRequest request) {
         User owner = findActiveUser(userId);
+        Workspace workspace = findWorkspace(request.workspaceId());
+        ensureWorkspaceMember(workspace.getId(), userId);
 
         Project project = Project.builder()
                 .owner(owner)
+                .workspace(workspace)
                 .name(request.name())
                 .description(request.description())
                 .build();
@@ -301,6 +309,17 @@ public class ProjectService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         return user;
+    }
+
+    private Workspace findWorkspace(Long workspaceId) {
+        return workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    private void ensureWorkspaceMember(Long workspaceId, Long userId) {
+        if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId).isEmpty()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
     }
 }
 

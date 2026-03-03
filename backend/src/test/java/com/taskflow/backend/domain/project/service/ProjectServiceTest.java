@@ -13,6 +13,10 @@ import com.taskflow.backend.domain.invitation.repository.ProjectInvitationReposi
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
+import com.taskflow.backend.domain.workspace.entity.Workspace;
+import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
+import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberRepository;
+import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
 import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
@@ -20,6 +24,7 @@ import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.common.enums.WorkspaceRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
@@ -58,21 +63,44 @@ class ProjectServiceTest {
     @Mock
     private ProjectInvitationRepository projectInvitationRepository;
 
+    @Mock
+    private WorkspaceRepository workspaceRepository;
+
+    @Mock
+    private WorkspaceMemberRepository workspaceMemberRepository;
+
     @InjectMocks
     private ProjectService projectService;
 
     @Test
     void createProjectCreatesOwnerMembership() {
-        User owner = activeUser(1L, "owner@example.com", "오너");
-        CreateProjectRequest request = new CreateProjectRequest("TaskFlow", "협업용 태스크 관리 프로젝트");
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        Workspace workspace = Workspace.builder()
+                .id(20L)
+                .owner(owner)
+                .name("Team Workspace")
+                .description("workspace")
+                .build();
+        WorkspaceMember workspaceMembership = WorkspaceMember.builder()
+                .id(200L)
+                .workspace(workspace)
+                .user(owner)
+                .role(WorkspaceRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        CreateProjectRequest request = new CreateProjectRequest(20L, "TaskFlow", "project");
         Project savedProject = Project.builder()
                 .id(10L)
+                .workspace(workspace)
                 .owner(owner)
                 .name("TaskFlow")
-                .description("협업용 태스크 관리 프로젝트")
+                .description("project")
                 .build();
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(20L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(20L, 1L))
+                .willReturn(Optional.of(workspaceMembership));
         given(projectRepository.save(any(Project.class))).willReturn(savedProject);
 
         ProjectSummaryResponse response = projectService.createProject(1L, request);
@@ -81,6 +109,41 @@ class ProjectServiceTest {
         assertThat(response.name()).isEqualTo("TaskFlow");
         assertThat(response.role()).isEqualTo(ProjectRole.OWNER);
         verify(projectMemberRepository).save(any(ProjectMember.class));
+    }
+
+    @Test
+    void createProjectThrowsWhenWorkspaceNotFound() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        CreateProjectRequest request = new CreateProjectRequest(20L, "TaskFlow", "project");
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(20L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectService.createProject(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void createProjectThrowsWhenRequesterIsNotWorkspaceMember() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        Workspace workspace = Workspace.builder()
+                .id(20L)
+                .owner(owner)
+                .name("Team Workspace")
+                .description("workspace")
+                .build();
+        CreateProjectRequest request = new CreateProjectRequest(20L, "TaskFlow", "project");
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(20L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(20L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectService.createProject(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
     }
 
     @Test

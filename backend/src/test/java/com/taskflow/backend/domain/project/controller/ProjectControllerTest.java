@@ -70,7 +70,7 @@ class ProjectControllerTest {
 
     @Test
     void createProjectReturnsCreatedResponse() throws Exception {
-        CreateProjectRequest request = new CreateProjectRequest("TaskFlow", "협업용 태스크 관리 프로젝트");
+        CreateProjectRequest request = new CreateProjectRequest(20L, "TaskFlow", "project");
         ProjectSummaryResponse response = new ProjectSummaryResponse(
                 10L,
                 "TaskFlow",

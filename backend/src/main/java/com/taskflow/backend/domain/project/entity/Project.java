@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.project.entity;
 
 import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.workspace.entity.Workspace;
 import com.taskflow.backend.global.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,6 +34,10 @@ public class Project extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workspace_id")
+    private Workspace workspace;
 
     @Column(nullable = false, length = 50)
     private String name;
