@@ -131,6 +131,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("foreign key (workspace_id) references workspaces(id)");
     }
 
+    @Test
+    void workspaceSoftDeleteMigrationSqlAddsDeletedAtColumn() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_08__add_deleted_at_to_workspaces.sql");
+
+        assertThat(content).contains("alter table workspaces");
+        assertThat(content).contains("add column deleted_at datetime(6) null");
+        assertThat(content).contains("idx_workspaces_deleted_at");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

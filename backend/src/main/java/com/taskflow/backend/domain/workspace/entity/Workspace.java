@@ -41,6 +41,8 @@ public class Workspace extends BaseEntity {
     @Column(length = 500)
     private String description;
 
+    private LocalDateTime deletedAt;
+
     public static Workspace create(User owner, String name, String description) {
         return Workspace.builder()
                 .owner(owner)
@@ -57,5 +59,14 @@ public class Workspace extends BaseEntity {
 
     public void touch(LocalDateTime now) {
         touchUpdatedAt(now);
+    }
+
+    public void softDelete(LocalDateTime now) {
+        this.deletedAt = now;
+        touchUpdatedAt(now);
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }

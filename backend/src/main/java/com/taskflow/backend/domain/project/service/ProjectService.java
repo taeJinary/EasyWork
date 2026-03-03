@@ -312,7 +312,7 @@ public class ProjectService {
     }
 
     private Workspace findWorkspace(Long workspaceId) {
-        return workspaceRepository.findById(workspaceId)
+        return workspaceRepository.findByIdAndDeletedAtIsNull(workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
