@@ -21,6 +21,9 @@ spring:
       host: ${TEST_REDIS_HOST:localhost}
       port: ${TEST_REDIS_PORT:6379}
       password: ${TEST_REDIS_PASSWORD:}
+  task:
+    scheduling:
+      enabled: false
   servlet:
     multipart:
       max-file-size: 10MB

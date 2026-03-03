@@ -41,7 +41,7 @@ public class RetryQueueMaintenanceService {
         long attachmentPending = taskAttachmentCleanupJobRepository.countByCompletedAtIsNull();
         long totalPending = invitationPending + notificationPending + attachmentPending;
 
-        if (totalPending >= pendingWarnThreshold) {
+        if (totalPending > 0L && totalPending >= pendingWarnThreshold) {
             log.warn(
                     "Retry queue backlog is high. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
                     invitationPending,
