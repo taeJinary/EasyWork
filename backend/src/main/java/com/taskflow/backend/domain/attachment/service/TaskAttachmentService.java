@@ -14,11 +14,14 @@ import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -47,6 +50,7 @@ public class TaskAttachmentService {
 
         TaskAttachmentStorage.StoredAttachment storedAttachment =
                 taskAttachmentStorage.store(task.getProject().getId(), file);
+        AtomicBoolean cleanupCompleted = new AtomicBoolean(false);
 
         try {
             String originalFilename = file.getOriginalFilename();
@@ -60,11 +64,12 @@ public class TaskAttachmentService {
                     storedAttachment.sizeBytes()
             );
 
-            TaskAttachment saved = taskAttachmentRepository.save(attachment);
+            TaskAttachment saved = taskAttachmentRepository.saveAndFlush(attachment);
+            registerRollbackCleanup(storedAttachment.storagePath(), cleanupCompleted);
             task.getProject().touch(LocalDateTime.now());
             return toResponse(saved);
         } catch (RuntimeException exception) {
-            cleanupStoredFile(storedAttachment.storagePath());
+            cleanupStoredFileIfNeeded(storedAttachment.storagePath(), cleanupCompleted);
             throw exception;
         }
     }
@@ -153,6 +158,27 @@ public class TaskAttachmentService {
             taskAttachmentStorage.delete(storagePath);
         } catch (Exception exception) {
             log.warn("Failed to cleanup stored attachment file. storagePath={}", storagePath, exception);
+        }
+    }
+
+    private void registerRollbackCleanup(String storagePath, AtomicBoolean cleanupCompleted) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    cleanupStoredFileIfNeeded(storagePath, cleanupCompleted);
+                }
+            }
+        });
+    }
+
+    private void cleanupStoredFileIfNeeded(String storagePath, AtomicBoolean cleanupCompleted) {
+        if (cleanupCompleted.compareAndSet(false, true)) {
+            cleanupStoredFile(storagePath);
         }
     }
 }
