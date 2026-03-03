@@ -99,6 +99,7 @@ class WebSocketAuthChannelInterceptorIntegrationTest extends IntegrationTestCont
 
         StompHeaderAccessor connectAccessor = StompHeaderAccessor.create(StompCommand.CONNECT);
         connectAccessor.setNativeHeader("Authorization", "Bearer " + token);
+        connectAccessor.setLeaveMutable(true);
         Message<byte[]> connectMessage = MessageBuilder.createMessage(new byte[0], connectAccessor.getMessageHeaders());
         Message<?> authenticated = interceptor.preSend(connectMessage, null);
 
