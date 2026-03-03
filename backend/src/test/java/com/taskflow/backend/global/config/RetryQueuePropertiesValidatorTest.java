@@ -13,6 +13,7 @@ class RetryQueuePropertiesValidatorTest {
                 300000L,
                 7L,
                 100L,
+                500,
                 10,
                 10,
                 10
@@ -27,6 +28,7 @@ class RetryQueuePropertiesValidatorTest {
                 0L,
                 7L,
                 100L,
+                500,
                 10,
                 10,
                 10
@@ -43,6 +45,7 @@ class RetryQueuePropertiesValidatorTest {
                 300000L,
                 7L,
                 100L,
+                500,
                 0,
                 10,
                 10
@@ -51,5 +54,22 @@ class RetryQueuePropertiesValidatorTest {
         assertThatThrownBy(validator::validateAtStartup)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("app.invitation.email.retry.max-attempts");
+    }
+
+    @Test
+    void nonPositiveDeleteBatchSizeFailsValidation() {
+        RetryQueuePropertiesValidator validator = new RetryQueuePropertiesValidator(
+                300000L,
+                7L,
+                100L,
+                0,
+                10,
+                10,
+                10
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.retry-queue.maintenance.delete-batch-size");
     }
 }

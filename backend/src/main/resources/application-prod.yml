@@ -17,6 +17,7 @@ app:
       interval-ms: 300000
       retention-days: 14
       pending-warn-threshold: 200
+      delete-batch-size: 1000
 
 logging:
   level:

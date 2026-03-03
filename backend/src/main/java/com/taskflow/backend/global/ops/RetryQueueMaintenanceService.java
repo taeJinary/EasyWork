@@ -29,6 +29,9 @@ public class RetryQueueMaintenanceService {
     @Value("${app.retry-queue.maintenance.pending-warn-threshold:100}")
     private long pendingWarnThreshold;
 
+    @Value("${app.retry-queue.maintenance.delete-batch-size:500}")
+    private int deleteBatchSize;
+
     @Scheduled(fixedDelayString = "${app.retry-queue.maintenance.interval-ms:300000}")
     @Transactional
     public void maintain() {
@@ -63,11 +66,11 @@ public class RetryQueueMaintenanceService {
 
         LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
         long deletedInvitation = invitationEmailRetryJobRepository
-                .deleteCompletedHistoryBefore(cutoff);
+                .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
         long deletedNotification = notificationPushRetryJobRepository
-                .deleteCompletedHistoryBefore(cutoff);
+                .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
         long deletedAttachment = taskAttachmentCleanupJobRepository
-                .deleteCompletedHistoryBefore(cutoff);
+                .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
         long totalDeleted = deletedInvitation + deletedNotification + deletedAttachment;
 
         if (totalDeleted > 0L) {

@@ -21,10 +21,15 @@ public interface InvitationEmailRetryJobRepository extends JpaRepository<Invitat
     );
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("""
-            delete from InvitationEmailRetryJob job
-            where job.completedAt is not null
-              and job.updatedAt < :cutoff
-            """)
-    int deleteCompletedHistoryBefore(@Param("cutoff") LocalDateTime cutoff);
+    @Query(value = """
+            delete from invitation_email_retry_jobs
+            where completed_at is not null
+              and updated_at < :cutoff
+            order by id
+            limit :deleteBatchSize
+            """, nativeQuery = true)
+    int deleteCompletedHistoryBefore(
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("deleteBatchSize") int deleteBatchSize
+    );
 }

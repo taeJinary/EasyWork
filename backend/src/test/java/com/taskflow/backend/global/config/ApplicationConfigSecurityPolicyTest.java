@@ -72,6 +72,7 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("maintenance:");
         assertThat(content).contains("retention-days:");
         assertThat(content).contains("pending-warn-threshold:");
+        assertThat(content).contains("delete-batch-size:");
     }
 
     @Test
@@ -148,6 +149,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("alter table workspaces");
         assertThat(content).contains("add column deleted_at datetime(6) null");
         assertThat(content).contains("idx_workspaces_deleted_at");
+    }
+
+    @Test
+    void retryCleanupIndexMigrationSqlAddsMaintenanceDeleteIndexes() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260304_01__add_retry_cleanup_indexes.sql");
+
+        assertThat(content).contains("idx_attachment_cleanup_jobs_completed_updated_id");
+        assertThat(content).contains("idx_invitation_email_retry_jobs_completed_updated_id");
+        assertThat(content).contains("idx_notification_push_retry_jobs_completed_updated_id");
     }
 
     private String read(String relativePath) throws IOException {

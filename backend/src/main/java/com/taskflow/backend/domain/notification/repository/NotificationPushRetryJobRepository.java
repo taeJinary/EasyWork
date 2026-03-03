@@ -21,10 +21,15 @@ public interface NotificationPushRetryJobRepository extends JpaRepository<Notifi
     );
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("""
-            delete from NotificationPushRetryJob job
-            where job.completedAt is not null
-              and job.updatedAt < :cutoff
-            """)
-    int deleteCompletedHistoryBefore(@Param("cutoff") LocalDateTime cutoff);
+    @Query(value = """
+            delete from notification_push_retry_jobs
+            where completed_at is not null
+              and updated_at < :cutoff
+            order by id
+            limit :deleteBatchSize
+            """, nativeQuery = true)
+    int deleteCompletedHistoryBefore(
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("deleteBatchSize") int deleteBatchSize
+    );
 }
