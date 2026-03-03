@@ -66,6 +66,9 @@ class NotificationServiceTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private NotificationPushDispatchService notificationPushDispatchService;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -235,6 +238,7 @@ class NotificationServiceTest {
         assertThat(payload.type()).isEqualTo(NotificationType.PROJECT_INVITED);
         assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.INVITATION);
         assertThat(payload.referenceId()).isEqualTo(44L);
+        verify(notificationPushDispatchService).send(any(Notification.class));
     }
 
     @Test
@@ -351,6 +355,7 @@ class NotificationServiceTest {
         assertThat(payload.type()).isEqualTo(NotificationType.TASK_ASSIGNED);
         assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.TASK);
         assertThat(payload.referenceId()).isEqualTo(100L);
+        verify(notificationPushDispatchService).send(any(Notification.class));
     }
 
     @Test
@@ -379,6 +384,7 @@ class NotificationServiceTest {
 
         verify(notificationRepository, never()).save(any(Notification.class));
         verify(messagingTemplate, never()).convertAndSendToUser(any(), any(), any());
+        verify(notificationPushDispatchService, never()).send(any(Notification.class));
     }
 
     @Test
@@ -437,6 +443,7 @@ class NotificationServiceTest {
         assertThat(Set.copyOf(userCaptor.getAllValues()))
                 .containsExactlyInAnyOrder("creator@example.com", "assignee@example.com");
         assertThat(eventCaptor.getAllValues()).allMatch(event -> event.type().equals("NOTIFICATION_CREATED"));
+        verify(notificationPushDispatchService, times(2)).send(any(Notification.class));
     }
 
     @Test
@@ -480,6 +487,7 @@ class NotificationServiceTest {
         assertThat(saved.getUser().getId()).isEqualTo(2L);
         assertThat(saved.getType()).isEqualTo(NotificationType.COMMENT_CREATED);
         verify(messagingTemplate).convertAndSendToUser(eq("assignee@example.com"), eq("/queue/notifications"), any());
+        verify(notificationPushDispatchService).send(any(Notification.class));
     }
 
     @Test
@@ -534,6 +542,7 @@ class NotificationServiceTest {
         assertThat(saved.getReferenceType()).isEqualTo(NotificationReferenceType.COMMENT);
         assertThat(saved.getReferenceId()).isEqualTo(557L);
         verify(messagingTemplate).convertAndSendToUser(eq("mentioned@example.com"), eq("/queue/notifications"), any());
+        verify(notificationPushDispatchService).send(any(Notification.class));
     }
 
     @Test

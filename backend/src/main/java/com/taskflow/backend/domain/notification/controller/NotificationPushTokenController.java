@@ -1,0 +1,58 @@
+package com.taskflow.backend.domain.notification.controller;
+
+import com.taskflow.backend.domain.notification.dto.request.RegisterNotificationPushTokenRequest;
+import com.taskflow.backend.domain.notification.dto.response.NotificationPushTokenResponse;
+import com.taskflow.backend.domain.notification.dto.response.NotificationPushTokenUnregisterResponse;
+import com.taskflow.backend.domain.notification.service.NotificationPushTokenService;
+import com.taskflow.backend.global.auth.CustomUserDetails;
+import com.taskflow.backend.global.common.dto.ApiResponse;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/notifications/push-tokens")
+@RequiredArgsConstructor
+public class NotificationPushTokenController {
+
+    private final NotificationPushTokenService notificationPushTokenService;
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<NotificationPushTokenResponse>> registerPushToken(
+            Authentication authentication,
+            @Valid @RequestBody RegisterNotificationPushTokenRequest request
+    ) {
+        NotificationPushTokenResponse response = notificationPushTokenService.registerPushToken(
+                extractUserId(authentication),
+                request.token(),
+                request.platform()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<NotificationPushTokenUnregisterResponse>> unregisterPushToken(
+            Authentication authentication,
+            @RequestParam String token
+    ) {
+        boolean removed = notificationPushTokenService.unregisterPushToken(extractUserId(authentication), token);
+        return ResponseEntity.ok(ApiResponse.success(new NotificationPushTokenUnregisterResponse(removed)));
+    }
+
+    private Long extractUserId(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        return userDetails.getUserId();
+    }
+}

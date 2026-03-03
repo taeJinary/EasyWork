@@ -73,6 +73,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("updated_at");
     }
 
+    @Test
+    void pushTokenMigrationSqlDefinesRequiredTableAndAuditColumns() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_02__create_notification_push_tokens.sql");
+
+        assertThat(content).contains("create table if not exists notification_push_tokens");
+        assertThat(content).contains("created_at");
+        assertThat(content).contains("updated_at");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }
