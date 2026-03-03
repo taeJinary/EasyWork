@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.workspace.controller;
 
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
+import com.taskflow.backend.domain.workspace.dto.request.UpdateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceMemberResponse;
@@ -18,6 +19,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -69,6 +72,26 @@ public class WorkspaceController {
         List<WorkspaceMemberResponse> response =
                 workspaceService.getWorkspaceMembers(extractUserId(authentication), workspaceId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/workspaces/{workspaceId}")
+    public ResponseEntity<ApiResponse<WorkspaceSummaryResponse>> updateWorkspace(
+            Authentication authentication,
+            @PathVariable Long workspaceId,
+            @Valid @RequestBody UpdateWorkspaceRequest request
+    ) {
+        WorkspaceSummaryResponse response =
+                workspaceService.updateWorkspace(extractUserId(authentication), workspaceId, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Workspace updated."));
+    }
+
+    @DeleteMapping("/workspaces/{workspaceId}")
+    public ResponseEntity<ApiResponse<Void>> deleteWorkspace(
+            Authentication authentication,
+            @PathVariable Long workspaceId
+    ) {
+        workspaceService.deleteWorkspace(extractUserId(authentication), workspaceId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Workspace deleted."));
     }
 
     private Long extractUserId(Authentication authentication) {

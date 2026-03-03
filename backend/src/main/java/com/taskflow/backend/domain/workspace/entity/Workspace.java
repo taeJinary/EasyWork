@@ -17,6 +17,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.util.StringUtils;
 
 @Entity
 @Table(name = "workspaces")
@@ -46,6 +47,12 @@ public class Workspace extends BaseEntity {
                 .name(name)
                 .description(description)
                 .build();
+    }
+
+    public void update(String name, String description, LocalDateTime now) {
+        this.name = name.trim();
+        this.description = StringUtils.hasText(description) ? description.trim() : null;
+        touchUpdatedAt(now);
     }
 
     public void touch(LocalDateTime now) {
