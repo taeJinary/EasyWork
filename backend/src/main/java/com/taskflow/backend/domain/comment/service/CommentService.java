@@ -17,6 +17,7 @@ import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,7 +49,8 @@ public class CommentService {
                 request.content()
         ));
         task.getProject().touch(LocalDateTime.now());
-        notificationService.createCommentCreatedNotification(saved, membership.getUser());
+        Set<Long> mentionedUserIds = notificationService.createCommentMentionNotifications(saved, membership.getUser());
+        notificationService.createCommentCreatedNotification(saved, membership.getUser(), mentionedUserIds);
         projectBoardEventPublisher.publishCommentCreated(saved, membership.getUser());
         return toCommentResponse(saved, userId);
     }

@@ -10,6 +10,8 @@ import com.taskflow.backend.domain.notification.dto.response.NotificationReadRes
 import com.taskflow.backend.domain.notification.dto.response.NotificationUnreadCountResponse;
 import com.taskflow.backend.domain.notification.entity.Notification;
 import com.taskflow.backend.domain.notification.repository.NotificationRepository;
+import com.taskflow.backend.domain.project.entity.ProjectMember;
+import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
@@ -19,9 +21,13 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.websocket.dto.WebSocketEventMessage;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +35,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -38,9 +45,11 @@ public class NotificationService {
     private static final int DEFAULT_SIZE = 20;
     private static final String USER_NOTIFICATION_DESTINATION = "/queue/notifications";
     private static final String NOTIFICATION_CREATED_EVENT_TYPE = "NOTIFICATION_CREATED";
+    private static final Pattern MENTION_NICKNAME_PATTERN = Pattern.compile("(?<!\\S)@([\\p{L}\\p{N}._-]{1,20})");
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     public NotificationListResponse getNotifications(Long userId, int page, int size, boolean unreadOnly) {
@@ -169,11 +178,16 @@ public class NotificationService {
 
     @Transactional
     public void createCommentCreatedNotification(Comment comment, User actor) {
+        createCommentCreatedNotification(comment, actor, Set.of());
+    }
+
+    @Transactional
+    public void createCommentCreatedNotification(Comment comment, User actor, Set<Long> excludedRecipientIds) {
         Task task = comment.getTask();
         Map<Long, User> recipients = new LinkedHashMap<>();
 
-        addRecipient(recipients, task.getCreator(), actor);
-        addRecipient(recipients, task.getAssignee(), actor);
+        addRecipient(recipients, task.getCreator(), actor, excludedRecipientIds);
+        addRecipient(recipients, task.getAssignee(), actor, excludedRecipientIds);
 
         for (User recipient : recipients.values()) {
             Notification notification = Notification.create(
@@ -189,11 +203,67 @@ public class NotificationService {
         }
     }
 
-    private void addRecipient(Map<Long, User> recipients, User candidate, User actor) {
+    @Transactional
+    public Set<Long> createCommentMentionNotifications(Comment comment, User actor) {
+        Set<String> mentionedNicknames = extractMentionedNicknames(comment.getContent());
+        if (mentionedNicknames.isEmpty()) {
+            return Set.of();
+        }
+
+        Long projectId = comment.getTask().getProject().getId();
+        Map<String, List<User>> membersByNickname = projectMemberRepository
+                .findAllByProjectIdOrderByJoinedAtAsc(projectId).stream()
+                .map(ProjectMember::getUser)
+                .filter(user -> !user.isDeleted())
+                .collect(java.util.stream.Collectors.groupingBy(User::getNickname));
+
+        Set<Long> notifiedUserIds = new LinkedHashSet<>();
+        for (String nickname : mentionedNicknames) {
+            List<User> members = membersByNickname.getOrDefault(nickname, List.of());
+            for (User recipient : members) {
+                if (recipient.getId().equals(actor.getId())) {
+                    continue;
+                }
+                if (!notifiedUserIds.add(recipient.getId())) {
+                    continue;
+                }
+
+                Notification notification = Notification.create(
+                        recipient,
+                        NotificationType.COMMENT_MENTIONED,
+                        "Mentioned in comment",
+                        actor.getNickname() + " mentioned you in task: " + comment.getTask().getTitle(),
+                        NotificationReferenceType.COMMENT,
+                        comment.getId()
+                );
+                Notification saved = notificationRepository.save(notification);
+                publishNotificationCreatedEvent(saved, projectId, actor);
+            }
+        }
+        return Set.copyOf(notifiedUserIds);
+    }
+
+    private void addRecipient(Map<Long, User> recipients, User candidate, User actor, Set<Long> excludedRecipientIds) {
         if (candidate == null || candidate.getId().equals(actor.getId())) {
             return;
         }
+        if (excludedRecipientIds != null && excludedRecipientIds.contains(candidate.getId())) {
+            return;
+        }
         recipients.putIfAbsent(candidate.getId(), candidate);
+    }
+
+    private Set<String> extractMentionedNicknames(String content) {
+        if (!StringUtils.hasText(content)) {
+            return Set.of();
+        }
+
+        Set<String> mentionedNicknames = new LinkedHashSet<>();
+        Matcher matcher = MENTION_NICKNAME_PATTERN.matcher(content);
+        while (matcher.find()) {
+            mentionedNicknames.add(matcher.group(1));
+        }
+        return Set.copyOf(mentionedNicknames);
     }
 
     private void publishNotificationCreatedEvent(Notification notification, Long projectId, User actor) {
