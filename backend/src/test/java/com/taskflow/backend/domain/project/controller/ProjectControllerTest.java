@@ -112,7 +112,7 @@ class ProjectControllerTest {
                 true,
                 true
         );
-        given(projectService.getMyProjects(1L, 0, 20)).willReturn(response);
+        given(projectService.getMyProjects(1L, 0, 20, null, null)).willReturn(response);
 
         mockMvc.perform(get("/projects?page=0&size=20")
                         .principal(principalAuth()))
@@ -122,6 +122,30 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.data.content[0].role").value("OWNER"))
                 .andExpect(jsonPath("$.data.page").value(0))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
+
+        then(projectService).should().getMyProjects(1L, 0, 20, null, null);
+    }
+
+    @Test
+    void getMyProjectsPassesKeywordAndRoleFilter() throws Exception {
+        ProjectListResponse response = new ProjectListResponse(
+                List.of(),
+                0,
+                20,
+                0L,
+                0,
+                true,
+                true
+        );
+        given(projectService.getMyProjects(1L, 0, 20, "task", ProjectRole.OWNER)).willReturn(response);
+
+        mockMvc.perform(get("/projects?page=0&size=20&keyword=task&role=OWNER")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content").isArray());
+
+        then(projectService).should().getMyProjects(1L, 0, 20, "task", ProjectRole.OWNER);
     }
 
     @Test

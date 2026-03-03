@@ -107,7 +107,7 @@ class ProjectServiceTest {
         given(taskRepository.countByProjectIdAndDeletedAtIsNull(10L)).willReturn(4L);
         given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.DONE)).willReturn(1L);
 
-        ProjectListResponse response = projectService.getMyProjects(1L, 0, 20);
+        ProjectListResponse response = projectService.getMyProjects(1L, 0, 20, null, null);
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst().projectId()).isEqualTo(10L);
@@ -120,6 +120,53 @@ class ProjectServiceTest {
         assertThat(response.totalElements()).isEqualTo(1);
         assertThat(response.first()).isTrue();
         assertThat(response.last()).isTrue();
+    }
+
+    @Test
+    void getMyProjectsFiltersByKeywordAndRole() {
+        User user = activeUser(1L, "owner@example.com", "owner");
+        Project taskflow = Project.builder()
+                .id(10L)
+                .owner(user)
+                .name("TaskFlow")
+                .description("task board")
+                .build();
+        Project ops = Project.builder()
+                .id(11L)
+                .owner(user)
+                .name("OpsBoard")
+                .description("ops board")
+                .build();
+        ProjectMember ownerMembership = ProjectMember.builder()
+                .id(100L)
+                .project(taskflow)
+                .user(user)
+                .role(ProjectRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 10, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 10, 0))
+                .build();
+        ProjectMember memberMembership = ProjectMember.builder()
+                .id(101L)
+                .project(ops)
+                .user(user)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 10, 10))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 10, 10))
+                .build();
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(projectMemberRepository.findAllActiveByUserIdOrderByProjectUpdatedAtDesc(1L))
+                .willReturn(List.of(ownerMembership, memberMembership));
+        given(projectMemberRepository.countByProjectId(10L)).willReturn(1L);
+        given(taskRepository.countByProjectIdAndDeletedAtIsNull(10L)).willReturn(3L);
+        given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.DONE)).willReturn(1L);
+
+        ProjectListResponse response = projectService.getMyProjects(1L, 0, 20, "task", ProjectRole.OWNER);
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().getFirst().projectId()).isEqualTo(10L);
+        assertThat(response.content().getFirst().role()).isEqualTo(ProjectRole.OWNER);
+        assertThat(response.totalElements()).isEqualTo(1L);
     }
 
     @Test

@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.taskflow.backend.global.common.enums.ProjectRole;
 
 @RestController
 @RequestMapping("/projects")
@@ -49,9 +50,17 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<ProjectListResponse>> getMyProjects(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ProjectRole role
     ) {
-        ProjectListResponse response = projectService.getMyProjects(extractUserId(authentication), page, size);
+        ProjectListResponse response = projectService.getMyProjects(
+                extractUserId(authentication),
+                page,
+                size,
+                keyword,
+                role
+        );
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
