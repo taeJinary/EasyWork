@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NotificationPushRetryJobRepository extends JpaRepository<NotificationPushRetryJob, Long> {
 
-    boolean existsByNotificationIdAndCompletedAtIsNull(Long notificationId);
+    boolean existsByNotificationIdAndPushTokenIdAndCompletedAtIsNull(Long notificationId, Long pushTokenId);
 
     List<NotificationPushRetryJob> findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
             LocalDateTime nextRetryAt,

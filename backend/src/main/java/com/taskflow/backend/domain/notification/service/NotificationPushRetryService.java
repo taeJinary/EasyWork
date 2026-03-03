@@ -1,7 +1,9 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.notification.entity.Notification;
+import com.taskflow.backend.domain.notification.entity.NotificationPushToken;
 import com.taskflow.backend.domain.notification.entity.NotificationPushRetryJob;
+import com.taskflow.backend.domain.notification.repository.NotificationPushTokenRepository;
 import com.taskflow.backend.domain.notification.repository.NotificationPushRetryJobRepository;
 import com.taskflow.backend.domain.notification.repository.NotificationRepository;
 import java.time.LocalDateTime;
@@ -23,23 +25,26 @@ public class NotificationPushRetryService {
 
     private final NotificationPushRetryJobRepository notificationPushRetryJobRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationPushTokenRepository notificationPushTokenRepository;
     private final NotificationPushDispatchService notificationPushDispatchService;
 
     @Value("${app.notification.push.retry.delay-seconds:300}")
     private long retryDelaySeconds;
 
     @Transactional
-    public void enqueueFailure(Notification notification, String errorMessage) {
+    public void enqueueFailure(Notification notification, Long pushTokenId, String errorMessage) {
         Long notificationId = notification.getId();
-        if (notificationId == null) {
+        if (notificationId == null || pushTokenId == null) {
             return;
         }
-        if (notificationPushRetryJobRepository.existsByNotificationIdAndCompletedAtIsNull(notificationId)) {
+        if (notificationPushRetryJobRepository
+                .existsByNotificationIdAndPushTokenIdAndCompletedAtIsNull(notificationId, pushTokenId)) {
             return;
         }
 
         NotificationPushRetryJob job = NotificationPushRetryJob.createPending(
                 notificationId,
+                pushTokenId,
                 LocalDateTime.now(),
                 errorMessage
         );
@@ -67,9 +72,17 @@ public class NotificationPushRetryService {
             notificationPushRetryJobRepository.save(job);
             return;
         }
+        NotificationPushToken pushToken = notificationPushTokenRepository.findById(job.getPushTokenId()).orElse(null);
+        if (pushToken == null
+                || !pushToken.isActive()
+                || !pushToken.getUser().getId().equals(notification.getUser().getId())) {
+            job.markCompleted(LocalDateTime.now());
+            notificationPushRetryJobRepository.save(job);
+            return;
+        }
 
         try {
-            boolean hasTransientFailure = notificationPushDispatchService.send(notification);
+            boolean hasTransientFailure = notificationPushDispatchService.sendToToken(notification, pushToken);
             if (hasTransientFailure) {
                 job.markFailed(
                         "Transient push delivery failure",

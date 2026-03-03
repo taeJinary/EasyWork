@@ -96,6 +96,7 @@ class ApplicationConfigSecurityPolicyTest {
         String content = read("src/main/resources/db/migration/V20260303_04__create_notification_push_retry_jobs.sql");
 
         assertThat(content).contains("create table if not exists notification_push_retry_jobs");
+        assertThat(content).contains("push_token_id");
         assertThat(content).contains("created_at");
         assertThat(content).contains("updated_at");
     }

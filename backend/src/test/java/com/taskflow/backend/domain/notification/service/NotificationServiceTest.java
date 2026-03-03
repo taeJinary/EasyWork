@@ -270,11 +270,16 @@ class NotificationServiceTest {
             ReflectionTestUtils.setField(notification, "createdAt", createdAt);
             return notification;
         });
-        given(notificationPushDispatchService.send(any(Notification.class))).willReturn(true);
+        given(notificationPushDispatchService.send(any(Notification.class)))
+                .willReturn(new NotificationPushDispatchService.NotificationPushDispatchResult(Set.of(777L)));
 
         notificationService.createInvitationNotification(invitation);
 
-        verify(notificationPushRetryService).enqueueFailure(any(Notification.class), eq("Transient push delivery failure"));
+        verify(notificationPushRetryService).enqueueFailure(
+                any(Notification.class),
+                eq(777L),
+                eq("Transient push delivery failure")
+        );
     }
 
     @Test

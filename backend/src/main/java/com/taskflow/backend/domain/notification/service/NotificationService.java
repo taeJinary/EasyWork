@@ -295,9 +295,18 @@ public class NotificationService {
                 USER_NOTIFICATION_DESTINATION,
                 message
         );
-        boolean hasTransientFailure = notificationPushDispatchService.send(notification);
-        if (hasTransientFailure) {
-            notificationPushRetryService.enqueueFailure(notification, "Transient push delivery failure");
+        NotificationPushDispatchService.NotificationPushDispatchResult dispatchResult =
+                notificationPushDispatchService.send(notification);
+        if (dispatchResult == null || dispatchResult.transientFailedTokenIds().isEmpty()) {
+            return;
+        }
+
+        for (Long pushTokenId : dispatchResult.transientFailedTokenIds()) {
+            notificationPushRetryService.enqueueFailure(
+                    notification,
+                    pushTokenId,
+                    "Transient push delivery failure"
+            );
         }
     }
 

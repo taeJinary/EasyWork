@@ -32,6 +32,9 @@ public class NotificationPushRetryJob extends BaseEntity {
     private Long notificationId;
 
     @Column(nullable = false)
+    private Long pushTokenId;
+
+    @Column(nullable = false)
     private int retryCount;
 
     @Column(nullable = false)
@@ -44,11 +47,13 @@ public class NotificationPushRetryJob extends BaseEntity {
 
     public static NotificationPushRetryJob createPending(
             Long notificationId,
+            Long pushTokenId,
             LocalDateTime nextRetryAt,
             String initialErrorMessage
     ) {
         return NotificationPushRetryJob.builder()
                 .notificationId(notificationId)
+                .pushTokenId(pushTokenId)
                 .retryCount(0)
                 .nextRetryAt(nextRetryAt)
                 .lastErrorMessage(truncateErrorMessage(initialErrorMessage))
