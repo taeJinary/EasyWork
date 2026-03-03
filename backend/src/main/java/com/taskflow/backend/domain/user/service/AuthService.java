@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
@@ -10,6 +11,7 @@ import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
+import com.taskflow.backend.domain.user.service.oauth.OAuthAccessTokenExchanger;
 import com.taskflow.backend.domain.user.service.oauth.OAuthProfile;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
@@ -49,6 +51,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final RedisService redisService;
     private final OAuthClientRegistry oauthClientRegistry;
+    private final OAuthAccessTokenExchanger oauthAccessTokenExchanger;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -111,6 +114,16 @@ public class AuthService {
         }
 
         return issueLoginTokens(user);
+    }
+
+    @Transactional
+    public LoginTokens oauthCodeLogin(OAuthCodeLoginRequest request) {
+        String accessToken = oauthAccessTokenExchanger.exchange(
+                request.provider(),
+                request.authorizationCode(),
+                request.codeVerifier()
+        );
+        return oauthLogin(new OAuthLoginRequest(request.provider(), accessToken));
     }
 
     @Transactional

@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
@@ -10,6 +11,7 @@ import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClient;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
+import com.taskflow.backend.domain.user.service.oauth.OAuthAccessTokenExchanger;
 import com.taskflow.backend.domain.user.service.oauth.OAuthProfile;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
@@ -67,6 +69,9 @@ class AuthServiceTest {
 
     @Mock
     private OAuthClient oauthClient;
+
+    @Mock
+    private OAuthAccessTokenExchanger oauthAccessTokenExchanger;
 
     @InjectMocks
     private AuthService authService;
@@ -310,6 +315,37 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+    }
+
+    @Test
+    void oauthCodeLoginExchangesAuthorizationCodeBeforeOAuthLogin() {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null);
+        OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
+        User oauthUser = User.builder()
+                .id(2L)
+                .email("oauth@example.com")
+                .nickname("oauth-user")
+                .provider("GOOGLE")
+                .providerId("google-123")
+                .role(Role.ROLE_USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null))
+                .thenReturn("oauth-access-token");
+        when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
+        when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
+        when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.of(oauthUser));
+        when(jwtTokenProvider.generateAccessToken(2L, "oauth@example.com", Role.ROLE_USER))
+                .thenReturn("oauth-access-jwt");
+        when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
+                .thenReturn("oauth-refresh-token");
+
+        LoginTokens response = authService.oauthCodeLogin(request);
+
+        assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
+        assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
+        verify(oauthAccessTokenExchanger).exchange(OAuthProvider.GOOGLE, "auth-code", null);
     }
 
     @Test
