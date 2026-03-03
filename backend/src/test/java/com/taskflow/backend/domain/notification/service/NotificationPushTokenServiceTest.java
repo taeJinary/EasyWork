@@ -17,11 +17,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -84,6 +86,50 @@ class NotificationPushTokenServiceTest {
         assertThat(existing.isActive()).isTrue();
         assertThat(response.platform()).isEqualTo(PushPlatform.ANDROID);
         assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    void registerPushTokenRecoversFromUniqueKeyRace() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User nextUser = activeUser(2L, "next@example.com", "next");
+        NotificationPushToken existing = NotificationPushToken.create(
+                owner,
+                "token-race",
+                PushPlatform.WEB
+        );
+
+        given(userRepository.findById(2L)).willReturn(Optional.of(nextUser));
+        given(notificationPushTokenRepository.findByToken("token-race"))
+                .willReturn(Optional.empty(), Optional.of(existing));
+        willThrow(new DataIntegrityViolationException("duplicate key"))
+                .given(notificationPushTokenRepository)
+                .save(any(NotificationPushToken.class));
+
+        NotificationPushTokenResponse response =
+                notificationPushTokenService.registerPushToken(2L, "token-race", PushPlatform.ANDROID);
+
+        assertThat(existing.getUser().getId()).isEqualTo(2L);
+        assertThat(existing.getPlatform()).isEqualTo(PushPlatform.ANDROID);
+        assertThat(existing.isActive()).isTrue();
+        assertThat(response.token()).isEqualTo("token-race");
+        assertThat(response.platform()).isEqualTo(PushPlatform.ANDROID);
+        assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    void registerPushTokenThrowsConflictWhenUniqueRaceCannotBeRecovered() {
+        User user = activeUser(1L, "member@example.com", "member");
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(notificationPushTokenRepository.findByToken("token-race"))
+                .willReturn(Optional.empty(), Optional.empty());
+        willThrow(new DataIntegrityViolationException("duplicate key"))
+                .given(notificationPushTokenRepository)
+                .save(any(NotificationPushToken.class));
+
+        assertThatThrownBy(() -> notificationPushTokenService.registerPushToken(1L, "token-race", PushPlatform.WEB))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONFLICT);
     }
 
     @Test

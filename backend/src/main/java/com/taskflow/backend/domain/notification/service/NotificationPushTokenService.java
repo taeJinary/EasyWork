@@ -9,6 +9,7 @@ import com.taskflow.backend.global.common.enums.PushPlatform;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,14 +25,24 @@ public class NotificationPushTokenService {
     public NotificationPushTokenResponse registerPushToken(Long userId, String token, PushPlatform platform) {
         User user = findActiveUser(userId);
 
-        NotificationPushToken pushToken = notificationPushTokenRepository.findByToken(token)
-                .map(existing -> {
-                    existing.reactivate(user, platform);
-                    return existing;
-                })
-                .orElseGet(() -> notificationPushTokenRepository.save(
-                        NotificationPushToken.create(user, token, platform)
-                ));
+        NotificationPushToken pushToken;
+        try {
+            pushToken = notificationPushTokenRepository.findByToken(token)
+                    .map(existing -> {
+                        existing.reactivate(user, platform);
+                        return existing;
+                    })
+                    .orElseGet(() -> notificationPushTokenRepository.save(
+                            NotificationPushToken.create(user, token, platform)
+                    ));
+        } catch (DataIntegrityViolationException exception) {
+            pushToken = notificationPushTokenRepository.findByToken(token)
+                    .map(existing -> {
+                        existing.reactivate(user, platform);
+                        return existing;
+                    })
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT));
+        }
 
         return toResponse(pushToken);
     }

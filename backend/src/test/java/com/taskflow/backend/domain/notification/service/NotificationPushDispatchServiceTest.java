@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -92,6 +93,14 @@ class NotificationPushDispatchServiceTest {
 
         verify(notificationPushSender, times(2))
                 .send(any(String.class), any(PushPlatform.class), any(String.class), any(String.class));
+    }
+
+    @Test
+    void tokenHashDoesNotExposeRawToken() {
+        String hash = notificationPushDispatchService.tokenHash("raw-token-value-123");
+
+        assertThat(hash).isNotBlank();
+        assertThat(hash).doesNotContain("raw-token-value-123");
     }
 
     private User activeUser(Long id, String email, String nickname) {
