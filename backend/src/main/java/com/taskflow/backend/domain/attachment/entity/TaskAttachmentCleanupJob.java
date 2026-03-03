@@ -69,6 +69,12 @@ public class TaskAttachmentCleanupJob extends BaseEntity {
         this.nextRetryAt = nextRetryAt;
     }
 
+    public void markDeadLetter(String errorMessage, LocalDateTime completedAt) {
+        this.retryCount += 1;
+        this.lastErrorMessage = truncateErrorMessage(errorMessage);
+        this.completedAt = completedAt;
+    }
+
     private String truncateErrorMessage(String errorMessage) {
         if (errorMessage == null) {
             return null;

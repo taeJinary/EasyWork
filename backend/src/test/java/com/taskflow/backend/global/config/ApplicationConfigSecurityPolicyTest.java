@@ -103,6 +103,16 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("updated_at");
     }
 
+    @Test
+    void workspaceMigrationSqlDefinesRequiredTablesAndAuditColumns() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_05__create_workspaces.sql");
+
+        assertThat(content).contains("create table if not exists workspaces");
+        assertThat(content).contains("create table if not exists workspace_members");
+        assertThat(content).contains("created_at");
+        assertThat(content).contains("updated_at");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

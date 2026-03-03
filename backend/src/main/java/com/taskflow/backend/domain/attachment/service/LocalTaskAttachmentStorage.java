@@ -7,12 +7,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
+@ConditionalOnProperty(name = "app.attachment.storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalTaskAttachmentStorage implements TaskAttachmentStorage {
 
     private final Path rootPath;

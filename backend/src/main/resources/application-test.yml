@@ -51,6 +51,8 @@ app:
       retry:
         interval-ms: 60000
         delay-seconds: 300
+        max-attempts: 10
+        max-delay-seconds: 3600
         batch-size: 50
   oauth:
     google:
@@ -73,10 +75,19 @@ app:
       redirect-uri: http://localhost:5173/oauth/naver
   attachment:
     storage:
+      type: local
       root-path: ./build/test-storage/task-attachments
+      s3:
+        bucket: test-taskflow-attachments
+        region: ap-northeast-2
+        endpoint: http://localhost:4566
+        path-style-access: true
+        key-prefix: task-attachments
     cleanup:
       retry-interval-ms: 60000
       retry-delay-seconds: 300
+      max-retry-attempts: 10
+      max-delay-seconds: 3600
       batch-size: 50
   notification:
     push:
@@ -84,6 +95,8 @@ app:
       retry:
         interval-ms: 60000
         delay-seconds: 300
+        max-attempts: 10
+        max-delay-seconds: 3600
         batch-size: 50
       fcm:
         endpoint: https://fcm.googleapis.com/fcm/send

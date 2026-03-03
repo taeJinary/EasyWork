@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvitationEmailRetryService {
 
     private static final int DEFAULT_BATCH_SIZE = 50;
+    private static final int MAX_BACKOFF_SHIFT = 20;
 
     private final InvitationEmailRetryJobRepository invitationEmailRetryJobRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
@@ -27,6 +28,12 @@ public class InvitationEmailRetryService {
 
     @Value("${app.invitation.email.retry.delay-seconds:300}")
     private long retryDelaySeconds;
+
+    @Value("${app.invitation.email.retry.max-attempts:10}")
+    private int maxRetryAttempts;
+
+    @Value("${app.invitation.email.retry.max-delay-seconds:3600}")
+    private long maxRetryDelaySeconds;
 
     @Transactional
     public void enqueueFailure(InvitationCreatedEvent event, String errorMessage) {
@@ -61,8 +68,9 @@ public class InvitationEmailRetryService {
     }
 
     private void processJob(InvitationEmailRetryJob job) {
+        LocalDateTime now = LocalDateTime.now();
         if (shouldSkipRetry(job)) {
-            job.markCompleted(LocalDateTime.now());
+            job.markCompleted(now);
             invitationEmailRetryJobRepository.save(job);
             return;
         }
@@ -77,13 +85,10 @@ public class InvitationEmailRetryService {
 
         try {
             invitationEmailService.sendInvitationCreatedEmail(event);
-            job.markCompleted(LocalDateTime.now());
+            job.markCompleted(now);
             invitationEmailRetryJobRepository.save(job);
         } catch (Exception exception) {
-            job.markFailed(
-                    exception.getMessage(),
-                    LocalDateTime.now().plusSeconds(retryDelaySeconds)
-            );
+            markFailedOrDeadLetter(job, exception.getMessage(), now);
             invitationEmailRetryJobRepository.save(job);
 
             log.error(
@@ -93,6 +98,39 @@ public class InvitationEmailRetryService {
                     exception
             );
         }
+    }
+
+    private void markFailedOrDeadLetter(InvitationEmailRetryJob job, String errorMessage, LocalDateTime now) {
+        int nextRetryCount = job.getRetryCount() + 1;
+        if (nextRetryCount >= normalizeMaxRetryAttempts()) {
+            job.markDeadLetter(errorMessage, now);
+            log.warn(
+                    "Invitation email retry exhausted and marked completed. invitationId={}, retryCount={}",
+                    job.getInvitationId(),
+                    job.getRetryCount()
+            );
+            return;
+        }
+
+        job.markFailed(errorMessage, now.plusSeconds(calculateDelaySeconds(nextRetryCount)));
+    }
+
+    private int normalizeMaxRetryAttempts() {
+        return maxRetryAttempts > 0 ? maxRetryAttempts : 1;
+    }
+
+    private long calculateDelaySeconds(int nextRetryCount) {
+        long baseDelaySeconds = Math.max(retryDelaySeconds, 1L);
+        long maxDelaySeconds = Math.max(maxRetryDelaySeconds, baseDelaySeconds);
+        int shift = Math.max(0, Math.min(nextRetryCount - 1, MAX_BACKOFF_SHIFT));
+        long multiplier = 1L << shift;
+        long computedDelay;
+        try {
+            computedDelay = Math.multiplyExact(baseDelaySeconds, multiplier);
+        } catch (ArithmeticException exception) {
+            computedDelay = Long.MAX_VALUE;
+        }
+        return Math.min(computedDelay, maxDelaySeconds);
     }
 
     private boolean shouldSkipRetry(InvitationEmailRetryJob job) {
