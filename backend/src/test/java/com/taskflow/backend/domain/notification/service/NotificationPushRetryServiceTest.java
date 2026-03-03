@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationPushRetryServiceTest {
@@ -130,6 +131,34 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getLastErrorMessage()).contains("Transient push delivery failure");
         assertThat(job.getNextRetryAt()).isAfter(LocalDateTime.now().minusSeconds(5));
         verify(notificationPushRetryJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingPushesTargetsOnlyTheFailedPushToken() {
+        NotificationPushRetryJob job = NotificationPushRetryJob.createPending(
+                101L,
+                501L,
+                LocalDateTime.now().minusMinutes(1),
+                "temporary push failure"
+        );
+        Notification notification = notification(101L);
+        NotificationPushToken failedToken = activePushToken(501L, notification.getUser());
+        NotificationPushToken successfulToken = activePushToken(502L, notification.getUser());
+
+        given(notificationPushRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(notificationRepository.findById(101L)).willReturn(Optional.of(notification));
+        given(notificationPushTokenRepository.findById(501L)).willReturn(Optional.of(failedToken));
+        given(notificationPushDispatchService.sendToToken(notification, failedToken)).willReturn(false);
+
+        notificationPushRetryService.retryPendingPushes(50);
+
+        verify(notificationPushDispatchService).sendToToken(notification, failedToken);
+        verify(notificationPushTokenRepository, never()).findById(successfulToken.getId());
+        verifyNoMoreInteractions(notificationPushDispatchService);
+        assertThat(job.getCompletedAt()).isNotNull();
     }
 
     @Test
