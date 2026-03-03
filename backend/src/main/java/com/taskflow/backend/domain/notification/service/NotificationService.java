@@ -52,6 +52,7 @@ public class NotificationService {
     private final ProjectMemberRepository projectMemberRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationPushDispatchService notificationPushDispatchService;
+    private final NotificationPushRetryService notificationPushRetryService;
 
     public NotificationListResponse getNotifications(Long userId, int page, int size, boolean unreadOnly) {
         findActiveUser(userId);
@@ -294,7 +295,19 @@ public class NotificationService {
                 USER_NOTIFICATION_DESTINATION,
                 message
         );
-        notificationPushDispatchService.send(notification);
+        NotificationPushDispatchService.NotificationPushDispatchResult dispatchResult =
+                notificationPushDispatchService.send(notification);
+        if (dispatchResult == null || dispatchResult.transientFailedTokenIds().isEmpty()) {
+            return;
+        }
+
+        for (Long pushTokenId : dispatchResult.transientFailedTokenIds()) {
+            notificationPushRetryService.enqueueFailure(
+                    notification,
+                    pushTokenId,
+                    "Transient push delivery failure"
+            );
+        }
     }
 
     private User findActiveUser(Long userId) {

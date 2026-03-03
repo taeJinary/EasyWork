@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
 @ConditionalOnProperty(name = "app.notification.push.sender", havingValue = "fcm")
@@ -22,6 +23,13 @@ public class FcmNotificationPushSender implements NotificationPushSender {
             "InvalidRegistration",
             "NotRegistered",
             "MismatchSenderId"
+    );
+    private static final Set<String> RETRYABLE_FAILURE_ERRORS = Set.of(
+            "Unavailable",
+            "InternalServerError",
+            "DeviceMessageRateExceeded",
+            "TopicsMessageRateExceeded",
+            "QuotaExceeded"
     );
 
     private final RestClient restClient;
@@ -41,10 +49,10 @@ public class FcmNotificationPushSender implements NotificationPushSender {
     @Override
     public void send(String token, PushPlatform platform, String title, String body) {
         if (!StringUtils.hasText(serverKey)) {
-            throw new IllegalStateException("FCM server key is not configured.");
+            throw new PushDeliveryNonRetryableException("FCM server key is not configured.");
         }
         if (!StringUtils.hasText(token)) {
-            throw new IllegalArgumentException("Push token must not be blank.");
+            throw new PushDeliveryNonRetryableException("Push token must not be blank.");
         }
 
         try {
@@ -66,14 +74,22 @@ public class FcmNotificationPushSender implements NotificationPushSender {
                     .body(FcmSendResponse.class);
 
             validateDeliveryResult(response);
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().is4xxClientError()) {
+                throw new PushDeliveryNonRetryableException(
+                        "FCM returned client error response: " + exception.getStatusCode(),
+                        exception
+                );
+            }
+            throw new PushDeliveryRetryableException("Failed to send push notification via FCM.", exception);
         } catch (RestClientException exception) {
-            throw new IllegalStateException("Failed to send push notification via FCM.", exception);
+            throw new PushDeliveryRetryableException("Failed to send push notification via FCM.", exception);
         }
     }
 
     private void validateDeliveryResult(FcmSendResponse response) {
         if (response == null) {
-            throw new IllegalStateException("FCM returned an empty response body.");
+            throw new PushDeliveryNonRetryableException("FCM returned an empty response body.");
         }
 
         int failureCount = response.failure() == null ? 0 : response.failure();
@@ -93,7 +109,11 @@ public class FcmNotificationPushSender implements NotificationPushSender {
             throw new PushTokenInvalidException("FCM permanent token failure: " + error);
         }
 
-        throw new IllegalStateException("FCM delivery failed. error=" + (error == null ? "unknown" : error));
+        if (StringUtils.hasText(error) && RETRYABLE_FAILURE_ERRORS.contains(error)) {
+            throw new PushDeliveryRetryableException("FCM transient delivery failure: " + error);
+        }
+
+        throw new PushDeliveryNonRetryableException("FCM non-retryable delivery failure: " + (error == null ? "unknown" : error));
     }
 
     private record FcmSendResponse(
