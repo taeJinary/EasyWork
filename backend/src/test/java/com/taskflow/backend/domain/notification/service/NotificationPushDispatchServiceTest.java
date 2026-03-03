@@ -103,6 +103,31 @@ class NotificationPushDispatchServiceTest {
         assertThat(hash).doesNotContain("raw-token-value-123");
     }
 
+    @Test
+    void sendDeactivatesTokenWhenDeliveryFailsWithInvalidTokenError() {
+        User user = activeUser(1L, "member@example.com", "member");
+        Notification notification = Notification.create(
+                user,
+                NotificationType.PROJECT_INVITED,
+                "Project invitation",
+                "owner invited you",
+                NotificationReferenceType.INVITATION,
+                10L
+        );
+
+        NotificationPushToken token = NotificationPushToken.create(user, "expired-token", PushPlatform.WEB);
+        given(notificationPushTokenRepository.findAllByUserIdAndIsActiveTrue(1L))
+                .willReturn(List.of(token));
+        willThrow(new PushTokenInvalidException("NotRegistered"))
+                .given(notificationPushSender)
+                .send(eq("expired-token"), eq(PushPlatform.WEB), any(String.class), any(String.class));
+
+        notificationPushDispatchService.send(notification);
+
+        assertThat(token.isActive()).isFalse();
+        verify(notificationPushTokenRepository).save(token);
+    }
+
     private User activeUser(Long id, String email, String nickname) {
         return User.builder()
                 .id(id)

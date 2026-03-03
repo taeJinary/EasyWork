@@ -1,7 +1,9 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.global.common.enums.PushPlatform;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +18,11 @@ import org.springframework.web.client.RestClientException;
 public class FcmNotificationPushSender implements NotificationPushSender {
 
     private static final String FCM_AUTH_PREFIX = "key=";
+    private static final Set<String> PERMANENT_FAILURE_ERRORS = Set.of(
+            "InvalidRegistration",
+            "NotRegistered",
+            "MismatchSenderId"
+    );
 
     private final RestClient restClient;
     private final String fcmEndpoint;
@@ -41,7 +48,7 @@ public class FcmNotificationPushSender implements NotificationPushSender {
         }
 
         try {
-            restClient.post()
+            FcmSendResponse response = restClient.post()
                     .uri(fcmEndpoint)
                     .header(HttpHeaders.AUTHORIZATION, FCM_AUTH_PREFIX + serverKey)
                     .contentType(MediaType.APPLICATION_JSON)
@@ -56,9 +63,48 @@ public class FcmNotificationPushSender implements NotificationPushSender {
                             )
                     ))
                     .retrieve()
-                    .toBodilessEntity();
+                    .body(FcmSendResponse.class);
+
+            validateDeliveryResult(response);
         } catch (RestClientException exception) {
             throw new IllegalStateException("Failed to send push notification via FCM.", exception);
         }
+    }
+
+    private void validateDeliveryResult(FcmSendResponse response) {
+        if (response == null) {
+            throw new IllegalStateException("FCM returned an empty response body.");
+        }
+
+        int failureCount = response.failure() == null ? 0 : response.failure();
+        if (failureCount <= 0) {
+            return;
+        }
+
+        String error = response.results() == null
+                ? null
+                : response.results().stream()
+                .map(FcmSendResult::error)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
+
+        if (StringUtils.hasText(error) && PERMANENT_FAILURE_ERRORS.contains(error)) {
+            throw new PushTokenInvalidException("FCM permanent token failure: " + error);
+        }
+
+        throw new IllegalStateException("FCM delivery failed. error=" + (error == null ? "unknown" : error));
+    }
+
+    private record FcmSendResponse(
+            Integer success,
+            Integer failure,
+            List<FcmSendResult> results
+    ) {
+    }
+
+    private record FcmSendResult(
+            String error
+    ) {
     }
 }
