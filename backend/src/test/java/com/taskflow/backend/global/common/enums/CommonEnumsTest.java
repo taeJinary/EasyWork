@@ -70,4 +70,10 @@ class CommonEnumsTest {
         assertThat(OAuthProvider.values())
                 .containsExactly(OAuthProvider.GOOGLE, OAuthProvider.KAKAO, OAuthProvider.NAVER);
     }
+
+    @Test
+    void pushPlatformEnumMatchesSpecification() {
+        assertThat(PushPlatform.values())
+                .containsExactly(PushPlatform.WEB, PushPlatform.ANDROID, PushPlatform.IOS);
+    }
 }

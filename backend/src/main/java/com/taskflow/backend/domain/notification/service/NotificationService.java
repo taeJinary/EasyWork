@@ -51,6 +51,7 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationPushDispatchService notificationPushDispatchService;
 
     public NotificationListResponse getNotifications(Long userId, int page, int size, boolean unreadOnly) {
         findActiveUser(userId);
@@ -293,6 +294,7 @@ public class NotificationService {
                 USER_NOTIFICATION_DESTINATION,
                 message
         );
+        notificationPushDispatchService.send(notification);
     }
 
     private User findActiveUser(Long userId) {
