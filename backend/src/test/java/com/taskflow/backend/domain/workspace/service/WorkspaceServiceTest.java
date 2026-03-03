@@ -5,7 +5,9 @@ import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
+import com.taskflow.backend.domain.workspace.dto.response.WorkspaceMemberResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceSummaryResponse;
+import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.entity.Workspace;
 import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberCountProjection;
@@ -14,6 +16,8 @@ import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.common.enums.WorkspaceRole;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +32,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -124,6 +129,97 @@ class WorkspaceServiceTest {
         assertThat(response.totalElements()).isZero();
         assertThat(response.totalPages()).isZero();
         assertThat(response.last()).isTrue();
+    }
+
+    @Test
+    void getWorkspaceDetailReturnsSummaryWhenRequesterIsMember() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        Workspace workspace = Workspace.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow Team")
+                .description("team workspace")
+                .build();
+        WorkspaceMember membership = WorkspaceMember.builder()
+                .id(100L)
+                .workspace(workspace)
+                .user(owner)
+                .role(WorkspaceRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 3, 9, 0))
+                .build();
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(workspaceMemberRepository.countByWorkspaceId(10L)).willReturn(2L);
+
+        WorkspaceDetailResponse response = workspaceService.getWorkspaceDetail(1L, 10L);
+
+        assertThat(response.workspaceId()).isEqualTo(10L);
+        assertThat(response.name()).isEqualTo("TaskFlow Team");
+        assertThat(response.myRole()).isEqualTo(WorkspaceRole.OWNER);
+        assertThat(response.memberCount()).isEqualTo(2L);
+    }
+
+    @Test
+    void getWorkspaceDetailThrowsWhenRequesterIsNotWorkspaceMember() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        Workspace workspace = Workspace.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow Team")
+                .description("team workspace")
+                .build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> workspaceService.getWorkspaceDetail(1L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void getWorkspaceMembersReturnsMemberListWhenRequesterIsMember() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User member = activeUser(2L, "member@example.com", "member");
+        Workspace workspace = Workspace.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow Team")
+                .description("team workspace")
+                .build();
+        WorkspaceMember requesterMembership = WorkspaceMember.builder()
+                .id(100L)
+                .workspace(workspace)
+                .user(owner)
+                .role(WorkspaceRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 3, 9, 0))
+                .build();
+        WorkspaceMember memberMembership = WorkspaceMember.builder()
+                .id(101L)
+                .workspace(workspace)
+                .user(member)
+                .role(WorkspaceRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 3, 10, 0))
+                .build();
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
+                .willReturn(Optional.of(requesterMembership));
+        given(workspaceMemberRepository.findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(10L))
+                .willReturn(List.of(requesterMembership, memberMembership));
+
+        List<WorkspaceMemberResponse> response = workspaceService.getWorkspaceMembers(1L, 10L);
+
+        assertThat(response).hasSize(2);
+        assertThat(response.getFirst().userId()).isEqualTo(1L);
+        assertThat(response.get(1).userId()).isEqualTo(2L);
+        assertThat(response.get(1).role()).isEqualTo(WorkspaceRole.MEMBER);
+        verify(workspaceMemberRepository).findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(10L);
+        verify(workspaceMemberRepository, never()).findAllByWorkspaceIdOrderByJoinedAtAsc(any(Long.class));
     }
 
     private User activeUser(Long id, String email, String nickname) {

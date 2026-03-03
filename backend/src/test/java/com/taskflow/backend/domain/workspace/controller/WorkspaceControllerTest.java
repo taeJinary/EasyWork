@@ -2,8 +2,10 @@ package com.taskflow.backend.domain.workspace.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
+import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
+import com.taskflow.backend.domain.workspace.dto.response.WorkspaceMemberResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceSummaryResponse;
 import com.taskflow.backend.domain.workspace.service.WorkspaceService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -97,6 +99,55 @@ class WorkspaceControllerTest {
                 .andExpect(jsonPath("$.data.totalElements").value(1L));
 
         then(workspaceService).should().getMyWorkspaces(1L, 0, 20);
+    }
+
+    @Test
+    void getWorkspaceDetailReturnsResponse() throws Exception {
+        WorkspaceDetailResponse response = new WorkspaceDetailResponse(
+                10L,
+                "TaskFlow Team",
+                "team workspace",
+                WorkspaceRole.OWNER,
+                2L,
+                LocalDateTime.of(2026, 3, 3, 9, 0)
+        );
+        given(workspaceService.getWorkspaceDetail(1L, 10L)).willReturn(response);
+
+        mockMvc.perform(get("/workspaces/10")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.workspaceId").value(10L))
+                .andExpect(jsonPath("$.data.myRole").value("OWNER"))
+                .andExpect(jsonPath("$.data.memberCount").value(2L));
+    }
+
+    @Test
+    void getWorkspaceMembersReturnsResponse() throws Exception {
+        WorkspaceMemberResponse owner = new WorkspaceMemberResponse(
+                100L,
+                1L,
+                "owner@example.com",
+                "owner",
+                WorkspaceRole.OWNER,
+                LocalDateTime.of(2026, 3, 3, 9, 0)
+        );
+        WorkspaceMemberResponse member = new WorkspaceMemberResponse(
+                101L,
+                2L,
+                "member@example.com",
+                "member",
+                WorkspaceRole.MEMBER,
+                LocalDateTime.of(2026, 3, 3, 10, 0)
+        );
+        given(workspaceService.getWorkspaceMembers(1L, 10L)).willReturn(List.of(owner, member));
+
+        mockMvc.perform(get("/workspaces/10/members")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].memberId").value(100L))
+                .andExpect(jsonPath("$.data[1].role").value("MEMBER"));
     }
 
     private UsernamePasswordAuthenticationToken principalAuth() {
