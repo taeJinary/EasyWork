@@ -24,6 +24,7 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -167,6 +168,43 @@ class ProjectServiceTest {
         assertThat(response.content().getFirst().projectId()).isEqualTo(10L);
         assertThat(response.content().getFirst().role()).isEqualTo(ProjectRole.OWNER);
         assertThat(response.totalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    void getMyProjectsKeywordMatchingIsLocaleIndependent() {
+        Locale previousLocale = Locale.getDefault();
+        Locale.setDefault(new Locale("tr", "TR"));
+        try {
+            User user = activeUser(1L, "owner@example.com", "owner");
+            Project project = Project.builder()
+                    .id(10L)
+                    .owner(user)
+                    .name("Istanbul Board")
+                    .description("project")
+                    .build();
+            ProjectMember membership = ProjectMember.builder()
+                    .id(100L)
+                    .project(project)
+                    .user(user)
+                    .role(ProjectRole.OWNER)
+                    .joinedAt(LocalDateTime.of(2026, 3, 1, 10, 0))
+                    .updatedAt(LocalDateTime.of(2026, 3, 1, 10, 0))
+                    .build();
+
+            given(userRepository.findById(1L)).willReturn(Optional.of(user));
+            given(projectMemberRepository.findAllActiveByUserIdOrderByProjectUpdatedAtDesc(1L))
+                    .willReturn(List.of(membership));
+            given(projectMemberRepository.countByProjectId(10L)).willReturn(1L);
+            given(taskRepository.countByProjectIdAndDeletedAtIsNull(10L)).willReturn(1L);
+            given(taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(10L, TaskStatus.DONE)).willReturn(0L);
+
+            ProjectListResponse response = projectService.getMyProjects(1L, 0, 20, "i", null);
+
+            assertThat(response.content()).hasSize(1);
+            assertThat(response.content().getFirst().projectId()).isEqualTo(10L);
+        } finally {
+            Locale.setDefault(previousLocale);
+        }
     }
 
     @Test

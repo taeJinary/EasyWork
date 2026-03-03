@@ -23,6 +23,7 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -238,9 +239,10 @@ public class ProjectService {
             return true;
         }
 
-        String lowerKeyword = keyword.toLowerCase();
-        String projectName = project.getName() == null ? "" : project.getName().toLowerCase();
-        String projectDescription = project.getDescription() == null ? "" : project.getDescription().toLowerCase();
+        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
+        String projectName = project.getName() == null ? "" : project.getName().toLowerCase(Locale.ROOT);
+        String projectDescription = project.getDescription() == null ? ""
+                : project.getDescription().toLowerCase(Locale.ROOT);
         return projectName.contains(lowerKeyword) || projectDescription.contains(lowerKeyword);
     }
 
