@@ -92,7 +92,7 @@ class NotificationPushDispatchServiceTest {
         ReflectionTestUtils.setField(token2, "id", 22L);
         given(notificationPushTokenRepository.findAllByUserIdAndIsActiveTrue(1L))
                 .willReturn(List.of(token1, token2));
-        willThrow(new RuntimeException("push fail"))
+        willThrow(new PushDeliveryRetryableException("push transient fail"))
                 .given(notificationPushSender)
                 .send(eq("token-1"), eq(PushPlatform.WEB), any(String.class), any(String.class));
 
@@ -102,6 +102,32 @@ class NotificationPushDispatchServiceTest {
         verify(notificationPushSender, times(2))
                 .send(any(String.class), any(PushPlatform.class), any(String.class), any(String.class));
         assertThat(result.transientFailedTokenIds()).containsExactly(21L);
+    }
+
+    @Test
+    void sendDoesNotMarkTransientFailureWhenNonRetryableErrorOccurs() {
+        User user = activeUser(1L, "member@example.com", "member");
+        Notification notification = Notification.create(
+                user,
+                NotificationType.PROJECT_INVITED,
+                "Project invitation",
+                "owner invited you",
+                NotificationReferenceType.INVITATION,
+                10L
+        );
+
+        NotificationPushToken token = NotificationPushToken.create(user, "token-1", PushPlatform.WEB);
+        ReflectionTestUtils.setField(token, "id", 41L);
+        given(notificationPushTokenRepository.findAllByUserIdAndIsActiveTrue(1L))
+                .willReturn(List.of(token));
+        willThrow(new PushDeliveryNonRetryableException("fcm server key missing"))
+                .given(notificationPushSender)
+                .send(eq("token-1"), eq(PushPlatform.WEB), any(String.class), any(String.class));
+
+        NotificationPushDispatchService.NotificationPushDispatchResult result =
+                notificationPushDispatchService.send(notification);
+
+        assertThat(result.transientFailedTokenIds()).isEmpty();
     }
 
     @Test

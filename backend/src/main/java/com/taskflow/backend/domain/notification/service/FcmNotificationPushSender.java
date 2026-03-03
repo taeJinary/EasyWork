@@ -23,6 +23,13 @@ public class FcmNotificationPushSender implements NotificationPushSender {
             "NotRegistered",
             "MismatchSenderId"
     );
+    private static final Set<String> RETRYABLE_FAILURE_ERRORS = Set.of(
+            "Unavailable",
+            "InternalServerError",
+            "DeviceMessageRateExceeded",
+            "TopicsMessageRateExceeded",
+            "QuotaExceeded"
+    );
 
     private final RestClient restClient;
     private final String fcmEndpoint;
@@ -41,10 +48,10 @@ public class FcmNotificationPushSender implements NotificationPushSender {
     @Override
     public void send(String token, PushPlatform platform, String title, String body) {
         if (!StringUtils.hasText(serverKey)) {
-            throw new IllegalStateException("FCM server key is not configured.");
+            throw new PushDeliveryNonRetryableException("FCM server key is not configured.");
         }
         if (!StringUtils.hasText(token)) {
-            throw new IllegalArgumentException("Push token must not be blank.");
+            throw new PushDeliveryNonRetryableException("Push token must not be blank.");
         }
 
         try {
@@ -67,13 +74,13 @@ public class FcmNotificationPushSender implements NotificationPushSender {
 
             validateDeliveryResult(response);
         } catch (RestClientException exception) {
-            throw new IllegalStateException("Failed to send push notification via FCM.", exception);
+            throw new PushDeliveryRetryableException("Failed to send push notification via FCM.", exception);
         }
     }
 
     private void validateDeliveryResult(FcmSendResponse response) {
         if (response == null) {
-            throw new IllegalStateException("FCM returned an empty response body.");
+            throw new PushDeliveryNonRetryableException("FCM returned an empty response body.");
         }
 
         int failureCount = response.failure() == null ? 0 : response.failure();
@@ -93,7 +100,11 @@ public class FcmNotificationPushSender implements NotificationPushSender {
             throw new PushTokenInvalidException("FCM permanent token failure: " + error);
         }
 
-        throw new IllegalStateException("FCM delivery failed. error=" + (error == null ? "unknown" : error));
+        if (StringUtils.hasText(error) && RETRYABLE_FAILURE_ERRORS.contains(error)) {
+            throw new PushDeliveryRetryableException("FCM transient delivery failure: " + error);
+        }
+
+        throw new PushDeliveryNonRetryableException("FCM non-retryable delivery failure: " + (error == null ? "unknown" : error));
     }
 
     private record FcmSendResponse(

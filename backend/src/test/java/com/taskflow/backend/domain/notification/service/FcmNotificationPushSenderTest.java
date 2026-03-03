@@ -61,7 +61,7 @@ class FcmNotificationPushSenderTest {
         );
 
         assertThatThrownBy(() -> sender.send("token", PushPlatform.WEB, "Notice", "Body"))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(PushDeliveryNonRetryableException.class);
     }
 
     @Test
@@ -91,6 +91,37 @@ class FcmNotificationPushSenderTest {
 
         assertThatThrownBy(() -> sender.send("token-value", PushPlatform.WEB, "Notice", "Body"))
                 .isInstanceOf(PushTokenInvalidException.class);
+
+        server.verify();
+    }
+
+    @Test
+    void sendThrowsRetryableExceptionWhenFcmReturnsTransientFailure() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        FcmNotificationPushSender sender = new FcmNotificationPushSender(
+                builder,
+                "https://fcm.test/send",
+                "fcm-server-key"
+        );
+
+        server.expect(requestTo("https://fcm.test/send"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "success": 0,
+                          "failure": 1,
+                          "results": [
+                            {"error":"Unavailable"}
+                          ]
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        assertThatThrownBy(() -> sender.send("token-value", PushPlatform.WEB, "Notice", "Body"))
+                .isInstanceOf(PushDeliveryRetryableException.class);
 
         server.verify();
     }

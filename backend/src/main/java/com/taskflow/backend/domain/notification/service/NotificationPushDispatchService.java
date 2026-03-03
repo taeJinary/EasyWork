@@ -59,15 +59,33 @@ public class NotificationPushDispatchService {
                     exception.getMessage()
             );
             return false;
-        } catch (Exception exception) {
+        } catch (PushDeliveryNonRetryableException exception) {
             log.warn(
-                    "Failed to send push notification. notificationId={}, userId={}, tokenHash={}",
+                    "Push delivery skipped for non-retryable failure. notificationId={}, userId={}, tokenHash={}, reason={}",
+                    notification.getId(),
+                    notification.getUser().getId(),
+                    tokenHash(token.getToken()),
+                    exception.getMessage()
+            );
+            return false;
+        } catch (PushDeliveryRetryableException exception) {
+            log.warn(
+                    "Push delivery failed with retryable error. notificationId={}, userId={}, tokenHash={}, reason={}",
+                    notification.getId(),
+                    notification.getUser().getId(),
+                    tokenHash(token.getToken()),
+                    exception.getMessage()
+            );
+            return true;
+        } catch (Exception exception) {
+            log.error(
+                    "Failed to send push notification with unknown non-retryable error. notificationId={}, userId={}, tokenHash={}",
                     notification.getId(),
                     notification.getUser().getId(),
                     tokenHash(token.getToken()),
                     exception
             );
-            return true;
+            return false;
         }
     }
 
