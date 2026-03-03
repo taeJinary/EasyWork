@@ -122,6 +122,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("idx_projects_workspace_id");
     }
 
+    @Test
+    void projectWorkspaceConstraintMigrationSqlEnforcesNotNullAndForeignKey() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_07__enforce_projects_workspace_fk.sql");
+
+        assertThat(content).contains("update projects");
+        assertThat(content).contains("modify column workspace_id bigint not null");
+        assertThat(content).contains("foreign key (workspace_id) references workspaces(id)");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }
