@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.user.controller;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.LoginResponse;
@@ -83,6 +84,22 @@ public class AuthController {
             HttpServletResponse response
     ) {
         LoginTokens tokens = authService.oauthLogin(request);
+        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
+
+        LoginResponse loginResponse = new LoginResponse(
+                tokens.accessToken(),
+                tokens.accessTokenExpiresIn(),
+                tokens.user()
+        );
+        return ResponseEntity.ok(ApiResponse.success(loginResponse));
+    }
+
+    @PostMapping("/oauth/code/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> oauthCodeLogin(
+            @Valid @RequestBody OAuthCodeLoginRequest request,
+            HttpServletResponse response
+    ) {
+        LoginTokens tokens = authService.oauthCodeLogin(request);
         addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
         LoginResponse loginResponse = new LoginResponse(

@@ -60,7 +60,7 @@ public class SecurityConfig {
                                 referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/signup", "/auth/login", "/auth/oauth/login", "/auth/token/reissue").permitAll()
+                        .requestMatchers("/auth/signup", "/auth/login", "/auth/oauth/login", "/auth/oauth/code/login", "/auth/token/reissue").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/ws", "/ws/**").permitAll()
                         .requestMatchers("/auth/logout").authenticated()

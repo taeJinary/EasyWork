@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
@@ -148,6 +149,32 @@ class AuthControllerTest {
         given(authService.oauthLogin(eq(request))).willReturn(tokens);
 
         mockMvc.perform(post("/auth/oauth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("rt_custom=")))
+                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
+                .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
+                .andExpect(jsonPath("$.data.user.userId").value(2L));
+    }
+
+    @Test
+    void oauthCodeLoginReturnsTokenPayload() throws Exception {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        LoginTokens tokens = new LoginTokens(
+                "oauth-access-token",
+                "oauth-refresh-token",
+                1800000L,
+                1209600000L,
+                new AuthUserResponse(2L, "oauth@example.com", "oauth-user", null, "ROLE_USER")
+        );
+
+        given(authService.oauthCodeLogin(eq(request))).willReturn(tokens);
+
+        mockMvc.perform(post("/auth/oauth/code/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
