@@ -28,6 +28,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,7 +99,7 @@ class TaskAttachmentServiceTest {
         given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(taskAttachmentStorage.store(eq(10L), any(MultipartFile.class))).willReturn(storedAttachment);
-        given(taskAttachmentRepository.save(any(TaskAttachment.class))).willReturn(saved);
+        given(taskAttachmentRepository.saveAndFlush(any(TaskAttachment.class))).willReturn(saved);
 
         TaskAttachmentResponse response = taskAttachmentService.uploadAttachment(1L, 100L, multipartFile);
 
@@ -157,13 +159,68 @@ class TaskAttachmentServiceTest {
         given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(taskAttachmentStorage.store(eq(10L), any(MultipartFile.class))).willReturn(storedAttachment);
-        given(taskAttachmentRepository.save(any(TaskAttachment.class))).willThrow(new RuntimeException("db fail"));
+        given(taskAttachmentRepository.saveAndFlush(any(TaskAttachment.class))).willThrow(new RuntimeException("db fail"));
 
         assertThatThrownBy(() -> taskAttachmentService.uploadAttachment(1L, 100L, multipartFile))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("db fail");
 
         verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
+    }
+
+    @Test
+    void uploadAttachmentCleansStoredFileWhenRollbackHappensAfterMethodReturn() {
+        User uploader = activeUser(1L, "uploader@example.com", "uploader");
+        Project project = project(10L, uploader);
+        Task task = task(100L, project, uploader);
+        ProjectMember membership = membership(1000L, project, uploader, ProjectRole.MEMBER);
+
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "report.pdf",
+                "application/pdf",
+                "hello".getBytes()
+        );
+
+        TaskAttachmentStorage.StoredAttachment storedAttachment = new TaskAttachmentStorage.StoredAttachment(
+                "task-attachments/10/abc-report.pdf",
+                "abc-report.pdf",
+                "application/pdf",
+                5L
+        );
+
+        TaskAttachment saved = TaskAttachment.builder()
+                .id(2000L)
+                .task(task)
+                .uploader(uploader)
+                .originalFilename("report.pdf")
+                .storedFilename("abc-report.pdf")
+                .storagePath("task-attachments/10/abc-report.pdf")
+                .contentType("application/pdf")
+                .sizeBytes(5L)
+                .build();
+        ReflectionTestUtils.setField(saved, "createdAt", LocalDateTime.of(2026, 3, 3, 10, 1));
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskAttachmentStorage.store(eq(10L), any(MultipartFile.class))).willReturn(storedAttachment);
+        given(taskAttachmentRepository.saveAndFlush(any(TaskAttachment.class))).willReturn(saved);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            taskAttachmentService.uploadAttachment(1L, 100L, multipartFile);
+            verify(taskAttachmentStorage, never()).delete("task-attachments/10/abc-report.pdf");
+
+            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+
+            verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
+        } finally {
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
+        }
     }
 
     @Test
