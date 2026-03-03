@@ -13,6 +13,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class TaskAttachmentDeleteEventListener {
 
     private final TaskAttachmentStorage taskAttachmentStorage;
+    private final TaskAttachmentCleanupRetryService cleanupRetryService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTaskAttachmentDeleted(TaskAttachmentDeletedEvent event) {
@@ -25,6 +26,7 @@ public class TaskAttachmentDeleteEventListener {
                     event.storagePath(),
                     exception
             );
+            cleanupRetryService.enqueueDeleteFailure(event.attachmentId(), event.storagePath());
         }
     }
 }

@@ -64,6 +64,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("max-request-size: 10MB");
     }
 
+    @Test
+    void cleanupJobMigrationSqlDefinesRequiredTableAndAuditColumns() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_01__create_task_attachment_cleanup_jobs.sql");
+
+        assertThat(content).contains("create table if not exists task_attachment_cleanup_jobs");
+        assertThat(content).contains("created_at");
+        assertThat(content).contains("updated_at");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }
