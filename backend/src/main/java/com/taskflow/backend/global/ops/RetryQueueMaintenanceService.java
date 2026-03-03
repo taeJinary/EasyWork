@@ -63,11 +63,11 @@ public class RetryQueueMaintenanceService {
 
         LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
         long deletedInvitation = invitationEmailRetryJobRepository
-                .deleteByCompletedAtIsNotNullAndUpdatedAtBefore(cutoff);
+                .deleteCompletedHistoryBefore(cutoff);
         long deletedNotification = notificationPushRetryJobRepository
-                .deleteByCompletedAtIsNotNullAndUpdatedAtBefore(cutoff);
+                .deleteCompletedHistoryBefore(cutoff);
         long deletedAttachment = taskAttachmentCleanupJobRepository
-                .deleteByCompletedAtIsNotNullAndUpdatedAtBefore(cutoff);
+                .deleteCompletedHistoryBefore(cutoff);
         long totalDeleted = deletedInvitation + deletedNotification + deletedAttachment;
 
         if (totalDeleted > 0L) {

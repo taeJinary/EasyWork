@@ -40,21 +40,21 @@ class RetryQueueMaintenanceServiceTest {
         given(invitationEmailRetryJobRepository.countByCompletedAtIsNull()).willReturn(2L);
         given(notificationPushRetryJobRepository.countByCompletedAtIsNull()).willReturn(3L);
         given(taskAttachmentCleanupJobRepository.countByCompletedAtIsNull()).willReturn(1L);
-        given(invitationEmailRetryJobRepository.deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class)))
-                .willReturn(4L);
-        given(notificationPushRetryJobRepository.deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class)))
-                .willReturn(5L);
-        given(taskAttachmentCleanupJobRepository.deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class)))
-                .willReturn(6L);
+        given(invitationEmailRetryJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class)))
+                .willReturn(4);
+        given(notificationPushRetryJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class)))
+                .willReturn(5);
+        given(taskAttachmentCleanupJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class)))
+                .willReturn(6);
 
         retryQueueMaintenanceService.maintain();
 
         verify(invitationEmailRetryJobRepository).countByCompletedAtIsNull();
         verify(notificationPushRetryJobRepository).countByCompletedAtIsNull();
         verify(taskAttachmentCleanupJobRepository).countByCompletedAtIsNull();
-        verify(invitationEmailRetryJobRepository).deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class));
-        verify(notificationPushRetryJobRepository).deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class));
-        verify(taskAttachmentCleanupJobRepository).deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class));
+        verify(invitationEmailRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class));
+        verify(notificationPushRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class));
+        verify(taskAttachmentCleanupJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class));
     }
 
     @Test
@@ -67,6 +67,6 @@ class RetryQueueMaintenanceServiceTest {
         verify(notificationPushRetryJobRepository, never()).countByCompletedAtIsNull();
         verify(taskAttachmentCleanupJobRepository, never()).countByCompletedAtIsNull();
         verify(invitationEmailRetryJobRepository, never())
-                .deleteByCompletedAtIsNotNullAndUpdatedAtBefore(any(LocalDateTime.class));
+                .deleteCompletedHistoryBefore(any(LocalDateTime.class));
     }
 }
