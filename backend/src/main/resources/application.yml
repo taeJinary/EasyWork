@@ -74,6 +74,12 @@ app:
       retry-interval-ms: 60000
       retry-delay-seconds: 300
       batch-size: 50
+  notification:
+    push:
+      sender: logging
+      fcm:
+        endpoint: https://fcm.googleapis.com/fcm/send
+        server-key: ${FCM_SERVER_KEY:}
 
 # === Logging ===
 logging:

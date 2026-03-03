@@ -35,6 +35,16 @@ public class NotificationPushDispatchService {
                         notification.getTitle(),
                         notification.getContent()
                 );
+            } catch (PushTokenInvalidException exception) {
+                token.deactivate();
+                notificationPushTokenRepository.save(token);
+                log.warn(
+                        "Push token deactivated after permanent delivery failure. notificationId={}, userId={}, tokenHash={}, reason={}",
+                        notification.getId(),
+                        notification.getUser().getId(),
+                        tokenHash(token.getToken()),
+                        exception.getMessage()
+                );
             } catch (Exception exception) {
                 log.warn(
                         "Failed to send push notification. notificationId={}, userId={}, tokenHash={}",
