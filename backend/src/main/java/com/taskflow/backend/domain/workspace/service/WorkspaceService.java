@@ -1,5 +1,6 @@
 package com.taskflow.backend.domain.workspace.service;
 
+import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
@@ -40,6 +41,7 @@ public class WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -143,6 +145,8 @@ public class WorkspaceService {
         WorkspaceMember membership = findWorkspaceMembership(workspaceId, userId);
         ensureOwner(membership);
 
+        projectRepository.findAllByWorkspaceIdAndDeletedAtIsNull(workspaceId)
+                .forEach(project -> project.softDelete());
         workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceRepository.delete(workspace);
     }

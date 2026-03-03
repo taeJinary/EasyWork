@@ -1,5 +1,7 @@
 package com.taskflow.backend.domain.workspace.service;
 
+import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
@@ -47,6 +49,9 @@ class WorkspaceServiceTest {
 
     @Mock
     private WorkspaceMemberRepository workspaceMemberRepository;
+
+    @Mock
+    private ProjectRepository projectRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -300,14 +305,24 @@ class WorkspaceServiceTest {
                 .role(WorkspaceRole.OWNER)
                 .joinedAt(LocalDateTime.of(2026, 3, 3, 9, 0))
                 .build();
+        Project project = Project.builder()
+                .id(20L)
+                .workspace(workspace)
+                .owner(owner)
+                .name("TaskFlow Project")
+                .description("project")
+                .build();
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
         given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
                 .willReturn(Optional.of(ownerMembership));
+        given(projectRepository.findAllByWorkspaceIdAndDeletedAtIsNull(10L)).willReturn(List.of(project));
 
         workspaceService.deleteWorkspace(1L, 10L);
 
+        assertThat(project.isDeleted()).isTrue();
+        verify(projectRepository).findAllByWorkspaceIdAndDeletedAtIsNull(10L);
         verify(workspaceMemberRepository).deleteAllByWorkspaceId(10L);
         verify(workspaceRepository).delete(workspace);
     }
