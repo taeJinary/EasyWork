@@ -10,8 +10,12 @@ public interface InvitationEmailRetryJobRepository extends JpaRepository<Invitat
 
     boolean existsByInvitationIdAndCompletedAtIsNull(Long invitationId);
 
+    long countByCompletedAtIsNull();
+
     List<InvitationEmailRetryJob> findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
             LocalDateTime nextRetryAt,
             Pageable pageable
     );
+
+    long deleteByCompletedAtIsNotNullAndUpdatedAtBefore(LocalDateTime cutoff);
 }

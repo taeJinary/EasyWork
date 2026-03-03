@@ -10,8 +10,12 @@ public interface TaskAttachmentCleanupJobRepository extends JpaRepository<TaskAt
 
     boolean existsByStoragePathAndCompletedAtIsNull(String storagePath);
 
+    long countByCompletedAtIsNull();
+
     List<TaskAttachmentCleanupJob> findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
             LocalDateTime now,
             Pageable pageable
     );
+
+    long deleteByCompletedAtIsNotNullAndUpdatedAtBefore(LocalDateTime cutoff);
 }

@@ -12,6 +12,8 @@ import com.taskflow.backend.domain.invitation.repository.ProjectInvitationReposi
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
+import com.taskflow.backend.domain.project.repository.ProjectQueryRepository;
+import com.taskflow.backend.domain.project.repository.ProjectQueryRepository.ProjectListQueryResult;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.user.entity.User;
@@ -28,8 +30,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +44,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectQueryRepository projectQueryRepository;
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
@@ -79,35 +86,32 @@ public class ProjectService {
 
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = size > 0 ? size : 20;
-        String trimmedKeyword = keyword == null ? null : keyword.trim();
-        String normalizedKeyword = (trimmedKeyword == null || trimmedKeyword.isBlank()) ? null : trimmedKeyword;
+        String normalizedKeyword = normalizeKeyword(keyword);
+        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize);
 
-        List<ProjectMember> memberships = projectMemberRepository.findAllActiveByUserIdOrderByProjectUpdatedAtDesc(userId);
-        List<ProjectMember> filteredMemberships = memberships.stream()
-                .filter(membership -> role == null || membership.getRole() == role)
-                .filter(membership -> matchesKeyword(membership.getProject(), normalizedKeyword))
-                .toList();
+        Page<ProjectListQueryResult> queryPage =
+                projectQueryRepository == null
+                        ? null
+                        : projectQueryRepository.findMyProjects(userId, normalizedKeyword, role, pageable);
 
-        long totalElements = filteredMemberships.size();
-        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
+        if (queryPage == null) {
+            return getMyProjectsLegacy(userId, normalizedPage, normalizedSize, normalizedKeyword, role);
+        }
 
-        int fromIndex = Math.min(normalizedPage * normalizedSize, filteredMemberships.size());
-        int toIndex = Math.min(fromIndex + normalizedSize, filteredMemberships.size());
-
-        List<ProjectListItemResponse> content = filteredMemberships.subList(fromIndex, toIndex).stream()
+        List<ProjectListItemResponse> content = queryPage.getContent().stream()
                 .map(this::toProjectListItem)
                 .toList();
 
-        boolean first = normalizedPage == 0;
-        boolean last = totalPages == 0 || normalizedPage >= totalPages - 1;
+        int totalPages = queryPage.getTotalPages();
+        boolean last = totalPages == 0 || queryPage.isLast();
 
         return new ProjectListResponse(
                 content,
                 normalizedPage,
                 normalizedSize,
-                totalElements,
+                queryPage.getTotalElements(),
                 totalPages,
-                first,
+                queryPage.isFirst(),
                 last
         );
     }
@@ -215,7 +219,74 @@ public class ProjectService {
         projectMemberRepository.delete(targetMember);
     }
 
-    private ProjectListItemResponse toProjectListItem(ProjectMember projectMember) {
+    private ProjectListItemResponse toProjectListItem(ProjectListQueryResult row) {
+        long taskCount = row.taskCount() == null ? 0L : row.taskCount();
+        long doneTaskCount = row.doneTaskCount() == null ? 0L : row.doneTaskCount();
+        return new ProjectListItemResponse(
+                row.projectId(),
+                row.name(),
+                row.description(),
+                row.role(),
+                row.memberCount() == null ? 0L : row.memberCount(),
+                taskCount,
+                doneTaskCount,
+                calculateProgressRate(taskCount, doneTaskCount),
+                row.updatedAt()
+        );
+    }
+
+    private int calculateProgressRate(long taskCount, long doneTaskCount) {
+        if (taskCount <= 0L) {
+            return 0;
+        }
+        return (int) ((doneTaskCount * 100L) / taskCount);
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return null;
+        }
+        return keyword.trim();
+    }
+
+    private ProjectListResponse getMyProjectsLegacy(
+            Long userId,
+            int normalizedPage,
+            int normalizedSize,
+            String normalizedKeyword,
+            ProjectRole role
+    ) {
+        List<ProjectMember> memberships = projectMemberRepository.findAllActiveByUserIdOrderByProjectUpdatedAtDesc(userId);
+        List<ProjectMember> filteredMemberships = memberships.stream()
+                .filter(membership -> role == null || membership.getRole() == role)
+                .filter(membership -> matchesKeywordLegacy(membership.getProject(), normalizedKeyword))
+                .toList();
+
+        long totalElements = filteredMemberships.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
+
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filteredMemberships.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filteredMemberships.size());
+
+        List<ProjectListItemResponse> content = filteredMemberships.subList(fromIndex, toIndex).stream()
+                .map(this::toProjectListItemLegacy)
+                .toList();
+
+        boolean first = normalizedPage == 0;
+        boolean last = totalPages == 0 || normalizedPage >= totalPages - 1;
+
+        return new ProjectListResponse(
+                content,
+                normalizedPage,
+                normalizedSize,
+                totalElements,
+                totalPages,
+                first,
+                last
+        );
+    }
+
+    private ProjectListItemResponse toProjectListItemLegacy(ProjectMember projectMember) {
         Project project = projectMember.getProject();
         long memberCount = projectMemberRepository.countByProjectId(project.getId());
         long taskCount = taskRepository.countByProjectIdAndDeletedAtIsNull(project.getId());
@@ -235,14 +306,7 @@ public class ProjectService {
         );
     }
 
-    private int calculateProgressRate(long taskCount, long doneTaskCount) {
-        if (taskCount <= 0L) {
-            return 0;
-        }
-        return (int) ((doneTaskCount * 100L) / taskCount);
-    }
-
-    private boolean matchesKeyword(Project project, String keyword) {
+    private boolean matchesKeywordLegacy(Project project, String keyword) {
         if (keyword == null) {
             return true;
         }

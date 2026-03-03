@@ -65,6 +65,16 @@ class ApplicationConfigSecurityPolicyTest {
     }
 
     @Test
+    void applicationYmlDefinesRetryQueueMaintenancePolicy() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("retry-queue:");
+        assertThat(content).contains("maintenance:");
+        assertThat(content).contains("retention-days:");
+        assertThat(content).contains("pending-warn-threshold:");
+    }
+
+    @Test
     void cleanupJobMigrationSqlDefinesRequiredTableAndAuditColumns() throws IOException {
         String content = read("src/main/resources/db/migration/V20260303_01__create_task_attachment_cleanup_jobs.sql");
 

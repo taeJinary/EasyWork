@@ -10,8 +10,12 @@ public interface NotificationPushRetryJobRepository extends JpaRepository<Notifi
 
     boolean existsByNotificationIdAndPushTokenIdAndCompletedAtIsNull(Long notificationId, Long pushTokenId);
 
+    long countByCompletedAtIsNull();
+
     List<NotificationPushRetryJob> findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
             LocalDateTime nextRetryAt,
             Pageable pageable
     );
+
+    long deleteByCompletedAtIsNotNullAndUpdatedAtBefore(LocalDateTime cutoff);
 }
