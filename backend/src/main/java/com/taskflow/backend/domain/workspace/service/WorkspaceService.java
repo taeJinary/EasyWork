@@ -3,8 +3,10 @@ package com.taskflow.backend.domain.workspace.service;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
+import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
+import com.taskflow.backend.domain.workspace.dto.response.WorkspaceMemberResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceSummaryResponse;
 import com.taskflow.backend.domain.workspace.entity.Workspace;
 import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
@@ -91,6 +93,31 @@ public class WorkspaceService {
         );
     }
 
+    public WorkspaceDetailResponse getWorkspaceDetail(Long userId, Long workspaceId) {
+        findUser(userId);
+        Workspace workspace = findWorkspace(workspaceId);
+        WorkspaceMember myMembership = findWorkspaceMembership(workspaceId, userId);
+
+        return new WorkspaceDetailResponse(
+                workspace.getId(),
+                workspace.getName(),
+                workspace.getDescription(),
+                myMembership.getRole(),
+                workspaceMemberRepository.countByWorkspaceId(workspace.getId()),
+                workspace.getUpdatedAt()
+        );
+    }
+
+    public List<WorkspaceMemberResponse> getWorkspaceMembers(Long userId, Long workspaceId) {
+        findUser(userId);
+        findWorkspace(workspaceId);
+        findWorkspaceMembership(workspaceId, userId);
+
+        return workspaceMemberRepository.findAllByWorkspaceIdOrderByJoinedAtAsc(workspaceId).stream()
+                .map(this::toMemberResponse)
+                .toList();
+    }
+
     private WorkspaceListItemResponse toListItem(WorkspaceMember membership, Map<Long, Long> memberCounts) {
         Workspace workspace = membership.getWorkspace();
         return new WorkspaceListItemResponse(
@@ -100,6 +127,17 @@ public class WorkspaceService {
                 membership.getRole(),
                 memberCounts.getOrDefault(workspace.getId(), 0L),
                 workspace.getUpdatedAt()
+        );
+    }
+
+    private WorkspaceMemberResponse toMemberResponse(WorkspaceMember membership) {
+        return new WorkspaceMemberResponse(
+                membership.getId(),
+                membership.getUser().getId(),
+                membership.getUser().getEmail(),
+                membership.getUser().getNickname(),
+                membership.getRole(),
+                membership.getJoinedAt()
         );
     }
 
@@ -120,6 +158,16 @@ public class WorkspaceService {
     private User findUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private Workspace findWorkspace(Long workspaceId) {
+        return workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    private WorkspaceMember findWorkspaceMembership(Long workspaceId, Long userId) {
+        return workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
     }
 
     private int normalizePageSize(int size) {

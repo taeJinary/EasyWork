@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.workspace.repository;
 import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,10 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     List<WorkspaceMember> findAllByUserIdOrderByWorkspaceUpdatedAtDesc(Long userId);
 
     long countByWorkspaceId(Long workspaceId);
+
+    Optional<WorkspaceMember> findByWorkspaceIdAndUserId(Long workspaceId, Long userId);
+
+    List<WorkspaceMember> findAllByWorkspaceIdOrderByJoinedAtAsc(Long workspaceId);
 
     @Query(
             value = """
