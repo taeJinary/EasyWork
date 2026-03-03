@@ -20,6 +20,7 @@ import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
 import com.taskflow.backend.domain.task.entity.TaskStatusHistory;
 import com.taskflow.backend.domain.task.repository.TaskLabelRepository;
+import com.taskflow.backend.domain.task.repository.TaskQueryRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.task.repository.TaskStatusHistoryRepository;
 import com.taskflow.backend.domain.user.entity.User;
@@ -32,13 +33,14 @@ import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,7 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final TaskRepository taskRepository;
+    private final TaskQueryRepository taskQueryRepository;
     private final TaskLabelRepository taskLabelRepository;
     private final LabelRepository labelRepository;
     private final TaskStatusHistoryRepository taskStatusHistoryRepository;
@@ -249,32 +252,29 @@ public class TaskService {
         int normalizedSize = size > 0 ? size : 20;
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
 
-        List<Task> tasks = taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(projectId);
+        PageRequest pageRequest = PageRequest.of(normalizedPage, normalizedSize);
+        Page<Task> taskPage = taskQueryRepository.findTasks(
+                projectId,
+                status,
+                sortBy,
+                direction,
+                normalizedKeyword,
+                pageRequest
+        );
 
-        List<Task> filtered = tasks.stream()
-                .filter(task -> status == null || task.getStatus() == status)
-                .filter(task -> normalizedKeyword == null || matchesKeyword(task, normalizedKeyword))
-                .sorted(buildTaskComparator(sortBy, direction))
-                .toList();
-
-        long totalElements = filtered.size();
-        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
-
-        int fromIndex = Math.min(normalizedPage * normalizedSize, filtered.size());
-        int toIndex = Math.min(fromIndex + normalizedSize, filtered.size());
-
-        List<TaskListItemResponse> content = filtered.subList(fromIndex, toIndex).stream()
+        List<TaskListItemResponse> content = taskPage.getContent().stream()
                 .map(this::toTaskListItemResponse)
                 .toList();
 
-        boolean first = normalizedPage == 0;
-        boolean last = totalPages == 0 || normalizedPage >= totalPages - 1;
+        int totalPages = taskPage.getTotalPages();
+        boolean first = taskPage.isFirst();
+        boolean last = totalPages == 0 || taskPage.isLast();
 
         return new TaskListResponse(
                 content,
-                normalizedPage,
-                normalizedSize,
-                totalElements,
+                taskPage.getNumber(),
+                taskPage.getSize(),
+                taskPage.getTotalElements(),
                 totalPages,
                 first,
                 last
@@ -455,36 +455,6 @@ public class TaskService {
                 labels,
                 0L
         );
-    }
-
-    private Comparator<Task> buildTaskComparator(String sortBy, String direction) {
-        String normalizedSortBy = sortBy == null ? "updatedAt" : sortBy.trim();
-        String normalizedDirection = direction == null ? "DESC" : direction.trim();
-
-        Comparator<Task> comparator = switch (normalizedSortBy) {
-            case "createdAt" -> Comparator.comparing(
-                    Task::getCreatedAt,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-            case "dueDate" -> Comparator.comparing(
-                    Task::getDueDate,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-            case "priority" -> Comparator.comparing(Task::getPriority);
-            case "updatedAt" -> Comparator.comparing(
-                    Task::getUpdatedAt,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-            default -> Comparator.comparing(
-                    Task::getUpdatedAt,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-        };
-
-        if (!"ASC".equalsIgnoreCase(normalizedDirection)) {
-            comparator = comparator.reversed();
-        }
-        return comparator;
     }
 
     private TaskListItemResponse toTaskListItemResponse(Task task) {

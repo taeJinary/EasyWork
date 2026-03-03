@@ -18,6 +18,7 @@ import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.domain.task.entity.TaskLabel;
 import com.taskflow.backend.domain.task.entity.TaskStatusHistory;
 import com.taskflow.backend.domain.task.repository.TaskLabelRepository;
+import com.taskflow.backend.domain.task.repository.TaskQueryRepository;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.task.repository.TaskStatusHistoryRepository;
 import com.taskflow.backend.domain.user.entity.User;
@@ -40,12 +41,17 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -61,6 +67,9 @@ class TaskServiceTest {
 
     @Mock
     private TaskRepository taskRepository;
+
+    @Mock
+    private TaskQueryRepository taskQueryRepository;
 
     @Mock
     private TaskLabelRepository taskLabelRepository;
@@ -473,8 +482,14 @@ class TaskServiceTest {
 
         given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
-        given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
-                .willReturn(List.of(task1, task2, task3));
+        given(taskQueryRepository.findTasks(
+                eq(10L),
+                eq(TaskStatus.TODO),
+                eq("dueDate"),
+                eq("ASC"),
+                eq("API"),
+                any(Pageable.class)
+        )).willReturn(new PageImpl<>(List.of(task2, task1), PageRequest.of(0, 20), 2));
 
         TaskListResponse response = taskService.getTasks(
                 1L,
@@ -534,8 +549,14 @@ class TaskServiceTest {
 
             given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
             given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
-            given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
-                    .willReturn(List.of(task));
+            given(taskQueryRepository.findTasks(
+                    eq(10L),
+                    eq(TaskStatus.TODO),
+                    eq("updatedAt"),
+                    eq("DESC"),
+                    eq("istanbul"),
+                    any(Pageable.class)
+            )).willReturn(new PageImpl<>(List.of(task), PageRequest.of(0, 20), 1));
 
             TaskListResponse response = taskService.getTasks(
                     1L,
@@ -625,6 +646,89 @@ class TaskServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.NOT_PROJECT_MEMBER);
+    }
+
+    @Test
+    void getTasksHandlesVeryLargePageAndSizeWithoutOverflow() {
+        User member = activeUser(1L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(member)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(member)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskQueryRepository.findTasks(
+                eq(10L),
+                eq(TaskStatus.TODO),
+                eq("updatedAt"),
+                eq("DESC"),
+                eq(null),
+                any(Pageable.class)
+        )).willReturn(new PageImpl<>(List.of(), PageRequest.of(Integer.MAX_VALUE, Integer.MAX_VALUE), 1));
+
+        assertThatCode(() -> taskService.getTasks(
+                1L,
+                10L,
+                Integer.MAX_VALUE,
+                Integer.MAX_VALUE,
+                TaskStatus.TODO,
+                "updatedAt",
+                "DESC",
+                null
+        )).doesNotThrowAnyException();
+    }
+
+    @Test
+    void getTasksShouldNotLoadAllTasksInMemory() {
+        User member = activeUser(1L, "member@example.com", "member");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(member)
+                .name("TaskFlow")
+                .description("desc")
+                .build();
+        ProjectMember membership = ProjectMember.builder()
+                .id(100L)
+                .project(project)
+                .user(member)
+                .role(ProjectRole.MEMBER)
+                .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+
+        given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskQueryRepository.findTasks(
+                eq(10L),
+                eq(TaskStatus.TODO),
+                eq("updatedAt"),
+                eq("DESC"),
+                eq("task"),
+                any(Pageable.class)
+        )).willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        assertThatCode(() -> taskService.getTasks(
+                1L,
+                10L,
+                0,
+                20,
+                TaskStatus.TODO,
+                "updatedAt",
+                "DESC",
+                "task"
+        )).doesNotThrowAnyException();
+
+        verify(taskRepository, never()).findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L);
     }
 
     @Test
