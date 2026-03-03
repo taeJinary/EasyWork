@@ -85,6 +85,28 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
     }
 
     @Test
+    void findTasksTreatsWhitespaceWrappedDirectionAsAscending() {
+        Project project = persistProjectGraph();
+        persistTask(project, "task-urgent", TaskPriority.URGENT, 0);
+        persistTask(project, "task-low", TaskPriority.LOW, 1);
+        entityManager.flush();
+        entityManager.clear();
+
+        Page<com.taskflow.backend.domain.task.entity.Task> result = taskQueryRepository.findTasks(
+                project.getId(),
+                TaskStatus.TODO,
+                "priority",
+                "  ASC  ",
+                null,
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(result.getContent())
+                .extracting(com.taskflow.backend.domain.task.entity.Task::getPriority)
+                .containsExactly(TaskPriority.LOW, TaskPriority.URGENT);
+    }
+
+    @Test
     void findTasksReturnsEmptyPageWhenOffsetExceedsJpaLimit() {
         Project project = persistProjectGraph();
         persistTask(project, "task-low", TaskPriority.LOW, 0);

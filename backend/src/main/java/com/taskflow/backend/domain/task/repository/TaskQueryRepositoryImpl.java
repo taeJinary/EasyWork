@@ -34,7 +34,8 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
             Pageable pageable
     ) {
         QTask task = QTask.task;
-        boolean ascending = "ASC".equalsIgnoreCase(direction);
+        String normalizedDirection = normalizeDirection(direction);
+        boolean ascending = "ASC".equalsIgnoreCase(normalizedDirection);
 
         BooleanBuilder where = new BooleanBuilder()
                 .and(task.project.id.eq(projectId))
@@ -78,6 +79,13 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
             return null;
         }
         return keyword.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeDirection(String direction) {
+        if (!StringUtils.hasText(direction)) {
+            return "DESC";
+        }
+        return direction.trim();
     }
 
     private OrderSpecifier<?> resolvePrimarySort(QTask task, String sortBy, boolean ascending) {
