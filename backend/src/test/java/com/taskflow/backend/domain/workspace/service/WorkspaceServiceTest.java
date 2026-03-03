@@ -155,7 +155,7 @@ class WorkspaceServiceTest {
                 .build();
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(workspaceMemberRepository.countByWorkspaceId(10L)).willReturn(2L);
 
@@ -177,7 +177,7 @@ class WorkspaceServiceTest {
                 .description("team workspace")
                 .build();
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> workspaceService.getWorkspaceDetail(1L, 10L))
@@ -212,7 +212,7 @@ class WorkspaceServiceTest {
                 .build();
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
                 .willReturn(Optional.of(requesterMembership));
         given(workspaceMemberRepository.findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(10L))
@@ -247,7 +247,7 @@ class WorkspaceServiceTest {
         UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("TaskFlow Core", "core workspace");
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
                 .willReturn(Optional.of(ownerMembership));
 
@@ -279,7 +279,7 @@ class WorkspaceServiceTest {
         UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("TaskFlow Core", "core workspace");
 
         given(userRepository.findById(2L)).willReturn(Optional.of(member));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 2L))
                 .willReturn(Optional.of(memberMembership));
 
@@ -290,7 +290,7 @@ class WorkspaceServiceTest {
     }
 
     @Test
-    void deleteWorkspaceDeletesMembershipsAndWorkspaceWhenRequesterIsOwner() {
+    void deleteWorkspaceSoftDeletesWorkspaceAndRemovesMembershipsWhenRequesterIsOwner() {
         User owner = activeUser(1L, "owner@example.com", "owner");
         Workspace workspace = Workspace.builder()
                 .id(10L)
@@ -314,7 +314,7 @@ class WorkspaceServiceTest {
                 .build();
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
                 .willReturn(Optional.of(ownerMembership));
         given(projectRepository.findAllByWorkspaceIdAndDeletedAtIsNull(10L)).willReturn(List.of(project));
@@ -322,9 +322,10 @@ class WorkspaceServiceTest {
         workspaceService.deleteWorkspace(1L, 10L);
 
         assertThat(project.isDeleted()).isTrue();
+        assertThat(workspace.isDeleted()).isTrue();
         verify(projectRepository).findAllByWorkspaceIdAndDeletedAtIsNull(10L);
         verify(workspaceMemberRepository).deleteAllByWorkspaceId(10L);
-        verify(workspaceRepository).delete(workspace);
+        verify(workspaceRepository, never()).delete(workspace);
     }
 
     @Test
@@ -346,7 +347,7 @@ class WorkspaceServiceTest {
                 .build();
 
         given(userRepository.findById(2L)).willReturn(Optional.of(member));
-        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 2L))
                 .willReturn(Optional.of(memberMembership));
 

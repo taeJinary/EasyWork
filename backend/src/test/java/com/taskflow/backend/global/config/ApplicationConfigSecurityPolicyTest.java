@@ -122,6 +122,24 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("idx_projects_workspace_id");
     }
 
+    @Test
+    void projectWorkspaceConstraintMigrationSqlEnforcesNotNullAndForeignKey() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_07__enforce_projects_workspace_fk.sql");
+
+        assertThat(content).contains("update projects");
+        assertThat(content).contains("modify column workspace_id bigint not null");
+        assertThat(content).contains("foreign key (workspace_id) references workspaces(id)");
+    }
+
+    @Test
+    void workspaceSoftDeleteMigrationSqlAddsDeletedAtColumn() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_08__add_deleted_at_to_workspaces.sql");
+
+        assertThat(content).contains("alter table workspaces");
+        assertThat(content).contains("add column deleted_at datetime(6) null");
+        assertThat(content).contains("idx_workspaces_deleted_at");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

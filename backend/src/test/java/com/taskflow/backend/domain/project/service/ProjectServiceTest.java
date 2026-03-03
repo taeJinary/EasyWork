@@ -98,7 +98,7 @@ class ProjectServiceTest {
                 .build();
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(20L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(20L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(20L, 1L))
                 .willReturn(Optional.of(workspaceMembership));
         given(projectRepository.save(any(Project.class))).willReturn(savedProject);
@@ -117,7 +117,7 @@ class ProjectServiceTest {
         CreateProjectRequest request = new CreateProjectRequest(20L, "TaskFlow", "project");
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(20L)).willReturn(Optional.empty());
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(20L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectService.createProject(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -137,7 +137,7 @@ class ProjectServiceTest {
         CreateProjectRequest request = new CreateProjectRequest(20L, "TaskFlow", "project");
 
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-        given(workspaceRepository.findById(20L)).willReturn(Optional.of(workspace));
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(20L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(20L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectService.createProject(1L, request))

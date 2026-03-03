@@ -145,10 +145,11 @@ public class WorkspaceService {
         WorkspaceMember membership = findWorkspaceMembership(workspaceId, userId);
         ensureOwner(membership);
 
+        LocalDateTime now = LocalDateTime.now();
         projectRepository.findAllByWorkspaceIdAndDeletedAtIsNull(workspaceId)
                 .forEach(project -> project.softDelete());
         workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
-        workspaceRepository.delete(workspace);
+        workspace.softDelete(now);
     }
 
     private WorkspaceListItemResponse toListItem(WorkspaceMember membership, Map<Long, Long> memberCounts) {
@@ -194,7 +195,7 @@ public class WorkspaceService {
     }
 
     private Workspace findWorkspace(Long workspaceId) {
-        return workspaceRepository.findById(workspaceId)
+        return workspaceRepository.findByIdAndDeletedAtIsNull(workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
