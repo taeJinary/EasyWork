@@ -19,12 +19,19 @@ import org.springframework.util.StringUtils;
 public class TaskAttachmentCleanupRetryService {
 
     private static final int DEFAULT_BATCH_SIZE = 50;
+    private static final int MAX_BACKOFF_SHIFT = 20;
 
     private final TaskAttachmentCleanupJobRepository cleanupJobRepository;
     private final TaskAttachmentStorage taskAttachmentStorage;
 
     @Value("${app.attachment.cleanup.retry-delay-seconds:300}")
     private long retryDelaySeconds;
+
+    @Value("${app.attachment.cleanup.max-retry-attempts:10}")
+    private int maxRetryAttempts;
+
+    @Value("${app.attachment.cleanup.max-delay-seconds:3600}")
+    private long maxRetryDelaySeconds;
 
     @Transactional
     public void enqueueDeleteFailure(Long attachmentId, String storagePath) {
@@ -59,15 +66,13 @@ public class TaskAttachmentCleanupRetryService {
     }
 
     private void processDeleteJob(TaskAttachmentCleanupJob job) {
+        LocalDateTime now = LocalDateTime.now();
         try {
             taskAttachmentStorage.delete(job.getStoragePath());
-            job.markCompleted(LocalDateTime.now());
+            job.markCompleted(now);
             cleanupJobRepository.save(job);
         } catch (Exception exception) {
-            job.markFailed(
-                    exception.getMessage(),
-                    LocalDateTime.now().plusSeconds(retryDelaySeconds)
-            );
+            markFailedOrDeadLetter(job, exception.getMessage(), now);
             cleanupJobRepository.save(job);
 
             log.error(
@@ -78,5 +83,38 @@ public class TaskAttachmentCleanupRetryService {
                     exception
             );
         }
+    }
+
+    private void markFailedOrDeadLetter(TaskAttachmentCleanupJob job, String errorMessage, LocalDateTime now) {
+        int nextRetryCount = job.getRetryCount() + 1;
+        if (nextRetryCount >= normalizeMaxRetryAttempts()) {
+            job.markDeadLetter(errorMessage, now);
+            log.warn(
+                    "Attachment cleanup retry exhausted and marked completed. attachmentId={}, retryCount={}",
+                    job.getAttachmentId(),
+                    job.getRetryCount()
+            );
+            return;
+        }
+
+        job.markFailed(errorMessage, now.plusSeconds(calculateDelaySeconds(nextRetryCount)));
+    }
+
+    private int normalizeMaxRetryAttempts() {
+        return maxRetryAttempts > 0 ? maxRetryAttempts : 1;
+    }
+
+    private long calculateDelaySeconds(int nextRetryCount) {
+        long baseDelaySeconds = Math.max(retryDelaySeconds, 1L);
+        long maxDelaySeconds = Math.max(maxRetryDelaySeconds, baseDelaySeconds);
+        int shift = Math.max(0, Math.min(nextRetryCount - 1, MAX_BACKOFF_SHIFT));
+        long multiplier = 1L << shift;
+        long computedDelay;
+        try {
+            computedDelay = Math.multiplyExact(baseDelaySeconds, multiplier);
+        } catch (ArithmeticException exception) {
+            computedDelay = Long.MAX_VALUE;
+        }
+        return Math.min(computedDelay, maxDelaySeconds);
     }
 }

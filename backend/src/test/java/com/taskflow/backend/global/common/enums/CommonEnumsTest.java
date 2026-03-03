@@ -76,4 +76,10 @@ class CommonEnumsTest {
         assertThat(PushPlatform.values())
                 .containsExactly(PushPlatform.WEB, PushPlatform.ANDROID, PushPlatform.IOS);
     }
+
+    @Test
+    void workspaceRoleEnumMatchesSpecification() {
+        assertThat(WorkspaceRole.values())
+                .containsExactly(WorkspaceRole.OWNER, WorkspaceRole.MEMBER);
+    }
 }

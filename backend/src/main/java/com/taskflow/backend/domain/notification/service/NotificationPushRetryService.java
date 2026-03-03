@@ -24,6 +24,7 @@ public class NotificationPushRetryService {
 
     private static final int DEFAULT_BATCH_SIZE = 50;
     private static final String OPEN_JOB_UNIQUE_KEY = "uk_notification_push_retry_jobs_open_key";
+    private static final int MAX_BACKOFF_SHIFT = 20;
 
     private final NotificationPushRetryJobRepository notificationPushRetryJobRepository;
     private final NotificationRepository notificationRepository;
@@ -32,6 +33,12 @@ public class NotificationPushRetryService {
 
     @Value("${app.notification.push.retry.delay-seconds:300}")
     private long retryDelaySeconds;
+
+    @Value("${app.notification.push.retry.max-attempts:10}")
+    private int maxRetryAttempts;
+
+    @Value("${app.notification.push.retry.max-delay-seconds:3600}")
+    private long maxRetryDelaySeconds;
 
     @Transactional
     public void enqueueFailure(Notification notification, Long pushTokenId, String errorMessage) {
@@ -80,9 +87,10 @@ public class NotificationPushRetryService {
     }
 
     private void processRetryJob(NotificationPushRetryJob job) {
+        LocalDateTime now = LocalDateTime.now();
         Notification notification = notificationRepository.findById(job.getNotificationId()).orElse(null);
         if (notification == null) {
-            job.markCompleted(LocalDateTime.now());
+            job.markCompleted(now);
             notificationPushRetryJobRepository.save(job);
             return;
         }
@@ -90,7 +98,7 @@ public class NotificationPushRetryService {
         if (pushToken == null
                 || !pushToken.isActive()
                 || !pushToken.getUser().getId().equals(notification.getUser().getId())) {
-            job.markCompleted(LocalDateTime.now());
+            job.markCompleted(now);
             notificationPushRetryJobRepository.save(job);
             return;
         }
@@ -98,19 +106,13 @@ public class NotificationPushRetryService {
         try {
             boolean hasTransientFailure = notificationPushDispatchService.sendToToken(notification, pushToken);
             if (hasTransientFailure) {
-                job.markFailed(
-                        "Transient push delivery failure",
-                        LocalDateTime.now().plusSeconds(retryDelaySeconds)
-                );
+                markFailedOrDeadLetter(job, "Transient push delivery failure", now);
             } else {
-                job.markCompleted(LocalDateTime.now());
+                job.markCompleted(now);
             }
             notificationPushRetryJobRepository.save(job);
         } catch (Exception exception) {
-            job.markFailed(
-                    exception.getMessage(),
-                    LocalDateTime.now().plusSeconds(retryDelaySeconds)
-            );
+            markFailedOrDeadLetter(job, exception.getMessage(), now);
             notificationPushRetryJobRepository.save(job);
             log.error(
                     "Failed to retry push notification dispatch. notificationId={}, retryCount={}",
@@ -119,6 +121,40 @@ public class NotificationPushRetryService {
                     exception
             );
         }
+    }
+
+    private void markFailedOrDeadLetter(NotificationPushRetryJob job, String errorMessage, LocalDateTime now) {
+        int nextRetryCount = job.getRetryCount() + 1;
+        if (nextRetryCount >= normalizeMaxRetryAttempts()) {
+            job.markDeadLetter(errorMessage, now);
+            log.warn(
+                    "Push retry exhausted and marked completed. notificationId={}, pushTokenId={}, retryCount={}",
+                    job.getNotificationId(),
+                    job.getPushTokenId(),
+                    job.getRetryCount()
+            );
+            return;
+        }
+
+        job.markFailed(errorMessage, now.plusSeconds(calculateDelaySeconds(nextRetryCount)));
+    }
+
+    private int normalizeMaxRetryAttempts() {
+        return maxRetryAttempts > 0 ? maxRetryAttempts : 1;
+    }
+
+    private long calculateDelaySeconds(int nextRetryCount) {
+        long baseDelaySeconds = Math.max(retryDelaySeconds, 1L);
+        long maxDelaySeconds = Math.max(maxRetryDelaySeconds, baseDelaySeconds);
+        int shift = Math.max(0, Math.min(nextRetryCount - 1, MAX_BACKOFF_SHIFT));
+        long multiplier = 1L << shift;
+        long computedDelay;
+        try {
+            computedDelay = Math.multiplyExact(baseDelaySeconds, multiplier);
+        } catch (ArithmeticException exception) {
+            computedDelay = Long.MAX_VALUE;
+        }
+        return Math.min(computedDelay, maxDelaySeconds);
     }
 
     private boolean isOpenJobDuplicateViolation(DataIntegrityViolationException exception) {

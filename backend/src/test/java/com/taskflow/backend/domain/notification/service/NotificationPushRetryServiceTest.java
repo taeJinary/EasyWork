@@ -15,6 +15,7 @@ import com.taskflow.backend.global.common.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -49,6 +50,13 @@ class NotificationPushRetryServiceTest {
 
     @InjectMocks
     private NotificationPushRetryService notificationPushRetryService;
+
+    @BeforeEach
+    void setUpDefaultRetryPolicy() {
+        ReflectionTestUtils.setField(notificationPushRetryService, "retryDelaySeconds", 300L);
+        ReflectionTestUtils.setField(notificationPushRetryService, "maxRetryAttempts", 10);
+        ReflectionTestUtils.setField(notificationPushRetryService, "maxRetryDelaySeconds", 3600L);
+    }
 
     @Test
     void enqueueFailureSavesPendingJobWhenNoOpenJobExists() {
@@ -196,6 +204,69 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getCompletedAt()).isNotNull();
         verify(notificationPushDispatchService, never()).sendToToken(any(Notification.class), any(NotificationPushToken.class));
         verify(notificationPushRetryJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingPushesMarksCompletedWhenMaxRetryAttemptsReached() {
+        NotificationPushRetryJob job = NotificationPushRetryJob.createPending(
+                101L,
+                501L,
+                LocalDateTime.now().minusMinutes(1),
+                "temporary push failure"
+        );
+        job.markFailed("first failure", LocalDateTime.now().minusSeconds(20));
+        job.markFailed("second failure", LocalDateTime.now().minusSeconds(10));
+
+        Notification notification = notification(101L);
+        NotificationPushToken pushToken = activePushToken(501L, notification.getUser());
+        ReflectionTestUtils.setField(notificationPushRetryService, "maxRetryAttempts", 3);
+        given(notificationPushRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(notificationRepository.findById(101L)).willReturn(Optional.of(notification));
+        given(notificationPushTokenRepository.findById(501L)).willReturn(Optional.of(pushToken));
+        given(notificationPushDispatchService.sendToToken(notification, pushToken)).willReturn(true);
+
+        notificationPushRetryService.retryPendingPushes(50);
+
+        assertThat(job.getCompletedAt()).isNotNull();
+        assertThat(job.getRetryCount()).isEqualTo(3);
+        assertThat(job.getLastErrorMessage()).contains("Transient push delivery failure");
+        verify(notificationPushRetryJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingPushesUsesExponentialBackoffDelay() {
+        NotificationPushRetryJob job = NotificationPushRetryJob.createPending(
+                101L,
+                501L,
+                LocalDateTime.now().minusMinutes(1),
+                "temporary push failure"
+        );
+        job.markFailed("first failure", LocalDateTime.now().minusSeconds(20));
+        job.markFailed("second failure", LocalDateTime.now().minusSeconds(10));
+
+        Notification notification = notification(101L);
+        NotificationPushToken pushToken = activePushToken(501L, notification.getUser());
+        ReflectionTestUtils.setField(notificationPushRetryService, "retryDelaySeconds", 30L);
+        ReflectionTestUtils.setField(notificationPushRetryService, "maxRetryAttempts", 10);
+        ReflectionTestUtils.setField(notificationPushRetryService, "maxRetryDelaySeconds", 600L);
+        given(notificationPushRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(notificationRepository.findById(101L)).willReturn(Optional.of(notification));
+        given(notificationPushTokenRepository.findById(501L)).willReturn(Optional.of(pushToken));
+        given(notificationPushDispatchService.sendToToken(notification, pushToken)).willReturn(true);
+        LocalDateTime startedAt = LocalDateTime.now();
+
+        notificationPushRetryService.retryPendingPushes(50);
+
+        assertThat(job.getCompletedAt()).isNull();
+        assertThat(job.getRetryCount()).isEqualTo(3);
+        assertThat(job.getNextRetryAt()).isAfter(startedAt.plusSeconds(110));
+        assertThat(job.getNextRetryAt()).isBefore(startedAt.plusSeconds(130));
     }
 
     private Notification notification(Long notificationId) {

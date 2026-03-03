@@ -63,6 +63,8 @@ app:
       retry:
         interval-ms: 60000
         delay-seconds: 300
+        max-attempts: 10
+        max-delay-seconds: 3600
         batch-size: 50
   oauth:
     google:
@@ -85,10 +87,19 @@ app:
       redirect-uri: ${OAUTH_NAVER_REDIRECT_URI:}
   attachment:
     storage:
+      type: local
       root-path: ./storage/task-attachments
+      s3:
+        bucket: ${ATTACHMENT_S3_BUCKET:}
+        region: ${ATTACHMENT_S3_REGION:ap-northeast-2}
+        endpoint: ${ATTACHMENT_S3_ENDPOINT:}
+        path-style-access: ${ATTACHMENT_S3_PATH_STYLE_ACCESS:false}
+        key-prefix: ${ATTACHMENT_S3_KEY_PREFIX:task-attachments}
     cleanup:
       retry-interval-ms: 60000
       retry-delay-seconds: 300
+      max-retry-attempts: 10
+      max-delay-seconds: 3600
       batch-size: 50
   notification:
     push:
@@ -96,6 +107,8 @@ app:
       retry:
         interval-ms: 60000
         delay-seconds: 300
+        max-attempts: 10
+        max-delay-seconds: 3600
         batch-size: 50
       fcm:
         endpoint: https://fcm.googleapis.com/fcm/send

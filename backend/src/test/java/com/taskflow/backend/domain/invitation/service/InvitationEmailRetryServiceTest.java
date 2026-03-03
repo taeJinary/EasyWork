@@ -14,6 +14,7 @@ import com.taskflow.backend.global.common.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +45,13 @@ class InvitationEmailRetryServiceTest {
 
     @InjectMocks
     private InvitationEmailRetryService invitationEmailRetryService;
+
+    @BeforeEach
+    void setUpDefaultRetryPolicy() {
+        ReflectionTestUtils.setField(invitationEmailRetryService, "retryDelaySeconds", 300L);
+        ReflectionTestUtils.setField(invitationEmailRetryService, "maxRetryAttempts", 10);
+        ReflectionTestUtils.setField(invitationEmailRetryService, "maxRetryDelaySeconds", 3600L);
+    }
 
     @Test
     void enqueueFailureSavesPendingJobWhenNoOpenJobExists() {
@@ -183,6 +192,75 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getCompletedAt()).isNotNull();
         verify(invitationEmailService, never()).sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
         verify(invitationEmailRetryJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingEmailsMarksCompletedWhenMaxRetryAttemptsReached() {
+        InvitationEmailRetryJob job = InvitationEmailRetryJob.createPending(
+                10L,
+                "invitee@example.com",
+                "TaskFlow",
+                "owner",
+                ProjectRole.MEMBER,
+                LocalDateTime.now().minusMinutes(1),
+                "smtp down"
+        );
+        job.markFailed("first failure", LocalDateTime.now().minusSeconds(20));
+        job.markFailed("second failure", LocalDateTime.now().minusSeconds(10));
+
+        ReflectionTestUtils.setField(invitationEmailRetryService, "maxRetryAttempts", 3);
+        given(invitationEmailRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L))
+                .willReturn(Optional.of(invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().plusDays(1))));
+        willThrow(new RuntimeException("smtp down again"))
+                .given(invitationEmailService)
+                .sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
+
+        invitationEmailRetryService.retryPendingEmails(50);
+
+        assertThat(job.getCompletedAt()).isNotNull();
+        assertThat(job.getRetryCount()).isEqualTo(3);
+        assertThat(job.getLastErrorMessage()).contains("smtp down again");
+        verify(invitationEmailRetryJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingEmailsUsesExponentialBackoffDelay() {
+        InvitationEmailRetryJob job = InvitationEmailRetryJob.createPending(
+                10L,
+                "invitee@example.com",
+                "TaskFlow",
+                "owner",
+                ProjectRole.MEMBER,
+                LocalDateTime.now().minusMinutes(1),
+                "smtp down"
+        );
+        job.markFailed("first failure", LocalDateTime.now().minusSeconds(20));
+        job.markFailed("second failure", LocalDateTime.now().minusSeconds(10));
+
+        ReflectionTestUtils.setField(invitationEmailRetryService, "retryDelaySeconds", 30L);
+        ReflectionTestUtils.setField(invitationEmailRetryService, "maxRetryAttempts", 10);
+        ReflectionTestUtils.setField(invitationEmailRetryService, "maxRetryDelaySeconds", 600L);
+        given(invitationEmailRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L))
+                .willReturn(Optional.of(invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().plusDays(1))));
+        willThrow(new RuntimeException("smtp down again"))
+                .given(invitationEmailService)
+                .sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
+        LocalDateTime startedAt = LocalDateTime.now();
+
+        invitationEmailRetryService.retryPendingEmails(50);
+
+        assertThat(job.getCompletedAt()).isNull();
+        assertThat(job.getRetryCount()).isEqualTo(3);
+        assertThat(job.getNextRetryAt()).isAfter(startedAt.plusSeconds(110));
+        assertThat(job.getNextRetryAt()).isBefore(startedAt.plusSeconds(130));
     }
 
     private InvitationCreatedEvent invitationCreatedEvent(Long invitationId) {
