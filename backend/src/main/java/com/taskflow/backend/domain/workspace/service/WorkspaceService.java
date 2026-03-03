@@ -14,6 +14,7 @@ import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberCountProjection;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
+import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.global.common.enums.WorkspaceRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
@@ -40,6 +41,7 @@ public class WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -142,6 +144,9 @@ public class WorkspaceService {
         Workspace workspace = findWorkspace(workspaceId);
         WorkspaceMember membership = findWorkspaceMembership(workspaceId, userId);
         ensureOwner(membership);
+        if (projectRepository.existsByWorkspaceId(workspaceId)) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
 
         workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceRepository.delete(workspace);

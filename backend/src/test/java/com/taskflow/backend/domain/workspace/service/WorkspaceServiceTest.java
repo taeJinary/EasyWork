@@ -14,6 +14,7 @@ import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberCountProjection;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
+import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.common.enums.WorkspaceRole;
@@ -47,6 +48,9 @@ class WorkspaceServiceTest {
 
     @Mock
     private WorkspaceMemberRepository workspaceMemberRepository;
+
+    @Mock
+    private ProjectRepository projectRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -310,6 +314,37 @@ class WorkspaceServiceTest {
 
         verify(workspaceMemberRepository).deleteAllByWorkspaceId(10L);
         verify(workspaceRepository).delete(workspace);
+    }
+
+    @Test
+    void deleteWorkspaceThrowsWhenProjectsExist() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        Workspace workspace = Workspace.builder()
+                .id(10L)
+                .owner(owner)
+                .name("TaskFlow Team")
+                .description("team workspace")
+                .build();
+        WorkspaceMember ownerMembership = WorkspaceMember.builder()
+                .id(100L)
+                .workspace(workspace)
+                .user(owner)
+                .role(WorkspaceRole.OWNER)
+                .joinedAt(LocalDateTime.of(2026, 3, 3, 9, 0))
+                .build();
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
+                .willReturn(Optional.of(ownerMembership));
+        given(projectRepository.existsByWorkspaceId(10L)).willReturn(true);
+
+        assertThatThrownBy(() -> workspaceService.deleteWorkspace(1L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONFLICT);
+        verify(workspaceMemberRepository, never()).deleteAllByWorkspaceId(any(Long.class));
+        verify(workspaceRepository, never()).delete(workspace);
     }
 
     @Test
