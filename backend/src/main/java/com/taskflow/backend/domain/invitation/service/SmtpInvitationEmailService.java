@@ -73,7 +73,7 @@ public class SmtpInvitationEmailService implements InvitationEmailService {
         try {
             javaMailSender.send(message);
         } catch (MailException exception) {
-            log.warn("Failed to send invitation email. invitationId={}, to={}", event.invitationId(), recipient, exception);
+            throw new IllegalStateException("Failed to send invitation email.", exception);
         }
     }
 
