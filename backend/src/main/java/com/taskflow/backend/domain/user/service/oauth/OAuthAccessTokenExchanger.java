@@ -43,8 +43,11 @@ public class OAuthAccessTokenExchanger {
         this.naverConfig = new ProviderTokenConfig(naverTokenUri, naverClientId, naverClientSecret, naverRedirectUri);
     }
 
-    public String exchange(OAuthProvider provider, String authorizationCode, String codeVerifier) {
+    public String exchange(OAuthProvider provider, String authorizationCode, String codeVerifier, String state) {
         if (!StringUtils.hasText(authorizationCode)) {
+            throw new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID);
+        }
+        if (provider == OAuthProvider.NAVER && !StringUtils.hasText(state)) {
             throw new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID);
         }
 
@@ -61,6 +64,9 @@ public class OAuthAccessTokenExchanger {
         }
         if (StringUtils.hasText(codeVerifier)) {
             formData.add("code_verifier", codeVerifier);
+        }
+        if (provider == OAuthProvider.NAVER) {
+            formData.add("state", state);
         }
 
         try {

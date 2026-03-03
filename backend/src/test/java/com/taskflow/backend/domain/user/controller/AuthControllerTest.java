@@ -163,7 +163,7 @@ class AuthControllerTest {
 
     @Test
     void oauthCodeLoginReturnsTokenPayload() throws Exception {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
         LoginTokens tokens = new LoginTokens(
                 "oauth-access-token",
                 "oauth-refresh-token",

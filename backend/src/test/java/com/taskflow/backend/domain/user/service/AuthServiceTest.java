@@ -319,7 +319,7 @@ class AuthServiceTest {
 
     @Test
     void oauthCodeLoginExchangesAuthorizationCodeBeforeOAuthLogin() {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
         OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
         User oauthUser = User.builder()
                 .id(2L)
@@ -331,7 +331,7 @@ class AuthServiceTest {
                 .status(UserStatus.ACTIVE)
                 .build();
 
-        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null))
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
                 .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
@@ -345,7 +345,7 @@ class AuthServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
-        verify(oauthAccessTokenExchanger).exchange(OAuthProvider.GOOGLE, "auth-code", null);
+        verify(oauthAccessTokenExchanger).exchange(OAuthProvider.GOOGLE, "auth-code", null, null);
     }
 
     @Test

@@ -39,7 +39,7 @@ class OAuthAccessTokenExchangerTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        String token = exchanger.exchange(OAuthProvider.GOOGLE, "google-auth-code", null);
+        String token = exchanger.exchange(OAuthProvider.GOOGLE, "google-auth-code", null, null);
 
         assertThat(token).isEqualTo("google-access-token");
         server.verify();
@@ -60,12 +60,52 @@ class OAuthAccessTokenExchangerTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        assertThatThrownBy(() -> exchanger.exchange(OAuthProvider.GOOGLE, "google-auth-code", null))
+        assertThatThrownBy(() -> exchanger.exchange(OAuthProvider.GOOGLE, "google-auth-code", null, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.OAUTH_TOKEN_INVALID);
 
         server.verify();
+    }
+
+    @Test
+    void exchangeIncludesStateForNaverAuthorizationCode() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        OAuthAccessTokenExchanger exchanger = createExchanger(builder);
+
+        server.expect(requestTo("https://naver.test/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().string(containsString("grant_type=authorization_code")))
+                .andExpect(content().string(containsString("code=naver-auth-code")))
+                .andExpect(content().string(containsString("state=naver-state-value")))
+                .andRespond(withSuccess(
+                        """
+                        {"access_token":"naver-access-token"}
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        String token = exchanger.exchange(
+                OAuthProvider.NAVER,
+                "naver-auth-code",
+                null,
+                "naver-state-value"
+        );
+
+        assertThat(token).isEqualTo("naver-access-token");
+        server.verify();
+    }
+
+    @Test
+    void exchangeThrowsWhenNaverStateIsMissing() {
+        RestClient.Builder builder = RestClient.builder();
+        OAuthAccessTokenExchanger exchanger = createExchanger(builder);
+
+        assertThatThrownBy(() -> exchanger.exchange(OAuthProvider.NAVER, "naver-auth-code", null, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.OAUTH_TOKEN_INVALID);
     }
 
     private OAuthAccessTokenExchanger createExchanger(RestClient.Builder builder) {

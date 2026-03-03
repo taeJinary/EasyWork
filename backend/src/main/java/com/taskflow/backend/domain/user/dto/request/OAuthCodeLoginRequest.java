@@ -11,6 +11,8 @@ public record OAuthCodeLoginRequest(
         @NotBlank(message = "OAuth authorization code is required.")
         String authorizationCode,
 
-        String codeVerifier
+        String codeVerifier,
+
+        String state
 ) {
 }

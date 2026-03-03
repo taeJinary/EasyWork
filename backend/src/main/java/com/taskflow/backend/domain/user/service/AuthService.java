@@ -121,7 +121,8 @@ public class AuthService {
         String accessToken = oauthAccessTokenExchanger.exchange(
                 request.provider(),
                 request.authorizationCode(),
-                request.codeVerifier()
+                request.codeVerifier(),
+                request.state()
         );
         return oauthLogin(new OAuthLoginRequest(request.provider(), accessToken));
     }
