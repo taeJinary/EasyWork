@@ -8,14 +8,21 @@ import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceSummaryResponse;
 import com.taskflow.backend.domain.workspace.entity.Workspace;
 import com.taskflow.backend.domain.workspace.entity.WorkspaceMember;
+import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberCountProjection;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
 import com.taskflow.backend.global.common.enums.WorkspaceRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -59,18 +66,19 @@ public class WorkspaceService {
         findUser(userId);
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = normalizePageSize(size);
-        List<WorkspaceMember> memberships = workspaceMemberRepository.findAllByUserIdOrderByWorkspaceUpdatedAtDesc(userId);
+        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize);
+        Page<WorkspaceMember> membershipPage =
+                workspaceMemberRepository.findByUserIdOrderByWorkspaceUpdatedAtDesc(userId, pageable);
+        Map<Long, Long> memberCounts = loadMemberCounts(membershipPage.getContent());
 
-        int fromIndex = Math.min(normalizedPage * normalizedSize, memberships.size());
-        int toIndex = Math.min(fromIndex + normalizedSize, memberships.size());
-        List<WorkspaceListItemResponse> content = memberships.subList(fromIndex, toIndex).stream()
-                .map(this::toListItem)
+        List<WorkspaceListItemResponse> content = membershipPage.getContent().stream()
+                .map(membership -> toListItem(membership, memberCounts))
                 .toList();
 
-        long totalElements = memberships.size();
-        int totalPages = normalizedSize == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
-        boolean first = normalizedPage == 0;
-        boolean last = totalPages == 0 || normalizedPage >= totalPages - 1;
+        long totalElements = membershipPage.getTotalElements();
+        int totalPages = membershipPage.getTotalPages();
+        boolean first = membershipPage.isFirst();
+        boolean last = totalPages == 0 || membershipPage.isLast();
 
         return new WorkspaceListResponse(
                 content,
@@ -83,16 +91,30 @@ public class WorkspaceService {
         );
     }
 
-    private WorkspaceListItemResponse toListItem(WorkspaceMember membership) {
+    private WorkspaceListItemResponse toListItem(WorkspaceMember membership, Map<Long, Long> memberCounts) {
         Workspace workspace = membership.getWorkspace();
         return new WorkspaceListItemResponse(
                 workspace.getId(),
                 workspace.getName(),
                 workspace.getDescription(),
                 membership.getRole(),
-                workspaceMemberRepository.countByWorkspaceId(workspace.getId()),
+                memberCounts.getOrDefault(workspace.getId(), 0L),
                 workspace.getUpdatedAt()
         );
+    }
+
+    private Map<Long, Long> loadMemberCounts(List<WorkspaceMember> memberships) {
+        Set<Long> workspaceIds = memberships.stream()
+                .map(membership -> membership.getWorkspace().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        if (workspaceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return workspaceMemberRepository.countMembersByWorkspaceIds(workspaceIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        WorkspaceMemberCountProjection::getWorkspaceId,
+                        WorkspaceMemberCountProjection::getMemberCount
+                ));
     }
 
     private User findUser(Long userId) {
