@@ -97,6 +97,8 @@ class ApplicationConfigSecurityPolicyTest {
 
         assertThat(content).contains("create table if not exists notification_push_retry_jobs");
         assertThat(content).contains("push_token_id");
+        assertThat(content).contains("open_key");
+        assertThat(content).contains("unique key uk_notification_push_retry_jobs_open_key (open_key)");
         assertThat(content).contains("created_at");
         assertThat(content).contains("updated_at");
     }

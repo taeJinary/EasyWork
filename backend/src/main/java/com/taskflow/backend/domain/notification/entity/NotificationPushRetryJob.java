@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 public class NotificationPushRetryJob extends BaseEntity {
 
     private static final int LAST_ERROR_MESSAGE_MAX_LENGTH = 500;
+    private static final int OPEN_KEY_MAX_LENGTH = 128;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,6 +34,9 @@ public class NotificationPushRetryJob extends BaseEntity {
 
     @Column(nullable = false)
     private Long pushTokenId;
+
+    @Column(length = OPEN_KEY_MAX_LENGTH, unique = true)
+    private String openKey;
 
     @Column(nullable = false)
     private int retryCount;
@@ -54,6 +58,7 @@ public class NotificationPushRetryJob extends BaseEntity {
         return NotificationPushRetryJob.builder()
                 .notificationId(notificationId)
                 .pushTokenId(pushTokenId)
+                .openKey(createOpenKey(notificationId, pushTokenId))
                 .retryCount(0)
                 .nextRetryAt(nextRetryAt)
                 .lastErrorMessage(truncateErrorMessage(initialErrorMessage))
@@ -62,6 +67,7 @@ public class NotificationPushRetryJob extends BaseEntity {
 
     public void markCompleted(LocalDateTime completedAt) {
         this.completedAt = completedAt;
+        this.openKey = null;
         this.lastErrorMessage = null;
     }
 
@@ -79,5 +85,9 @@ public class NotificationPushRetryJob extends BaseEntity {
             return errorMessage;
         }
         return errorMessage.substring(0, LAST_ERROR_MESSAGE_MAX_LENGTH);
+    }
+
+    private static String createOpenKey(Long notificationId, Long pushTokenId) {
+        return notificationId + ":" + pushTokenId;
     }
 }

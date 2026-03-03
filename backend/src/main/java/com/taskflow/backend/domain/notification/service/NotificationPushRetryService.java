@@ -11,6 +11,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationPushRetryService {
 
     private static final int DEFAULT_BATCH_SIZE = 50;
+    private static final String OPEN_JOB_UNIQUE_KEY = "uk_notification_push_retry_jobs_open_key";
 
     private final NotificationPushRetryJobRepository notificationPushRetryJobRepository;
     private final NotificationRepository notificationRepository;
@@ -48,7 +50,19 @@ public class NotificationPushRetryService {
                 LocalDateTime.now(),
                 errorMessage
         );
-        notificationPushRetryJobRepository.save(job);
+        try {
+            notificationPushRetryJobRepository.save(job);
+        } catch (DataIntegrityViolationException exception) {
+            if (isOpenJobDuplicateViolation(exception)) {
+                log.debug(
+                        "Skipped duplicate open push retry job. notificationId={}, pushTokenId={}",
+                        notificationId,
+                        pushTokenId
+                );
+                return;
+            }
+            throw exception;
+        }
     }
 
     @Transactional
@@ -105,5 +119,11 @@ public class NotificationPushRetryService {
                     exception
             );
         }
+    }
+
+    private boolean isOpenJobDuplicateViolation(DataIntegrityViolationException exception) {
+        Throwable rootCause = exception.getMostSpecificCause();
+        String message = rootCause == null ? exception.getMessage() : rootCause.getMessage();
+        return message != null && message.contains(OPEN_JOB_UNIQUE_KEY);
     }
 }

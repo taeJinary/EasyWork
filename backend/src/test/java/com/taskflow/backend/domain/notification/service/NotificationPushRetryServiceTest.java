@@ -21,10 +21,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -63,6 +65,7 @@ class NotificationPushRetryServiceTest {
         assertThat(saved.getPushTokenId()).isEqualTo(501L);
         assertThat(saved.getRetryCount()).isEqualTo(0);
         assertThat(saved.getCompletedAt()).isNull();
+        assertThat(saved.getOpenKey()).isEqualTo("101:501");
         assertThat(saved.getNextRetryAt()).isNotNull();
         assertThat(saved.getLastErrorMessage()).contains("temporary push failure");
     }
@@ -76,6 +79,22 @@ class NotificationPushRetryServiceTest {
         notificationPushRetryService.enqueueFailure(notification, 501L, "temporary push failure");
 
         verify(notificationPushRetryJobRepository, never()).save(any(NotificationPushRetryJob.class));
+    }
+
+    @Test
+    void enqueueFailureIgnoresDuplicateOpenJobRaceCondition() {
+        Notification notification = notification(101L);
+        given(notificationPushRetryJobRepository.existsByNotificationIdAndPushTokenIdAndCompletedAtIsNull(101L, 501L))
+                .willReturn(false);
+        given(notificationPushRetryJobRepository.save(any(NotificationPushRetryJob.class)))
+                .willThrow(new DataIntegrityViolationException(
+                        "Duplicate entry '101:501' for key 'uk_notification_push_retry_jobs_open_key'"
+                ));
+
+        assertThatCode(() -> notificationPushRetryService.enqueueFailure(notification, 501L, "temporary push failure"))
+                .doesNotThrowAnyException();
+
+        verify(notificationPushRetryJobRepository).save(any(NotificationPushRetryJob.class));
     }
 
     @Test

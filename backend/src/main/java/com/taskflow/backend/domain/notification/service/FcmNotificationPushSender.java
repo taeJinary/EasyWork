@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Component
 @ConditionalOnProperty(name = "app.notification.push.sender", havingValue = "fcm")
@@ -73,6 +74,14 @@ public class FcmNotificationPushSender implements NotificationPushSender {
                     .body(FcmSendResponse.class);
 
             validateDeliveryResult(response);
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().is4xxClientError()) {
+                throw new PushDeliveryNonRetryableException(
+                        "FCM returned client error response: " + exception.getStatusCode(),
+                        exception
+                );
+            }
+            throw new PushDeliveryRetryableException("Failed to send push notification via FCM.", exception);
         } catch (RestClientException exception) {
             throw new PushDeliveryRetryableException("Failed to send push notification via FCM.", exception);
         }

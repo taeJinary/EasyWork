@@ -12,6 +12,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class FcmNotificationPushSenderTest {
@@ -122,6 +123,26 @@ class FcmNotificationPushSenderTest {
 
         assertThatThrownBy(() -> sender.send("token-value", PushPlatform.WEB, "Notice", "Body"))
                 .isInstanceOf(PushDeliveryRetryableException.class);
+
+        server.verify();
+    }
+
+    @Test
+    void sendThrowsNonRetryableExceptionWhenFcmReturnsClientErrorResponse() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        FcmNotificationPushSender sender = new FcmNotificationPushSender(
+                builder,
+                "https://fcm.test/send",
+                "fcm-server-key"
+        );
+
+        server.expect(requestTo("https://fcm.test/send"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withBadRequest());
+
+        assertThatThrownBy(() -> sender.send("token-value", PushPlatform.WEB, "Notice", "Body"))
+                .isInstanceOf(PushDeliveryNonRetryableException.class);
 
         server.verify();
     }
