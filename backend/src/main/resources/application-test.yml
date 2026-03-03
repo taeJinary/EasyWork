@@ -48,6 +48,10 @@ app:
       from: noreply@taskflow.local
       subject-prefix: "[TaskFlow]"
       accept-base-url: http://localhost:5173/invitations
+      retry:
+        interval-ms: 60000
+        delay-seconds: 300
+        batch-size: 50
   oauth:
     google:
       user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo

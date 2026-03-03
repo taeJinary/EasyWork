@@ -82,6 +82,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("updated_at");
     }
 
+    @Test
+    void invitationEmailRetryMigrationSqlDefinesRequiredTableAndAuditColumns() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_03__create_invitation_email_retry_jobs.sql");
+
+        assertThat(content).contains("create table if not exists invitation_email_retry_jobs");
+        assertThat(content).contains("created_at");
+        assertThat(content).contains("updated_at");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

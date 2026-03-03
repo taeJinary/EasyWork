@@ -14,6 +14,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class InvitationEmailEventListener {
 
     private final InvitationEmailService invitationEmailService;
+    private final InvitationEmailRetryService invitationEmailRetryService;
 
     @Async("invitationEmailTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -21,6 +22,7 @@ public class InvitationEmailEventListener {
         try {
             invitationEmailService.sendInvitationCreatedEmail(event);
         } catch (Exception exception) {
+            invitationEmailRetryService.enqueueFailure(event, exception.getMessage());
             log.error("Failed to process invitation email event. invitationId={}", event.invitationId(), exception);
         }
     }
