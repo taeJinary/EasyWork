@@ -113,6 +113,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("updated_at");
     }
 
+    @Test
+    void projectWorkspaceMigrationSqlAddsWorkspaceReferenceToProjects() throws IOException {
+        String content = read("src/main/resources/db/migration/V20260303_06__add_workspace_id_to_projects.sql");
+
+        assertThat(content).contains("alter table projects");
+        assertThat(content).contains("add column workspace_id");
+        assertThat(content).contains("idx_projects_workspace_id");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

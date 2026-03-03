@@ -1,9 +1,13 @@
 package com.taskflow.backend.domain.project.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateProjectRequest(
+        @NotNull(message = "workspaceId는 필수입니다.")
+        Long workspaceId,
+
         @NotBlank(message = "프로젝트명은 필수입니다.")
         @Size(min = 2, max = 50, message = "프로젝트명은 2~50자여야 합니다.")
         String name,
@@ -12,4 +16,3 @@ public record CreateProjectRequest(
         String description
 ) {
 }
-
