@@ -23,6 +23,7 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,19 +63,30 @@ public class ProjectService {
     }
 
     public ProjectListResponse getMyProjects(Long userId, int page, int size) {
+        return getMyProjects(userId, page, size, null, null);
+    }
+
+    public ProjectListResponse getMyProjects(Long userId, int page, int size, String keyword, ProjectRole role) {
         findActiveUser(userId);
 
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = size > 0 ? size : 20;
+        String trimmedKeyword = keyword == null ? null : keyword.trim();
+        String normalizedKeyword = (trimmedKeyword == null || trimmedKeyword.isBlank()) ? null : trimmedKeyword;
 
         List<ProjectMember> memberships = projectMemberRepository.findAllActiveByUserIdOrderByProjectUpdatedAtDesc(userId);
-        long totalElements = memberships.size();
+        List<ProjectMember> filteredMemberships = memberships.stream()
+                .filter(membership -> role == null || membership.getRole() == role)
+                .filter(membership -> matchesKeyword(membership.getProject(), normalizedKeyword))
+                .toList();
+
+        long totalElements = filteredMemberships.size();
         int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
 
-        int fromIndex = Math.min(normalizedPage * normalizedSize, memberships.size());
-        int toIndex = Math.min(fromIndex + normalizedSize, memberships.size());
+        int fromIndex = Math.min(normalizedPage * normalizedSize, filteredMemberships.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, filteredMemberships.size());
 
-        List<ProjectListItemResponse> content = memberships.subList(fromIndex, toIndex).stream()
+        List<ProjectListItemResponse> content = filteredMemberships.subList(fromIndex, toIndex).stream()
                 .map(this::toProjectListItem)
                 .toList();
 
@@ -220,6 +232,18 @@ public class ProjectService {
             return 0;
         }
         return (int) ((doneTaskCount * 100L) / taskCount);
+    }
+
+    private boolean matchesKeyword(Project project, String keyword) {
+        if (keyword == null) {
+            return true;
+        }
+
+        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
+        String projectName = project.getName() == null ? "" : project.getName().toLowerCase(Locale.ROOT);
+        String projectDescription = project.getDescription() == null ? ""
+                : project.getDescription().toLowerCase(Locale.ROOT);
+        return projectName.contains(lowerKeyword) || projectDescription.contains(lowerKeyword);
     }
 
     private ProjectMemberResponse toProjectMemberResponse(ProjectMember projectMember) {
