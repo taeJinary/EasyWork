@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.workspace.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
+import com.taskflow.backend.domain.workspace.dto.request.UpdateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
@@ -27,7 +28,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -148,6 +151,40 @@ class WorkspaceControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].memberId").value(100L))
                 .andExpect(jsonPath("$.data[1].role").value("MEMBER"));
+    }
+
+    @Test
+    void updateWorkspaceReturnsResponse() throws Exception {
+        UpdateWorkspaceRequest request = new UpdateWorkspaceRequest("TaskFlow Core", "core workspace");
+        WorkspaceSummaryResponse response = new WorkspaceSummaryResponse(
+                10L,
+                "TaskFlow Core",
+                "core workspace",
+                WorkspaceRole.OWNER
+        );
+
+        given(workspaceService.updateWorkspace(eq(1L), eq(10L), any(UpdateWorkspaceRequest.class))).willReturn(response);
+
+        mockMvc.perform(patch("/workspaces/10")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.workspaceId").value(10L))
+                .andExpect(jsonPath("$.data.name").value("TaskFlow Core"))
+                .andExpect(jsonPath("$.data.myRole").value("OWNER"));
+    }
+
+    @Test
+    void deleteWorkspaceReturnsResponse() throws Exception {
+        mockMvc.perform(delete("/workspaces/10")
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        then(workspaceService).should().deleteWorkspace(1L, 10L);
     }
 
     private UsernamePasswordAuthenticationToken principalAuth() {

@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.workspace.service;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
+import com.taskflow.backend.domain.workspace.dto.request.UpdateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
@@ -118,6 +119,34 @@ public class WorkspaceService {
                 .toList();
     }
 
+    @Transactional
+    public WorkspaceSummaryResponse updateWorkspace(Long userId, Long workspaceId, UpdateWorkspaceRequest request) {
+        findUser(userId);
+        Workspace workspace = findWorkspace(workspaceId);
+        WorkspaceMember membership = findWorkspaceMembership(workspaceId, userId);
+        ensureOwner(membership);
+
+        workspace.update(request.name(), request.description(), LocalDateTime.now());
+
+        return new WorkspaceSummaryResponse(
+                workspace.getId(),
+                workspace.getName(),
+                workspace.getDescription(),
+                membership.getRole()
+        );
+    }
+
+    @Transactional
+    public void deleteWorkspace(Long userId, Long workspaceId) {
+        findUser(userId);
+        Workspace workspace = findWorkspace(workspaceId);
+        WorkspaceMember membership = findWorkspaceMembership(workspaceId, userId);
+        ensureOwner(membership);
+
+        workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
+        workspaceRepository.delete(workspace);
+    }
+
     private WorkspaceListItemResponse toListItem(WorkspaceMember membership, Map<Long, Long> memberCounts) {
         Workspace workspace = membership.getWorkspace();
         return new WorkspaceListItemResponse(
@@ -168,6 +197,12 @@ public class WorkspaceService {
     private WorkspaceMember findWorkspaceMembership(Long workspaceId, Long userId) {
         return workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+    }
+
+    private void ensureOwner(WorkspaceMember membership) {
+        if (membership.getRole() != WorkspaceRole.OWNER) {
+            throw new BusinessException(ErrorCode.ONLY_OWNER_ALLOWED);
+        }
     }
 
     private int normalizePageSize(int size) {

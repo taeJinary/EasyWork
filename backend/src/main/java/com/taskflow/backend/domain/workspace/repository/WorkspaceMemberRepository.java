@@ -20,6 +20,8 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 
     List<WorkspaceMember> findAllByWorkspaceIdOrderByJoinedAtAsc(Long workspaceId);
 
+    void deleteAllByWorkspaceId(Long workspaceId);
+
     @Query("""
             select wm
             from WorkspaceMember wm
