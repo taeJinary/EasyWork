@@ -32,6 +32,7 @@ import com.taskflow.backend.global.websocket.ProjectBoardEventPublisher;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -495,6 +496,116 @@ class TaskServiceTest {
         assertThat(response.totalPages()).isEqualTo(1);
         assertThat(response.first()).isTrue();
         assertThat(response.last()).isTrue();
+    }
+
+    @Test
+    void getTasksMatchesKeywordIndependentlyOfDefaultLocale() {
+        Locale originalLocale = Locale.getDefault();
+        Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+        try {
+            User member = activeUser(1L, "member@example.com", "member");
+            Project project = Project.builder()
+                    .id(10L)
+                    .owner(member)
+                    .name("TaskFlow")
+                    .description("desc")
+                    .build();
+            ProjectMember membership = ProjectMember.builder()
+                    .id(100L)
+                    .project(project)
+                    .user(member)
+                    .role(ProjectRole.MEMBER)
+                    .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                    .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                    .build();
+            Task task = Task.builder()
+                    .id(1000L)
+                    .project(project)
+                    .creator(member)
+                    .assignee(null)
+                    .title("Istanbul integration")
+                    .description("keyword matching regression")
+                    .status(TaskStatus.TODO)
+                    .priority(TaskPriority.MEDIUM)
+                    .dueDate(null)
+                    .position(0)
+                    .version(0L)
+                    .build();
+
+            given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+            given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+            given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
+                    .willReturn(List.of(task));
+
+            TaskListResponse response = taskService.getTasks(
+                    1L,
+                    10L,
+                    0,
+                    20,
+                    TaskStatus.TODO,
+                    "updatedAt",
+                    "DESC",
+                    "istanbul"
+            );
+
+            assertThat(response.content()).hasSize(1);
+            assertThat(response.content().getFirst().taskId()).isEqualTo(1000L);
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
+    }
+
+    @Test
+    void getTaskBoardMatchesKeywordIndependentlyOfDefaultLocale() {
+        Locale originalLocale = Locale.getDefault();
+        Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+        try {
+            User member = activeUser(1L, "member@example.com", "member");
+            Project project = Project.builder()
+                    .id(10L)
+                    .owner(member)
+                    .name("TaskFlow")
+                    .description("desc")
+                    .build();
+            ProjectMember membership = ProjectMember.builder()
+                    .id(100L)
+                    .project(project)
+                    .user(member)
+                    .role(ProjectRole.MEMBER)
+                    .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                    .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                    .build();
+            Task task = Task.builder()
+                    .id(1000L)
+                    .project(project)
+                    .creator(member)
+                    .assignee(null)
+                    .title("Istanbul board")
+                    .description("keyword matching regression")
+                    .status(TaskStatus.TODO)
+                    .priority(TaskPriority.MEDIUM)
+                    .dueDate(null)
+                    .position(0)
+                    .version(0L)
+                    .build();
+
+            given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
+            given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+            given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
+                    .willReturn(List.of(task));
+            given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L))).willReturn(List.of());
+
+            TaskBoardResponse response = taskService.getTaskBoard(1L, 10L, null, null, null, "istanbul");
+            TaskBoardResponse.ColumnResponse todoColumn = response.columns().stream()
+                    .filter(column -> column.status() == TaskStatus.TODO)
+                    .findFirst()
+                    .orElseThrow();
+
+            assertThat(todoColumn.tasks()).hasSize(1);
+            assertThat(todoColumn.tasks().getFirst().taskId()).isEqualTo(1000L);
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 
     @Test

@@ -36,6 +36,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -426,9 +427,9 @@ public class TaskService {
     }
 
     private boolean matchesKeyword(Task task, String keyword) {
-        String lowerKeyword = keyword.toLowerCase();
-        String title = task.getTitle() == null ? "" : task.getTitle().toLowerCase();
-        String description = task.getDescription() == null ? "" : task.getDescription().toLowerCase();
+        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
+        String title = task.getTitle() == null ? "" : task.getTitle().toLowerCase(Locale.ROOT);
+        String description = task.getDescription() == null ? "" : task.getDescription().toLowerCase(Locale.ROOT);
         return title.contains(lowerKeyword) || description.contains(lowerKeyword);
     }
 
