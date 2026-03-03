@@ -25,7 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@Import({JpaConfig.class, QueryDslConfig.class})
+@Import({JpaConfig.class, QueryDslConfig.class, TaskQueryRepositoryImpl.class})
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
@@ -84,6 +84,26 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
                 .containsExactly(TaskPriority.URGENT, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW);
     }
 
+    @Test
+    void findTasksReturnsEmptyPageWhenOffsetExceedsJpaLimit() {
+        Project project = persistProjectGraph();
+        persistTask(project, "task-low", TaskPriority.LOW, 0);
+        entityManager.flush();
+        entityManager.clear();
+
+        Page<com.taskflow.backend.domain.task.entity.Task> result = taskQueryRepository.findTasks(
+                project.getId(),
+                TaskStatus.TODO,
+                "updatedAt",
+                "DESC",
+                null,
+                PageRequest.of(Integer.MAX_VALUE, Integer.MAX_VALUE)
+        );
+
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isEqualTo(1L);
+    }
+
     private Project persistProjectGraph() {
         User owner = User.builder()
                 .email("owner@example.com")
@@ -122,4 +142,3 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         entityManager.persist(task);
     }
 }
-

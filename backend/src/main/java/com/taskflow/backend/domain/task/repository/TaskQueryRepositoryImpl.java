@@ -52,6 +52,16 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
             );
         }
 
+        Long totalCount = queryFactory
+                .select(task.count())
+                .from(task)
+                .where(where)
+                .fetchOne();
+
+        if (pageable.getOffset() > Integer.MAX_VALUE) {
+            return new PageImpl<>(List.of(), pageable, totalCount == null ? 0L : totalCount);
+        }
+
         List<Task> content = queryFactory
                 .selectFrom(task)
                 .where(where)
@@ -59,12 +69,6 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
-
-        Long totalCount = queryFactory
-                .select(task.count())
-                .from(task)
-                .where(where)
-                .fetchOne();
 
         return new PageImpl<>(content, pageable, totalCount == null ? 0L : totalCount);
     }
