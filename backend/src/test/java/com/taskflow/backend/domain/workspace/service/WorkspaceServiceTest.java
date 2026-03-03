@@ -209,7 +209,7 @@ class WorkspaceServiceTest {
         given(workspaceRepository.findById(10L)).willReturn(Optional.of(workspace));
         given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L))
                 .willReturn(Optional.of(requesterMembership));
-        given(workspaceMemberRepository.findAllByWorkspaceIdOrderByJoinedAtAsc(10L))
+        given(workspaceMemberRepository.findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(10L))
                 .willReturn(List.of(requesterMembership, memberMembership));
 
         List<WorkspaceMemberResponse> response = workspaceService.getWorkspaceMembers(1L, 10L);
@@ -218,6 +218,8 @@ class WorkspaceServiceTest {
         assertThat(response.getFirst().userId()).isEqualTo(1L);
         assertThat(response.get(1).userId()).isEqualTo(2L);
         assertThat(response.get(1).role()).isEqualTo(WorkspaceRole.MEMBER);
+        verify(workspaceMemberRepository).findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(10L);
+        verify(workspaceMemberRepository, never()).findAllByWorkspaceIdOrderByJoinedAtAsc(any(Long.class));
     }
 
     private User activeUser(Long id, String email, String nickname) {

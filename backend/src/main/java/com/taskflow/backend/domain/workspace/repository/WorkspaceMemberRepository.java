@@ -20,6 +20,17 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 
     List<WorkspaceMember> findAllByWorkspaceIdOrderByJoinedAtAsc(Long workspaceId);
 
+    @Query("""
+            select wm
+            from WorkspaceMember wm
+            join fetch wm.user
+            where wm.workspace.id = :workspaceId
+            order by wm.joinedAt asc, wm.id asc
+            """)
+    List<WorkspaceMember> findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(
+            @Param("workspaceId") Long workspaceId
+    );
+
     @Query(
             value = """
                     select wm

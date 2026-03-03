@@ -113,7 +113,7 @@ public class WorkspaceService {
         findWorkspace(workspaceId);
         findWorkspaceMembership(workspaceId, userId);
 
-        return workspaceMemberRepository.findAllByWorkspaceIdOrderByJoinedAtAsc(workspaceId).stream()
+        return workspaceMemberRepository.findAllWithUserByWorkspaceIdOrderByJoinedAtAsc(workspaceId).stream()
                 .map(this::toMemberResponse)
                 .toList();
     }
