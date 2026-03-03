@@ -166,6 +166,32 @@ class NotificationPushDispatchServiceTest {
         assertThat(result.transientFailedTokenIds()).isEmpty();
     }
 
+    @Test
+    void sendDoesNotEnqueueRetryWhenUnexpectedRuntimeOccurs() {
+        User user = activeUser(1L, "member@example.com", "member");
+        Notification notification = Notification.create(
+                user,
+                NotificationType.PROJECT_INVITED,
+                "Project invitation",
+                "owner invited you",
+                NotificationReferenceType.INVITATION,
+                10L
+        );
+
+        NotificationPushToken token = NotificationPushToken.create(user, "token-1", PushPlatform.WEB);
+        ReflectionTestUtils.setField(token, "id", 51L);
+        given(notificationPushTokenRepository.findAllByUserIdAndIsActiveTrue(1L))
+                .willReturn(List.of(token));
+        willThrow(new IllegalStateException("fcm misconfigured"))
+                .given(notificationPushSender)
+                .send(eq("token-1"), eq(PushPlatform.WEB), any(String.class), any(String.class));
+
+        NotificationPushDispatchService.NotificationPushDispatchResult result =
+                notificationPushDispatchService.send(notification);
+
+        assertThat(result.transientFailedTokenIds()).isEmpty();
+    }
+
     private User activeUser(Long id, String email, String nickname) {
         return User.builder()
                 .id(id)
