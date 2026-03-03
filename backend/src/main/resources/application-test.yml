@@ -54,6 +54,10 @@ app:
   attachment:
     storage:
       root-path: ./build/test-storage/task-attachments
+    cleanup:
+      retry-interval-ms: 60000
+      retry-delay-seconds: 300
+      batch-size: 50
 
 logging:
   level:

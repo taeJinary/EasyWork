@@ -66,6 +66,10 @@ app:
   attachment:
     storage:
       root-path: ./storage/task-attachments
+    cleanup:
+      retry-interval-ms: 60000
+      retry-delay-seconds: 300
+      batch-size: 50
 
 # === Logging ===
 logging:
