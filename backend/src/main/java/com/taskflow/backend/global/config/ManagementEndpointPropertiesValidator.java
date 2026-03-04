@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -69,7 +70,6 @@ public class ManagementEndpointPropertiesValidator {
     }
 
     private boolean isProdProfileActive() {
-        return Arrays.stream(environment.getActiveProfiles())
-                .anyMatch(PROD_PROFILE::equalsIgnoreCase);
+        return environment.acceptsProfiles(Profiles.of(PROD_PROFILE));
     }
 }

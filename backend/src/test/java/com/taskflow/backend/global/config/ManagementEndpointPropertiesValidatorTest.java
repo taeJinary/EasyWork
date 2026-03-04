@@ -102,6 +102,23 @@ class ManagementEndpointPropertiesValidatorTest {
                 .hasMessageContaining("management.endpoints.web.exposure.exclude");
     }
 
+    @Test
+    void defaultProdProfileRequiresHealthEndpointExposure() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setDefaultProfiles("prod");
+
+        ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
+                environment,
+                "info",
+                "",
+                "never"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("management.endpoints.web.exposure.include");
+    }
+
     private MockEnvironment environment(String... activeProfiles) {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles(activeProfiles);
