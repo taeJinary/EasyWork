@@ -1,5 +1,6 @@
 package com.taskflow.backend.domain.task.service;
 
+import com.taskflow.backend.domain.comment.repository.CommentRepository;
 import com.taskflow.backend.domain.label.entity.Label;
 import com.taskflow.backend.domain.label.repository.LabelRepository;
 import com.taskflow.backend.domain.notification.service.NotificationService;
@@ -53,6 +54,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskQueryRepository taskQueryRepository;
     private final TaskLabelRepository taskLabelRepository;
+    private final CommentRepository commentRepository;
     private final LabelRepository labelRepository;
     private final TaskStatusHistoryRepository taskStatusHistoryRepository;
     private final NotificationService notificationService;
@@ -208,6 +210,7 @@ public class TaskService {
                 normalizedKeyword
         );
         Map<Long, List<TaskBoardResponse.LabelResponse>> labelsByTaskId = mapLabelsByTaskId(filteredTasks);
+        Map<Long, Long> commentCountsByTaskId = mapCommentCountsByTaskId(filteredTasks);
 
         Map<TaskStatus, List<TaskBoardResponse.TaskCardResponse>> cardsByStatus = new EnumMap<>(TaskStatus.class);
         for (TaskStatus status : TaskStatus.values()) {
@@ -216,7 +219,8 @@ public class TaskService {
 
         for (Task task : filteredTasks) {
             List<TaskBoardResponse.LabelResponse> labels = labelsByTaskId.getOrDefault(task.getId(), List.of());
-            cardsByStatus.get(task.getStatus()).add(toTaskCardResponse(task, labels));
+            long commentCount = commentCountsByTaskId.getOrDefault(task.getId(), 0L);
+            cardsByStatus.get(task.getStatus()).add(toTaskCardResponse(task, labels, commentCount));
         }
 
         List<TaskBoardResponse.ColumnResponse> columns = java.util.Arrays.stream(TaskStatus.values())
@@ -422,9 +426,31 @@ public class TaskService {
         );
     }
 
+    private Map<Long, Long> mapCommentCountsByTaskId(List<Task> tasks) {
+        List<Long> taskIds = tasks.stream()
+                .map(Task::getId)
+                .toList();
+        if (taskIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<CommentRepository.TaskCommentCountProjection> commentCounts = commentRepository.countByTaskIdIn(taskIds);
+        if (commentCounts == null || commentCounts.isEmpty()) {
+            return Map.of();
+        }
+
+        return commentCounts.stream().collect(
+                java.util.stream.Collectors.toMap(
+                        CommentRepository.TaskCommentCountProjection::getTaskId,
+                        CommentRepository.TaskCommentCountProjection::getCommentCount
+                )
+        );
+    }
+
     private TaskBoardResponse.TaskCardResponse toTaskCardResponse(
             Task task,
-            List<TaskBoardResponse.LabelResponse> labels
+            List<TaskBoardResponse.LabelResponse> labels,
+            Long commentCount
     ) {
         TaskBoardResponse.AssigneeResponse assigneeResponse = task.getAssignee() == null
                 ? null
@@ -442,7 +468,7 @@ public class TaskService {
                 task.getVersion(),
                 assigneeResponse,
                 labels,
-                0L
+                commentCount
         );
     }
 
