@@ -94,6 +94,7 @@ public class TaskService {
     public TaskDetailResponse updateTask(Long userId, Long taskId, UpdateTaskRequest request) {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ensureProjectActive(task.getProject());
 
         Long projectId = task.getProject().getId();
         ProjectMember actorMembership = findMembership(projectId, userId);
@@ -123,6 +124,7 @@ public class TaskService {
     public void deleteTask(Long userId, Long taskId) {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ensureProjectActive(task.getProject());
 
         Long projectId = task.getProject().getId();
         ProjectMember membership = findMembership(projectId, userId);
@@ -142,6 +144,7 @@ public class TaskService {
     public TaskMoveResponse moveTask(Long userId, Long taskId, MoveTaskRequest request) {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ensureProjectActive(task.getProject());
 
         Long projectId = task.getProject().getId();
         ProjectMember actorMembership = findMembership(projectId, userId);
@@ -172,6 +175,7 @@ public class TaskService {
     public TaskDetailResponse getTaskDetail(Long userId, Long taskId) {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ensureProjectActive(task.getProject());
         findMembership(task.getProject().getId(), userId);
         List<TaskStatusHistory> statusHistories = taskStatusHistoryRepository
                 .findTop10ByTaskIdOrderByCreatedAtDesc(taskId);
@@ -286,6 +290,12 @@ public class TaskService {
     private ProjectMember findMembership(Long projectId, Long userId) {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private void ensureProjectActive(Project project) {
+        if (project.isDeleted()) {
+            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
+        }
     }
 
     private void moveWithinSameColumn(
