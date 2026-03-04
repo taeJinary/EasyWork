@@ -51,7 +51,8 @@ public class CommentService {
         task.getProject().touch(LocalDateTime.now());
         Set<Long> mentionedUserIds = notificationService.createCommentMentionNotifications(saved, membership.getUser());
         notificationService.createCommentCreatedNotification(saved, membership.getUser(), mentionedUserIds);
-        projectBoardEventPublisher.publishCommentCreated(saved, membership.getUser());
+        long commentCount = commentRepository.countByTaskId(taskId);
+        projectBoardEventPublisher.publishCommentCreated(saved, membership.getUser(), commentCount);
         return toCommentResponse(saved, userId);
     }
 
@@ -98,7 +99,10 @@ public class CommentService {
         ensureAuthorOrOwner(userId, membership, comment);
 
         commentRepository.delete(comment);
+        commentRepository.flush();
+        long commentCount = commentRepository.countByTaskId(comment.getTask().getId());
         comment.getTask().getProject().touch(LocalDateTime.now());
+        projectBoardEventPublisher.publishCommentDeleted(comment, membership.getUser(), commentCount);
     }
 
     private ProjectMember findMembership(Long projectId, Long userId) {
