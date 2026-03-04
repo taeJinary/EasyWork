@@ -884,6 +884,38 @@ class TaskServiceTest {
     }
 
     @Test
+    void getTaskDetailThrowsWhenProjectDeleted() {
+        User creator = activeUser(1L, "owner@example.com", "owner");
+        Project project = Project.builder()
+                .id(10L)
+                .owner(creator)
+                .name("TaskFlow")
+                .description("desc")
+                .deletedAt(LocalDateTime.of(2026, 3, 2, 12, 0))
+                .build();
+        Task task = Task.builder()
+                .id(1000L)
+                .project(project)
+                .creator(creator)
+                .assignee(null)
+                .title("task")
+                .description("desc")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.HIGH)
+                .dueDate(LocalDate.of(2026, 3, 10))
+                .position(0)
+                .version(0L)
+                .build();
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
+
+        assertThatThrownBy(() -> taskService.getTaskDetail(1L, 1000L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PROJECT_NOT_FOUND);
+    }
+
+    @Test
     void updateTaskUpdatesFieldsAndSyncsLabelsWhenVersionMatches() {
         User actor = activeUser(1L, "owner@example.com", "오너");
         User assignee = activeUser(2L, "member@example.com", "팀원");
