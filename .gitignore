@@ -27,7 +27,6 @@ backend/bin/
 backend/.classpath
 backend/.project
 backend/.settings/
-backend/src/main/resources/application-prod.yml
 
 # === Frontend ===
 frontend/node_modules/
@@ -43,3 +42,4 @@ docker-compose.override.yml
 *.tmp
 *.swp
 Task.md
+storage/

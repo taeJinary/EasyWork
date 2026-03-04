@@ -1,0 +1,321 @@
+package com.taskflow.backend.domain.invitation.service;
+
+import com.taskflow.backend.domain.invitation.dto.request.CreateInvitationRequest;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationActionResponse;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationListItemResponse;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationListResponse;
+import com.taskflow.backend.domain.invitation.dto.response.InvitationSummaryResponse;
+import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
+import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
+import com.taskflow.backend.domain.notification.service.NotificationService;
+import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.project.entity.ProjectMember;
+import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
+import com.taskflow.backend.domain.project.repository.ProjectRepository;
+import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.global.common.enums.InvitationStatus;
+import com.taskflow.backend.global.common.enums.ProjectRole;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import java.time.LocalDateTime;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class InvitationService {
+
+    private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectInvitationRepository projectInvitationRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final ApplicationEventPublisher applicationEventPublisher;
+
+    @Value("${app.invitation.expires-days:7}")
+    private long invitationExpiresDays;
+
+    @Transactional
+    public InvitationSummaryResponse createInvitation(
+            Long inviterUserId,
+            Long projectId,
+            CreateInvitationRequest request
+    ) {
+        Project project = findActiveProject(projectId);
+        ProjectMember inviterMembership = findMembership(projectId, inviterUserId);
+        ensureOwner(inviterMembership);
+
+        User invitee = userRepository.findByEmail(request.email())
+                .filter(user -> !user.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVITEE_NOT_FOUND));
+
+        if (projectMemberRepository.findByProjectIdAndUserId(projectId, invitee.getId()).isPresent()) {
+            throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        ProjectInvitation pendingInvitation = projectInvitationRepository.findByProjectIdAndInviteeIdAndStatus(
+                projectId,
+                invitee.getId(),
+                InvitationStatus.PENDING
+        ).orElse(null);
+
+        if (pendingInvitation != null && !normalizeExpiredPendingInvitation(pendingInvitation, now)) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        LocalDateTime expiresAt = now.plusDays(invitationExpiresDays);
+        ProjectInvitation invitation = ProjectInvitation.create(
+                project,
+                inviterMembership.getUser(),
+                invitee,
+                request.role(),
+                InvitationStatus.PENDING,
+                expiresAt
+        );
+
+        ProjectInvitation saved;
+        try {
+            saved = projectInvitationRepository.saveAndFlush(invitation);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+        project.touch(now);
+        notificationService.createInvitationNotification(saved);
+        applicationEventPublisher.publishEvent(new InvitationCreatedEvent(
+                saved.getId(),
+                saved.getInvitee().getEmail(),
+                saved.getProject().getName(),
+                saved.getInviter().getNickname(),
+                saved.getRole()
+        ));
+
+        return new InvitationSummaryResponse(
+                saved.getId(),
+                project.getId(),
+                invitee.getId(),
+                invitee.getEmail(),
+                invitee.getNickname(),
+                saved.getRole(),
+                saved.getStatus(),
+                saved.getExpiresAt()
+        );
+    }
+
+    @Transactional
+    public InvitationListResponse getMyInvitations(
+            Long userId,
+            InvitationStatus status,
+            int page,
+            int size
+    ) {
+        findActiveUser(userId);
+
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = size > 0 ? size : 20;
+
+        LocalDateTime now = LocalDateTime.now();
+        List<ProjectInvitation> pendingInvitations =
+                projectInvitationRepository.findAllByInviteeIdAndStatusOrderByCreatedAtDesc(
+                        userId,
+                        InvitationStatus.PENDING
+                );
+        normalizeExpiredPendingInvitations(pendingInvitations, now);
+
+        List<ProjectInvitation> invitations = status == null
+                ? projectInvitationRepository.findAllByInviteeIdOrderByCreatedAtDesc(userId)
+                : status == InvitationStatus.PENDING
+                ? pendingInvitations.stream().filter(ProjectInvitation::isPending).toList()
+                : projectInvitationRepository.findAllByInviteeIdAndStatusOrderByCreatedAtDesc(userId, status);
+
+        long totalElements = invitations.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / normalizedSize);
+        int fromIndex = Math.min(normalizedPage * normalizedSize, invitations.size());
+        int toIndex = Math.min(fromIndex + normalizedSize, invitations.size());
+
+        List<InvitationListItemResponse> content = invitations.subList(fromIndex, toIndex).stream()
+                .map(this::toInvitationListItemResponse)
+                .toList();
+
+        boolean first = normalizedPage == 0;
+        boolean last = totalPages == 0 || normalizedPage >= totalPages - 1;
+
+        return new InvitationListResponse(
+                content,
+                normalizedPage,
+                normalizedSize,
+                totalElements,
+                totalPages,
+                first,
+                last
+        );
+    }
+
+    @Transactional
+    public InvitationActionResponse acceptInvitation(Long userId, Long invitationId) {
+        ProjectInvitation invitation = findInvitation(invitationId);
+        ensureInvitee(invitation, userId);
+        ensurePendingAndNotExpired(invitation);
+
+        if (projectMemberRepository.findByProjectIdAndUserId(
+                invitation.getProject().getId(),
+                userId
+        ).isPresent()) {
+            throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
+        }
+
+        ProjectMember savedMember = projectMemberRepository.save(
+                ProjectMember.create(
+                        invitation.getProject(),
+                        invitation.getInvitee(),
+                        invitation.getRole(),
+                        LocalDateTime.now()
+                )
+        );
+
+        invitation.accept(LocalDateTime.now());
+        invitation.getProject().touch(LocalDateTime.now());
+        notificationService.createInvitationAcceptedNotification(invitation);
+
+        return new InvitationActionResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                savedMember.getId(),
+                invitation.getRole(),
+                invitation.getStatus()
+        );
+    }
+
+    @Transactional
+    public InvitationActionResponse rejectInvitation(Long userId, Long invitationId) {
+        ProjectInvitation invitation = findInvitation(invitationId);
+        ensureInvitee(invitation, userId);
+        ensurePendingAndNotExpired(invitation);
+
+        invitation.reject(LocalDateTime.now());
+        invitation.getProject().touch(LocalDateTime.now());
+
+        return new InvitationActionResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                null,
+                invitation.getRole(),
+                invitation.getStatus()
+        );
+    }
+
+    @Transactional
+    public InvitationActionResponse cancelInvitation(Long userId, Long projectId, Long invitationId) {
+        Project project = findActiveProject(projectId);
+        ProjectMember membership = findMembership(projectId, userId);
+        ensureOwner(membership);
+
+        ProjectInvitation invitation = findInvitation(invitationId);
+        if (!invitation.getProject().getId().equals(project.getId())) {
+            throw new BusinessException(ErrorCode.INVITATION_NOT_FOUND);
+        }
+        ensurePendingAndNotExpired(invitation);
+
+        invitation.cancel(LocalDateTime.now());
+        invitation.getProject().touch(LocalDateTime.now());
+
+        return new InvitationActionResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                null,
+                invitation.getRole(),
+                invitation.getStatus()
+        );
+    }
+
+    private InvitationListItemResponse toInvitationListItemResponse(ProjectInvitation invitation) {
+        return new InvitationListItemResponse(
+                invitation.getId(),
+                invitation.getProject().getId(),
+                invitation.getProject().getName(),
+                invitation.getInviter().getId(),
+                invitation.getInviter().getNickname(),
+                invitation.getRole(),
+                invitation.getStatus(),
+                invitation.getExpiresAt(),
+                invitation.getCreatedAt()
+        );
+    }
+
+    private ProjectInvitation findInvitation(Long invitationId) {
+        return projectInvitationRepository.findById(invitationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVITATION_NOT_FOUND));
+    }
+
+    private void ensureInvitee(ProjectInvitation invitation, Long userId) {
+        if (!invitation.getInvitee().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    private void ensurePendingAndNotExpired(ProjectInvitation invitation) {
+        ensurePending(invitation);
+        if (normalizeExpiredPendingInvitation(invitation, LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.INVITATION_ALREADY_PROCESSED);
+        }
+    }
+
+    private void normalizeExpiredPendingInvitations(List<ProjectInvitation> invitations, LocalDateTime now) {
+        List<ProjectInvitation> expiredInvitations = invitations.stream()
+                .filter(invitation -> normalizeExpiredPendingInvitation(invitation, now))
+                .toList();
+
+        if (!expiredInvitations.isEmpty()) {
+            projectInvitationRepository.saveAll(expiredInvitations);
+        }
+    }
+
+    private boolean normalizeExpiredPendingInvitation(ProjectInvitation invitation, LocalDateTime now) {
+        if (invitation.isPending() && invitation.getExpiresAt().isBefore(now)) {
+            invitation.expire(now);
+            return true;
+        }
+        return false;
+    }
+
+    private void ensurePending(ProjectInvitation invitation) {
+        if (!invitation.isPending()) {
+            throw new BusinessException(ErrorCode.INVITATION_ALREADY_PROCESSED);
+        }
+    }
+
+    private Project findActiveProject(Long projectId) {
+        return projectRepository.findByIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+    }
+
+    private ProjectMember findMembership(Long projectId, Long userId) {
+        return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private void ensureOwner(ProjectMember membership) {
+        if (membership.getRole() != ProjectRole.OWNER) {
+            throw new BusinessException(ErrorCode.ONLY_OWNER_ALLOWED);
+        }
+    }
+
+    private User findActiveUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isDeleted()) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        return user;
+    }
+}
+

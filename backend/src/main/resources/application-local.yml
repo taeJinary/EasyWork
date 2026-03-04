@@ -1,0 +1,29 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+  data:
+    redis:
+      password: ${REDIS_PASSWORD:}
+  jpa:
+    show-sql: true
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-secret-key-change-before-prod-32chars}
+
+app:
+  cookie:
+    refresh-token-name: refresh_token
+    refresh-token-path: /api/v1/auth
+    secure: false
+    same-site: Lax
+
+logging:
+  level:
+    root: INFO
+    com.taskflow: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

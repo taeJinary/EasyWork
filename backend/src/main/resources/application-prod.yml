@@ -1,0 +1,25 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    show-sql: false
+
+app:
+  cookie:
+    refresh-token-name: refresh_token
+    refresh-token-path: /api/v1/auth
+    secure: true
+    same-site: Lax
+  retry-queue:
+    maintenance:
+      enabled: true
+      interval-ms: 300000
+      retention-days: 14
+      pending-warn-threshold: 200
+      delete-batch-size: 1000
+
+logging:
+  level:
+    root: INFO
+    com.taskflow: INFO
