@@ -7,6 +7,7 @@ import com.taskflow.backend.domain.comment.dto.response.CommentResponse;
 import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.comment.repository.CommentRepository;
 import com.taskflow.backend.domain.notification.service.NotificationService;
+import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
 import com.taskflow.backend.domain.task.entity.Task;
@@ -41,6 +42,7 @@ public class CommentService {
     public CommentResponse createComment(Long userId, Long taskId, CreateCommentRequest request) {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ensureProjectActive(task.getProject());
         ProjectMember membership = findMembership(task.getProject().getId(), userId);
 
         Comment saved = commentRepository.save(Comment.create(
@@ -59,6 +61,7 @@ public class CommentService {
     public CommentListResponse getComments(Long userId, Long taskId, Long cursor, int size) {
         Task task = taskRepository.findByIdAndDeletedAtIsNull(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TASK_NOT_FOUND));
+        ensureProjectActive(task.getProject());
         findMembership(task.getProject().getId(), userId);
 
         int normalizedSize = size > 0 ? size : DEFAULT_SIZE;
@@ -81,6 +84,7 @@ public class CommentService {
     @Transactional
     public CommentResponse updateComment(Long userId, Long commentId, UpdateCommentRequest request) {
         Comment comment = findComment(commentId);
+        ensureProjectActive(comment.getTask().getProject());
         Long projectId = comment.getTask().getProject().getId();
         findMembership(projectId, userId);
         ensureAuthor(userId, comment);
@@ -94,6 +98,7 @@ public class CommentService {
     @Transactional
     public void deleteComment(Long userId, Long commentId) {
         Comment comment = findComment(commentId);
+        ensureProjectActive(comment.getTask().getProject());
         Long projectId = comment.getTask().getProject().getId();
         ProjectMember membership = findMembership(projectId, userId);
         ensureAuthorOrOwner(userId, membership, comment);
@@ -108,6 +113,12 @@ public class CommentService {
     private ProjectMember findMembership(Long projectId, Long userId) {
         return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PROJECT_MEMBER));
+    }
+
+    private void ensureProjectActive(Project project) {
+        if (project.isDeleted()) {
+            throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
+        }
     }
 
     private Comment findComment(Long commentId) {
