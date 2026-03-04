@@ -18,15 +18,18 @@ public class ManagementEndpointPropertiesValidator {
 
     private final Environment environment;
     private final String exposureInclude;
+    private final String exposureExclude;
     private final String healthShowDetails;
 
     public ManagementEndpointPropertiesValidator(
             Environment environment,
             @Value("${management.endpoints.web.exposure.include:health,info}") String exposureInclude,
+            @Value("${management.endpoints.web.exposure.exclude:}") String exposureExclude,
             @Value("${management.endpoint.health.show-details:never}") String healthShowDetails
     ) {
         this.environment = environment;
         this.exposureInclude = exposureInclude;
+        this.exposureExclude = exposureExclude;
         this.healthShowDetails = healthShowDetails;
     }
 
@@ -41,6 +44,11 @@ public class ManagementEndpointPropertiesValidator {
                 .filter(value -> !value.isEmpty())
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .collect(Collectors.toSet());
+        Set<String> excludedEndpoints = Arrays.stream(exposureExclude.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
 
         if (exposedEndpoints.contains("*")) {
             throw new IllegalStateException(
@@ -49,6 +57,10 @@ public class ManagementEndpointPropertiesValidator {
         if (!exposedEndpoints.contains(HEALTH_ENDPOINT)) {
             throw new IllegalStateException(
                     "In prod profile, management.endpoints.web.exposure.include must contain health");
+        }
+        if (excludedEndpoints.contains("*") || excludedEndpoints.contains(HEALTH_ENDPOINT)) {
+            throw new IllegalStateException(
+                    "In prod profile, management.endpoints.web.exposure.exclude cannot disable health");
         }
         if (!REQUIRED_HEALTH_SHOW_DETAILS.equalsIgnoreCase(healthShowDetails.trim())) {
             throw new IllegalStateException(

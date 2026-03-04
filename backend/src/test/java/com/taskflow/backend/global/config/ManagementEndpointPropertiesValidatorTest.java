@@ -13,6 +13,7 @@ class ManagementEndpointPropertiesValidatorTest {
         ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
                 environment("test"),
                 "*",
+                "health",
                 "always"
         );
 
@@ -24,6 +25,7 @@ class ManagementEndpointPropertiesValidatorTest {
         ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
                 environment("prod"),
                 "info",
+                "",
                 "never"
         );
 
@@ -37,6 +39,7 @@ class ManagementEndpointPropertiesValidatorTest {
         ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
                 environment("prod"),
                 "*",
+                "",
                 "never"
         );
 
@@ -50,6 +53,7 @@ class ManagementEndpointPropertiesValidatorTest {
         ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
                 environment("prod"),
                 "health,info",
+                "",
                 "always"
         );
 
@@ -63,10 +67,39 @@ class ManagementEndpointPropertiesValidatorTest {
         ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
                 environment("prod"),
                 "health,info",
+                "",
                 "never"
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
+    }
+
+    @Test
+    void prodProfileRejectsHealthEndpointExcluded() {
+        ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
+                environment("prod"),
+                "health,info",
+                "health",
+                "never"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("management.endpoints.web.exposure.exclude");
+    }
+
+    @Test
+    void prodProfileRejectsWildcardExcluded() {
+        ManagementEndpointPropertiesValidator validator = new ManagementEndpointPropertiesValidator(
+                environment("prod"),
+                "health,info",
+                "*",
+                "never"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("management.endpoints.web.exposure.exclude");
     }
 
     private MockEnvironment environment(String... activeProfiles) {
