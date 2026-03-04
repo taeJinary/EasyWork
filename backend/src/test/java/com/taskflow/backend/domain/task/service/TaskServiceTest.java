@@ -808,6 +808,8 @@ class TaskServiceTest {
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L)))
                 .willReturn(List.of(TaskLabel.create(task, backendLabel)));
+        given(commentRepository.countByTaskIdIn(List.of(1000L)))
+                .willReturn(List.of(commentCount(1000L, 2L)));
         given(taskStatusHistoryRepository.findTop10ByTaskIdOrderByCreatedAtDesc(1000L))
                 .willReturn(List.of(history));
 
@@ -822,7 +824,7 @@ class TaskServiceTest {
         assertThat(response.assignee().userId()).isEqualTo(2L);
         assertThat(response.labels()).hasSize(1);
         assertThat(response.labels().getFirst().labelId()).isEqualTo(1L);
-        assertThat(response.commentCount()).isEqualTo(0L);
+        assertThat(response.commentCount()).isEqualTo(2L);
         assertThat(response.recentStatusHistories()).hasSize(1);
         assertThat(response.recentStatusHistories().getFirst().historyId()).isEqualTo(200L);
         assertThat(response.recentStatusHistories().getFirst().fromStatus()).isEqualTo(TaskStatus.TODO);

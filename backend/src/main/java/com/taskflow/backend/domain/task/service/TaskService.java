@@ -177,6 +177,7 @@ public class TaskService {
                 .findTop10ByTaskIdOrderByCreatedAtDesc(taskId);
 
         List<TaskBoardResponse.LabelResponse> boardLabels = mapLabelsByTaskId(List.of(task)).getOrDefault(taskId, List.of());
+        long commentCount = mapCommentCountsByTaskId(List.of(task)).getOrDefault(taskId, 0L);
         List<TaskDetailResponse.LabelResponse> labels = boardLabels.stream()
                 .map(label -> new TaskDetailResponse.LabelResponse(
                         label.labelId(),
@@ -185,7 +186,7 @@ public class TaskService {
                 ))
                 .toList();
 
-        return toTaskDetailResponse(task, labels, statusHistories == null ? List.of() : statusHistories);
+        return toTaskDetailResponse(task, labels, commentCount, statusHistories == null ? List.of() : statusHistories);
     }
 
     public TaskBoardResponse getTaskBoard(
@@ -525,6 +526,7 @@ public class TaskService {
     private TaskDetailResponse toTaskDetailResponse(
             Task task,
             List<TaskDetailResponse.LabelResponse> labels,
+            Long commentCount,
             List<TaskStatusHistory> statusHistories
     ) {
         TaskDetailResponse.UserSummaryResponse creator = new TaskDetailResponse.UserSummaryResponse(
@@ -551,7 +553,7 @@ public class TaskService {
                 creator,
                 assignee,
                 labels,
-                0L,
+                commentCount,
                 toStatusHistoryResponses(statusHistories),
                 task.getCreatedAt(),
                 task.getUpdatedAt()
