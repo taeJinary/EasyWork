@@ -176,6 +176,16 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}");
     }
 
+    @Test
+    void applicationProdYmlDefinesSecureRefreshCookiePolicy() throws IOException {
+        String content = read("src/main/resources/application-prod.yml");
+
+        assertThat(content).contains("refresh-token-name: refresh_token");
+        assertThat(content).contains("refresh-token-path: /api/v1/auth");
+        assertThat(content).contains("secure: true");
+        assertThat(content).contains("same-site: Lax");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }
