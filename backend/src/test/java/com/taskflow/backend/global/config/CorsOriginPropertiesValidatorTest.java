@@ -53,6 +53,21 @@ class CorsOriginPropertiesValidatorTest {
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
     }
 
+    @Test
+    void defaultProdProfileRejectsNonHttpsOrigin() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setDefaultProfiles("prod");
+
+        CorsOriginPropertiesValidator validator = new CorsOriginPropertiesValidator(
+                environment,
+                List.of("http://taskflow.example.com")
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cors.allowed-origins");
+    }
+
     private MockEnvironment environment(String... activeProfiles) {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles(activeProfiles);

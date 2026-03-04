@@ -139,6 +139,24 @@ class CookieSecurityPropertiesValidatorTest {
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
     }
 
+    @Test
+    void defaultProdProfileRequiresSecureCookie() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setDefaultProfiles("prod");
+
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment,
+                false,
+                "Lax",
+                "/api/v1/auth",
+                "refresh_token"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.secure");
+    }
+
     private MockEnvironment environment(String... activeProfiles) {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles(activeProfiles);

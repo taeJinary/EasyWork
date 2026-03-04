@@ -1,9 +1,9 @@
 package com.taskflow.backend.global.config;
 
 import jakarta.annotation.PostConstruct;
-import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -54,7 +54,6 @@ public class CookieSecurityPropertiesValidator {
     }
 
     private boolean isProdProfileActive() {
-        return Arrays.stream(environment.getActiveProfiles())
-                .anyMatch(PROD_PROFILE::equalsIgnoreCase);
+        return environment.acceptsProfiles(Profiles.of(PROD_PROFILE));
     }
 }
