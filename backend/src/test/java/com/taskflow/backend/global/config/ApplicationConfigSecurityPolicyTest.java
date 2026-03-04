@@ -169,6 +169,13 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("show-details: never");
     }
 
+    @Test
+    void applicationProdYmlRequiresCorsOriginsFromEnvironment() throws IOException {
+        String content = read("src/main/resources/application-prod.yml");
+
+        assertThat(content).contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }
