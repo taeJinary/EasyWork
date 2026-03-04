@@ -21,6 +21,8 @@ import com.taskflow.backend.global.common.enums.NotificationType;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +34,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -131,6 +134,103 @@ class InvitationServiceIntegrationTest extends IntegrationTestContainerSupport {
         assertThat(response.content()).isEmpty();
         ProjectInvitation reloaded = projectInvitationRepository.findById(expiredPending.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(InvitationStatus.EXPIRED);
+    }
+
+    @Test
+    void rejectInvitationPreventsReprocessingAndKeepsInviteeOutOfProjectMembers() {
+        User owner = saveActiveUser("owner-reject");
+        User invitee = saveActiveUser("invitee-reject");
+        Project project = saveProject(owner);
+        projectMemberRepository.save(ProjectMember.create(project, owner, ProjectRole.OWNER, LocalDateTime.now()));
+
+        InvitationSummaryResponse created = invitationService.createInvitation(
+                owner.getId(),
+                project.getId(),
+                new CreateInvitationRequest(invitee.getEmail(), ProjectRole.MEMBER)
+        );
+
+        InvitationActionResponse rejected = invitationService.rejectInvitation(invitee.getId(), created.invitationId());
+
+        assertThat(rejected.status()).isEqualTo(InvitationStatus.REJECTED);
+        assertThat(projectMemberRepository.findByProjectIdAndUserId(project.getId(), invitee.getId())).isEmpty();
+
+        InvitationListResponse pendingInvitations = invitationService.getMyInvitations(
+                invitee.getId(),
+                InvitationStatus.PENDING,
+                0,
+                20
+        );
+        InvitationListResponse rejectedInvitations = invitationService.getMyInvitations(
+                invitee.getId(),
+                InvitationStatus.REJECTED,
+                0,
+                20
+        );
+
+        assertThat(pendingInvitations.content()).isEmpty();
+        assertThat(rejectedInvitations.content())
+                .extracting(invitation -> invitation.invitationId())
+                .contains(created.invitationId());
+
+        assertThatThrownBy(() -> invitationService.acceptInvitation(invitee.getId(), created.invitationId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVITATION_ALREADY_PROCESSED);
+    }
+
+    @Test
+    void cancelInvitationBlocksAcceptAndAllowsFreshReinvite() {
+        User owner = saveActiveUser("owner-cancel");
+        User invitee = saveActiveUser("invitee-cancel");
+        Project project = saveProject(owner);
+        projectMemberRepository.save(ProjectMember.create(project, owner, ProjectRole.OWNER, LocalDateTime.now()));
+
+        InvitationSummaryResponse created = invitationService.createInvitation(
+                owner.getId(),
+                project.getId(),
+                new CreateInvitationRequest(invitee.getEmail(), ProjectRole.MEMBER)
+        );
+
+        InvitationActionResponse canceled = invitationService.cancelInvitation(
+                owner.getId(),
+                project.getId(),
+                created.invitationId()
+        );
+
+        assertThat(canceled.status()).isEqualTo(InvitationStatus.CANCELED);
+        assertThat(projectMemberRepository.findByProjectIdAndUserId(project.getId(), invitee.getId())).isEmpty();
+
+        InvitationListResponse pendingInvitations = invitationService.getMyInvitations(
+                invitee.getId(),
+                InvitationStatus.PENDING,
+                0,
+                20
+        );
+        InvitationListResponse canceledInvitations = invitationService.getMyInvitations(
+                invitee.getId(),
+                InvitationStatus.CANCELED,
+                0,
+                20
+        );
+
+        assertThat(pendingInvitations.content()).isEmpty();
+        assertThat(canceledInvitations.content())
+                .extracting(invitation -> invitation.invitationId())
+                .contains(created.invitationId());
+
+        assertThatThrownBy(() -> invitationService.acceptInvitation(invitee.getId(), created.invitationId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVITATION_ALREADY_PROCESSED);
+
+        InvitationSummaryResponse reinvited = invitationService.createInvitation(
+                owner.getId(),
+                project.getId(),
+                new CreateInvitationRequest(invitee.getEmail(), ProjectRole.MEMBER)
+        );
+
+        assertThat(reinvited.status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(reinvited.invitationId()).isNotEqualTo(created.invitationId());
     }
 
     private User saveActiveUser(String nicknamePrefix) {
