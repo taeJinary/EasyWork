@@ -82,6 +82,51 @@ class CookieSecurityPropertiesValidatorTest {
     }
 
     @Test
+    void prodProfileRejectsWhitespacePaddedSameSite() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("prod"),
+                true,
+                " Lax ",
+                "/api/v1/auth",
+                "refresh_token"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.same-site");
+    }
+
+    @Test
+    void prodProfileRejectsWhitespacePaddedRefreshTokenPath() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("prod"),
+                true,
+                "Lax",
+                " /api/v1/auth ",
+                "refresh_token"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.refresh-token-path");
+    }
+
+    @Test
+    void prodProfileRejectsWhitespacePaddedRefreshTokenName() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("prod"),
+                true,
+                "Lax",
+                "/api/v1/auth",
+                " refresh_token "
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.refresh-token-name");
+    }
+
+    @Test
     void prodProfileWithExpectedCookieSettingsPassesValidation() {
         CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
                 environment("prod"),
