@@ -50,8 +50,8 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
         String normalizedKeyword = normalizeKeyword(keyword);
         if (normalizedKeyword != null) {
             where.and(
-                    task.title.coalesce("").lower().contains(normalizedKeyword)
-                            .or(task.description.coalesce("").lower().contains(normalizedKeyword))
+                    task.title.contains(normalizedKeyword)
+                            .or(task.description.contains(normalizedKeyword))
             );
         }
 
@@ -114,8 +114,8 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
         String normalizedKeyword = normalizeKeyword(keyword);
         if (normalizedKeyword != null) {
             where.and(
-                    task.title.coalesce("").lower().contains(normalizedKeyword)
-                            .or(task.description.coalesce("").lower().contains(normalizedKeyword))
+                    task.title.contains(normalizedKeyword)
+                            .or(task.description.contains(normalizedKeyword))
             );
         }
 
