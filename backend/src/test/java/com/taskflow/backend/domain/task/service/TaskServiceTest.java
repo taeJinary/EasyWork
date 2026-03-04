@@ -363,8 +363,13 @@ class TaskServiceTest {
 
         given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
-        given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
-                .willReturn(List.of(todoTask, inProgressTask));
+        given(taskQueryRepository.findTaskBoardTasks(
+                eq(10L),
+                eq(2L),
+                eq(TaskPriority.HIGH),
+                eq(1L),
+                eq("API")
+        )).willReturn(List.of(todoTask, inProgressTask));
         given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L, 1001L)))
                 .willReturn(List.of(
                         TaskLabel.create(todoTask, backendLabel),
@@ -399,6 +404,7 @@ class TaskServiceTest {
         assertThat(inProgressColumn.tasks()).hasSize(1);
         assertThat(inProgressColumn.tasks().getFirst().taskId()).isEqualTo(1001L);
         assertThat(doneColumn.tasks()).isEmpty();
+        verify(taskRepository, never()).findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L);
     }
 
     @Test
@@ -612,8 +618,13 @@ class TaskServiceTest {
 
             given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
             given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
-            given(taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L))
-                    .willReturn(List.of(task));
+            given(taskQueryRepository.findTaskBoardTasks(
+                    eq(10L),
+                    eq(null),
+                    eq(null),
+                    eq(null),
+                    eq("istanbul")
+            )).willReturn(List.of(task));
             given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L))).willReturn(List.of());
 
             TaskBoardResponse response = taskService.getTaskBoard(1L, 10L, null, null, null, "istanbul");

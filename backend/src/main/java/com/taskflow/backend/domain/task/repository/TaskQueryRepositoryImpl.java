@@ -4,8 +4,10 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.taskflow.backend.domain.task.entity.QTask;
+import com.taskflow.backend.domain.task.entity.QTaskLabel;
 import com.taskflow.backend.domain.task.entity.Task;
 import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
@@ -72,6 +74,56 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
                 .fetch();
 
         return new PageImpl<>(content, pageable, totalCount == null ? 0L : totalCount);
+    }
+
+    @Override
+    public List<Task> findTaskBoardTasks(
+            Long projectId,
+            Long assigneeUserId,
+            TaskPriority priority,
+            Long labelId,
+            String keyword
+    ) {
+        QTask task = QTask.task;
+        QTaskLabel taskLabel = QTaskLabel.taskLabel;
+
+        BooleanBuilder where = new BooleanBuilder()
+                .and(task.project.id.eq(projectId))
+                .and(task.deletedAt.isNull());
+
+        if (assigneeUserId != null) {
+            where.and(task.assignee.id.eq(assigneeUserId));
+        }
+
+        if (priority != null) {
+            where.and(task.priority.eq(priority));
+        }
+
+        if (labelId != null) {
+            where.and(
+                    JPAExpressions.selectOne()
+                            .from(taskLabel)
+                            .where(
+                                    taskLabel.task.eq(task),
+                                    taskLabel.label.id.eq(labelId)
+                            )
+                            .exists()
+            );
+        }
+
+        String normalizedKeyword = normalizeKeyword(keyword);
+        if (normalizedKeyword != null) {
+            where.and(
+                    task.title.coalesce("").lower().contains(normalizedKeyword)
+                            .or(task.description.coalesce("").lower().contains(normalizedKeyword))
+            );
+        }
+
+        return queryFactory
+                .selectFrom(task)
+                .where(where)
+                .orderBy(task.status.asc(), task.position.asc(), task.id.asc())
+                .fetch();
     }
 
     private String normalizeKeyword(String keyword) {

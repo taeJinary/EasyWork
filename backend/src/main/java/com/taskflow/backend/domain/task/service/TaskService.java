@@ -36,7 +36,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -201,17 +200,14 @@ public class TaskService {
 
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
 
-        List<Task> tasks = taskRepository.findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(projectId);
-        Map<Long, List<TaskBoardResponse.LabelResponse>> labelsByTaskId = mapLabelsByTaskId(tasks);
-
-        List<Task> filteredTasks = tasks.stream()
-                .filter(task -> assigneeUserId == null
-                        || (task.getAssignee() != null && task.getAssignee().getId().equals(assigneeUserId)))
-                .filter(task -> priority == null || task.getPriority() == priority)
-                .filter(task -> labelId == null || labelsByTaskId.getOrDefault(task.getId(), List.of()).stream()
-                        .anyMatch(label -> label.labelId().equals(labelId)))
-                .filter(task -> normalizedKeyword == null || matchesKeyword(task, normalizedKeyword))
-                .toList();
+        List<Task> filteredTasks = taskQueryRepository.findTaskBoardTasks(
+                projectId,
+                assigneeUserId,
+                priority,
+                labelId,
+                normalizedKeyword
+        );
+        Map<Long, List<TaskBoardResponse.LabelResponse>> labelsByTaskId = mapLabelsByTaskId(filteredTasks);
 
         Map<TaskStatus, List<TaskBoardResponse.TaskCardResponse>> cardsByStatus = new EnumMap<>(TaskStatus.class);
         for (TaskStatus status : TaskStatus.values()) {
@@ -424,13 +420,6 @@ public class TaskService {
                         )
                 )
         );
-    }
-
-    private boolean matchesKeyword(Task task, String keyword) {
-        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
-        String title = task.getTitle() == null ? "" : task.getTitle().toLowerCase(Locale.ROOT);
-        String description = task.getDescription() == null ? "" : task.getDescription().toLowerCase(Locale.ROOT);
-        return title.contains(lowerKeyword) || description.contains(lowerKeyword);
     }
 
     private TaskBoardResponse.TaskCardResponse toTaskCardResponse(

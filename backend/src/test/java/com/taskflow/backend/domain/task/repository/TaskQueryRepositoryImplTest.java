@@ -1,6 +1,9 @@
 package com.taskflow.backend.domain.task.repository;
 
+import com.taskflow.backend.domain.label.entity.Label;
 import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.task.entity.Task;
+import com.taskflow.backend.domain.task.entity.TaskLabel;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.workspace.entity.Workspace;
 import com.taskflow.backend.global.common.enums.Role;
@@ -12,6 +15,7 @@ import com.taskflow.backend.global.config.QueryDslConfig;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +50,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         entityManager.flush();
         entityManager.clear();
 
-        Page<com.taskflow.backend.domain.task.entity.Task> result = taskQueryRepository.findTasks(
+        Page<Task> result = taskQueryRepository.findTasks(
                 project.getId(),
                 TaskStatus.TODO,
                 "priority",
@@ -56,7 +60,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         );
 
         assertThat(result.getContent())
-                .extracting(com.taskflow.backend.domain.task.entity.Task::getPriority)
+                .extracting(Task::getPriority)
                 .containsExactly(TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH, TaskPriority.URGENT);
     }
 
@@ -70,7 +74,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         entityManager.flush();
         entityManager.clear();
 
-        Page<com.taskflow.backend.domain.task.entity.Task> result = taskQueryRepository.findTasks(
+        Page<Task> result = taskQueryRepository.findTasks(
                 project.getId(),
                 TaskStatus.TODO,
                 "priority",
@@ -80,7 +84,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         );
 
         assertThat(result.getContent())
-                .extracting(com.taskflow.backend.domain.task.entity.Task::getPriority)
+                .extracting(Task::getPriority)
                 .containsExactly(TaskPriority.URGENT, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW);
     }
 
@@ -92,7 +96,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         entityManager.flush();
         entityManager.clear();
 
-        Page<com.taskflow.backend.domain.task.entity.Task> result = taskQueryRepository.findTasks(
+        Page<Task> result = taskQueryRepository.findTasks(
                 project.getId(),
                 TaskStatus.TODO,
                 "priority",
@@ -102,7 +106,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         );
 
         assertThat(result.getContent())
-                .extracting(com.taskflow.backend.domain.task.entity.Task::getPriority)
+                .extracting(Task::getPriority)
                 .containsExactly(TaskPriority.LOW, TaskPriority.URGENT);
     }
 
@@ -113,7 +117,7 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         entityManager.flush();
         entityManager.clear();
 
-        Page<com.taskflow.backend.domain.task.entity.Task> result = taskQueryRepository.findTasks(
+        Page<Task> result = taskQueryRepository.findTasks(
                 project.getId(),
                 TaskStatus.TODO,
                 "updatedAt",
@@ -124,6 +128,93 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
 
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    void findTaskBoardTasksAppliesFiltersAndSortsByStatusAndPosition() {
+        Project project = persistProjectGraph();
+        User assignee = persistUser("assignee@example.com", "assignee");
+        User otherAssignee = persistUser("other@example.com", "other");
+
+        Label backendLabel = persistLabel(project, "backend", "#2563EB");
+        Label designLabel = persistLabel(project, "design", "#F97316");
+
+        Task todoFirst = persistTask(
+                project,
+                "API todo first",
+                "desc",
+                TaskPriority.HIGH,
+                TaskStatus.TODO,
+                1,
+                assignee
+        );
+        Task todoSecond = persistTask(
+                project,
+                "API todo second",
+                "desc",
+                TaskPriority.HIGH,
+                TaskStatus.TODO,
+                2,
+                assignee
+        );
+        Task doneTask = persistTask(
+                project,
+                "API done",
+                "desc",
+                TaskPriority.HIGH,
+                TaskStatus.DONE,
+                0,
+                assignee
+        );
+        Task wrongAssignee = persistTask(
+                project,
+                "API wrong assignee",
+                "desc",
+                TaskPriority.HIGH,
+                TaskStatus.TODO,
+                0,
+                otherAssignee
+        );
+        Task wrongPriority = persistTask(
+                project,
+                "API wrong priority",
+                "desc",
+                TaskPriority.MEDIUM,
+                TaskStatus.TODO,
+                0,
+                assignee
+        );
+        Task wrongKeyword = persistTask(
+                project,
+                "Board card",
+                "non matching text",
+                TaskPriority.HIGH,
+                TaskStatus.TODO,
+                0,
+                assignee
+        );
+
+        attachLabel(todoFirst, backendLabel);
+        attachLabel(todoSecond, backendLabel);
+        attachLabel(doneTask, backendLabel);
+        attachLabel(wrongAssignee, backendLabel);
+        attachLabel(wrongPriority, backendLabel);
+        attachLabel(wrongKeyword, designLabel);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Task> result = taskQueryRepository.findTaskBoardTasks(
+                project.getId(),
+                assignee.getId(),
+                TaskPriority.HIGH,
+                backendLabel.getId(),
+                "api"
+        );
+
+        assertThat(result)
+                .extracting(Task::getId)
+                .containsExactly(todoFirst.getId(), todoSecond.getId(), doneTask.getId());
     }
 
     private Project persistProjectGraph() {
@@ -150,17 +241,60 @@ class TaskQueryRepositoryImplTest extends IntegrationTestContainerSupport {
         return project;
     }
 
-    private void persistTask(Project project, String title, TaskPriority priority, int position) {
-        com.taskflow.backend.domain.task.entity.Task task = com.taskflow.backend.domain.task.entity.Task.create(
+    private User persistUser(String email, String nickname) {
+        User user = User.builder()
+                .email(email)
+                .password("encoded")
+                .nickname(nickname)
+                .provider("LOCAL")
+                .role(Role.ROLE_USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+        entityManager.persist(user);
+        return user;
+    }
+
+    private Label persistLabel(Project project, String name, String colorHex) {
+        Label label = Label.builder()
+                .project(project)
+                .name(name)
+                .colorHex(colorHex)
+                .build();
+        entityManager.persist(label);
+        return label;
+    }
+
+    private void attachLabel(Task task, Label label) {
+        entityManager.persist(TaskLabel.create(task, label));
+    }
+
+    private Task persistTask(Project project, String title, TaskPriority priority, int position) {
+        return persistTask(project, title, "desc", priority, TaskStatus.TODO, position, null);
+    }
+
+    private Task persistTask(
+            Project project,
+            String title,
+            String description,
+            TaskPriority priority,
+            TaskStatus status,
+            int position,
+            User assignee
+    ) {
+        Task task = Task.create(
                 project,
                 project.getOwner(),
-                null,
+                assignee,
                 title,
-                "desc",
+                description,
                 priority,
                 null,
                 position
         );
+        if (status != TaskStatus.TODO) {
+            task.move(status, position, LocalDateTime.of(2026, 3, 1, 9, 0));
+        }
         entityManager.persist(task);
+        return task;
     }
 }
