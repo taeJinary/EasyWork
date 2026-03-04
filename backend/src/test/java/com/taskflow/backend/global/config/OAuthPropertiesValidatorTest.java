@@ -124,6 +124,29 @@ class OAuthPropertiesValidatorTest {
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
     }
 
+    @Test
+    void defaultProdProfileAlsoRequiresOAuthSettings() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setDefaultProfiles("prod");
+
+        OAuthPropertiesValidator validator = new OAuthPropertiesValidator(
+                environment,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.oauth.google.client-id");
+    }
+
     private MockEnvironment environment(String... activeProfiles) {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles(activeProfiles);
