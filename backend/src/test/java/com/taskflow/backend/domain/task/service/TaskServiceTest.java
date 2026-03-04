@@ -1,5 +1,6 @@
 package com.taskflow.backend.domain.task.service;
 
+import com.taskflow.backend.domain.comment.repository.CommentRepository;
 import com.taskflow.backend.domain.label.entity.Label;
 import com.taskflow.backend.domain.label.repository.LabelRepository;
 import com.taskflow.backend.domain.notification.service.NotificationService;
@@ -73,6 +74,9 @@ class TaskServiceTest {
 
     @Mock
     private TaskLabelRepository taskLabelRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
 
     @Mock
     private LabelRepository labelRepository;
@@ -375,6 +379,11 @@ class TaskServiceTest {
                         TaskLabel.create(todoTask, backendLabel),
                         TaskLabel.create(inProgressTask, backendLabel)
                 ));
+        given(commentRepository.countByTaskIdIn(List.of(1000L, 1001L)))
+                .willReturn(List.of(
+                        commentCount(1000L, 2L),
+                        commentCount(1001L, 1L)
+                ));
 
         TaskBoardResponse response = taskService.getTaskBoard(1L, 10L, 2L, TaskPriority.HIGH, 1L, "API");
 
@@ -400,9 +409,10 @@ class TaskServiceTest {
         assertThat(todoColumn.tasks()).hasSize(1);
         assertThat(todoColumn.tasks().getFirst().taskId()).isEqualTo(1000L);
         assertThat(todoColumn.tasks().getFirst().labels()).hasSize(1);
-        assertThat(todoColumn.tasks().getFirst().commentCount()).isEqualTo(0L);
+        assertThat(todoColumn.tasks().getFirst().commentCount()).isEqualTo(2L);
         assertThat(inProgressColumn.tasks()).hasSize(1);
         assertThat(inProgressColumn.tasks().getFirst().taskId()).isEqualTo(1001L);
+        assertThat(inProgressColumn.tasks().getFirst().commentCount()).isEqualTo(1L);
         assertThat(doneColumn.tasks()).isEmpty();
         verify(taskRepository, never()).findAllByProjectIdAndDeletedAtIsNullOrderByStatusAscPositionAsc(10L);
     }
@@ -626,6 +636,8 @@ class TaskServiceTest {
                     eq("istanbul")
             )).willReturn(List.of(task));
             given(taskLabelRepository.findAllByTaskIdInWithLabel(List.of(1000L))).willReturn(List.of());
+            given(commentRepository.countByTaskIdIn(List.of(1000L)))
+                    .willReturn(List.of(commentCount(1000L, 4L)));
 
             TaskBoardResponse response = taskService.getTaskBoard(1L, 10L, null, null, null, "istanbul");
             TaskBoardResponse.ColumnResponse todoColumn = response.columns().stream()
@@ -635,6 +647,7 @@ class TaskServiceTest {
 
             assertThat(todoColumn.tasks()).hasSize(1);
             assertThat(todoColumn.tasks().getFirst().taskId()).isEqualTo(1000L);
+            assertThat(todoColumn.tasks().getFirst().commentCount()).isEqualTo(4L);
         } finally {
             Locale.setDefault(originalLocale);
         }
@@ -1559,5 +1572,19 @@ class TaskServiceTest {
                 .role(Role.ROLE_USER)
                 .status(UserStatus.ACTIVE)
                 .build();
+    }
+
+    private CommentRepository.TaskCommentCountProjection commentCount(Long taskId, Long count) {
+        return new CommentRepository.TaskCommentCountProjection() {
+            @Override
+            public Long getTaskId() {
+                return taskId;
+            }
+
+            @Override
+            public Long getCommentCount() {
+                return count;
+            }
+        };
     }
 }
