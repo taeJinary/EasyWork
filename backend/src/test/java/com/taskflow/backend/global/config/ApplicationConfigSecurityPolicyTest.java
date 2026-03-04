@@ -160,6 +160,15 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("idx_notification_push_retry_jobs_completed_updated_id");
     }
 
+    @Test
+    void applicationProdYmlDefinesActuatorExposurePolicy() throws IOException {
+        String content = read("src/main/resources/application-prod.yml");
+
+        assertThat(content).contains("management:");
+        assertThat(content).contains("include: health,info");
+        assertThat(content).contains("show-details: never");
+    }
+
     private String read(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

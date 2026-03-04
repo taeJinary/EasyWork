@@ -23,3 +23,12 @@ logging:
   level:
     root: INFO
     com.taskflow: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
