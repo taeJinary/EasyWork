@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.task.repository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -49,10 +50,7 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
 
         String normalizedKeyword = normalizeKeyword(keyword);
         if (normalizedKeyword != null) {
-            where.and(
-                    task.title.coalesce("").lower().contains(normalizedKeyword)
-                            .or(task.description.coalesce("").lower().contains(normalizedKeyword))
-            );
+            where.and(keywordMatches(task, normalizedKeyword));
         }
 
         Long totalCount = queryFactory
@@ -113,10 +111,7 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
 
         String normalizedKeyword = normalizeKeyword(keyword);
         if (normalizedKeyword != null) {
-            where.and(
-                    task.title.coalesce("").lower().contains(normalizedKeyword)
-                            .or(task.description.coalesce("").lower().contains(normalizedKeyword))
-            );
+            where.and(keywordMatches(task, normalizedKeyword));
         }
 
         return queryFactory
@@ -138,6 +133,19 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
             return "DESC";
         }
         return direction.trim();
+    }
+
+    private BooleanBuilder keywordMatches(QTask task, String normalizedKeyword) {
+        BooleanBuilder keywordPredicate = new BooleanBuilder();
+        keywordPredicate.or(task.title.lower().contains(normalizedKeyword));
+        keywordPredicate.or(
+                Expressions.booleanTemplate(
+                        "lower(cast({0} as char)) like {1}",
+                        task.description,
+                        "%" + normalizedKeyword + "%"
+                )
+        );
+        return keywordPredicate;
     }
 
     private OrderSpecifier<?> resolvePrimarySort(QTask task, String sortBy, boolean ascending) {
@@ -168,3 +176,4 @@ public class TaskQueryRepositoryImpl implements TaskQueryRepository {
         return ascending ? task.id.asc() : task.id.desc();
     }
 }
+
