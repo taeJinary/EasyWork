@@ -12,8 +12,22 @@ public record TaskListItemResponse(
         LocalDate dueDate,
         Integer position,
         Long version,
+        Long commentCount,
         AssigneeResponse assignee
 ) {
+    public TaskListItemResponse(
+            Long taskId,
+            String title,
+            TaskStatus status,
+            TaskPriority priority,
+            LocalDate dueDate,
+            Integer position,
+            Long version,
+            AssigneeResponse assignee
+    ) {
+        this(taskId, title, status, priority, dueDate, position, version, 0L, assignee);
+    }
+
     public record AssigneeResponse(
             Long userId,
             String nickname

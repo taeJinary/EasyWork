@@ -262,9 +262,10 @@ public class TaskService {
                 normalizedKeyword,
                 pageRequest
         );
+        Map<Long, Long> commentCountsByTaskId = mapCommentCountsByTaskId(taskPage.getContent());
 
         List<TaskListItemResponse> content = taskPage.getContent().stream()
-                .map(this::toTaskListItemResponse)
+                .map(task -> toTaskListItemResponse(task, commentCountsByTaskId.getOrDefault(task.getId(), 0L)))
                 .toList();
 
         int totalPages = taskPage.getTotalPages();
@@ -473,7 +474,7 @@ public class TaskService {
         );
     }
 
-    private TaskListItemResponse toTaskListItemResponse(Task task) {
+    private TaskListItemResponse toTaskListItemResponse(Task task, Long commentCount) {
         TaskListItemResponse.AssigneeResponse assigneeResponse = task.getAssignee() == null
                 ? null
                 : new TaskListItemResponse.AssigneeResponse(
@@ -489,6 +490,7 @@ public class TaskService {
                 task.getDueDate(),
                 task.getPosition(),
                 task.getVersion(),
+                commentCount,
                 assigneeResponse
         );
     }

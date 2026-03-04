@@ -506,6 +506,11 @@ class TaskServiceTest {
                 eq("API"),
                 any(Pageable.class)
         )).willReturn(new PageImpl<>(List.of(task2, task1), PageRequest.of(0, 20), 2));
+        given(commentRepository.countByTaskIdIn(List.of(1001L, 1000L)))
+                .willReturn(List.of(
+                        commentCount(1001L, 3L),
+                        commentCount(1000L, 1L)
+                ));
 
         TaskListResponse response = taskService.getTasks(
                 1L,
@@ -521,6 +526,8 @@ class TaskServiceTest {
         assertThat(response.content()).hasSize(2);
         assertThat(response.content().getFirst().taskId()).isEqualTo(1001L);
         assertThat(response.content().get(1).taskId()).isEqualTo(1000L);
+        assertThat(response.content().getFirst().commentCount()).isEqualTo(3L);
+        assertThat(response.content().get(1).commentCount()).isEqualTo(1L);
         assertThat(response.page()).isEqualTo(0);
         assertThat(response.size()).isEqualTo(20);
         assertThat(response.totalElements()).isEqualTo(2L);
