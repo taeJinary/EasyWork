@@ -14,7 +14,8 @@ class CookieSecurityPropertiesValidatorTest {
                 environment("test"),
                 false,
                 "None",
-                "/custom"
+                "/custom",
+                "custom_refresh_token"
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
@@ -26,7 +27,8 @@ class CookieSecurityPropertiesValidatorTest {
                 environment("prod"),
                 false,
                 "Lax",
-                "/api/v1/auth"
+                "/api/v1/auth",
+                "refresh_token"
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -40,7 +42,8 @@ class CookieSecurityPropertiesValidatorTest {
                 environment("prod"),
                 true,
                 "None",
-                "/api/v1/auth"
+                "/api/v1/auth",
+                "refresh_token"
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -54,7 +57,8 @@ class CookieSecurityPropertiesValidatorTest {
                 environment("prod"),
                 true,
                 "Lax",
-                "/auth"
+                "/auth",
+                "refresh_token"
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -63,12 +67,28 @@ class CookieSecurityPropertiesValidatorTest {
     }
 
     @Test
+    void prodProfileRequiresRefreshTokenName() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("prod"),
+                true,
+                "Lax",
+                "/api/v1/auth",
+                "custom_refresh"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.refresh-token-name");
+    }
+
+    @Test
     void prodProfileWithExpectedCookieSettingsPassesValidation() {
         CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
                 environment("prod"),
                 true,
                 "Lax",
-                "/api/v1/auth"
+                "/api/v1/auth",
+                "refresh_token"
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
