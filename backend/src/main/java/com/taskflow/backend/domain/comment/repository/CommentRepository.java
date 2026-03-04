@@ -24,6 +24,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             """)
     List<TaskCommentCountProjection> countByTaskIdIn(@Param("taskIds") List<Long> taskIds);
 
+    long countByTaskId(Long taskId);
+
     interface TaskCommentCountProjection {
         Long getTaskId();
         Long getCommentCount();

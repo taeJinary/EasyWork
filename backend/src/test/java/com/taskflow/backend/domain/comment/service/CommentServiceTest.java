@@ -101,6 +101,7 @@ class CommentServiceTest {
         given(taskRepository.findByIdAndDeletedAtIsNull(1000L)).willReturn(Optional.of(task));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
         given(commentRepository.save(any(Comment.class))).willReturn(savedComment);
+        given(commentRepository.countByTaskId(1000L)).willReturn(1L);
         given(notificationService.createCommentMentionNotifications(savedComment, actor)).willReturn(Set.of());
 
         CommentResponse response = commentService.createComment(1L, 1000L, new CreateCommentRequest("濡쒓렇???ㅽ뙣"));
@@ -112,7 +113,7 @@ class CommentServiceTest {
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
         verify(notificationService).createCommentMentionNotifications(savedComment, actor);
         verify(notificationService).createCommentCreatedNotification(savedComment, actor, Set.of());
-        verify(projectBoardEventPublisher).publishCommentCreated(savedComment, actor);
+        verify(projectBoardEventPublisher).publishCommentCreated(savedComment, actor, 1L);
     }
 
     @Test
@@ -386,10 +387,13 @@ class CommentServiceTest {
 
         given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(commentRepository.countByTaskId(1000L)).willReturn(0L);
 
         commentService.deleteComment(1L, 150L);
 
         verify(commentRepository).delete(comment);
+        verify(commentRepository).flush();
+        verify(projectBoardEventPublisher).publishCommentDeleted(comment, author, 0L);
         assertThat(project.getUpdatedAt()).isAfter(beforeActivityAt);
     }
 
@@ -427,10 +431,13 @@ class CommentServiceTest {
 
         given(commentRepository.findById(150L)).willReturn(Optional.of(comment));
         given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+        given(commentRepository.countByTaskId(1000L)).willReturn(3L);
 
         commentService.deleteComment(1L, 150L);
 
         verify(commentRepository).delete(comment);
+        verify(commentRepository).flush();
+        verify(projectBoardEventPublisher).publishCommentDeleted(comment, owner, 3L);
     }
 
     @Test

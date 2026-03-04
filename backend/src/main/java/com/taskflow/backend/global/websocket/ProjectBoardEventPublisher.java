@@ -22,6 +22,7 @@ public class ProjectBoardEventPublisher {
     public static final String TASK_MOVED = "TASK_MOVED";
     public static final String TASK_DELETED = "TASK_DELETED";
     public static final String COMMENT_CREATED = "COMMENT_CREATED";
+    public static final String COMMENT_DELETED = "COMMENT_DELETED";
 
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -46,11 +47,20 @@ public class ProjectBoardEventPublisher {
         publish(task.getProject().getId(), TASK_DELETED, actor, payload);
     }
 
-    public void publishCommentCreated(Comment comment, User actor) {
+    public void publishCommentCreated(Comment comment, User actor, long commentCount) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("commentId", comment.getId());
         payload.put("taskId", comment.getTask().getId());
+        payload.put("commentCount", commentCount);
         publish(comment.getTask().getProject().getId(), COMMENT_CREATED, actor, payload);
+    }
+
+    public void publishCommentDeleted(Comment comment, User actor, long commentCount) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("commentId", comment.getId());
+        payload.put("taskId", comment.getTask().getId());
+        payload.put("commentCount", commentCount);
+        publish(comment.getTask().getProject().getId(), COMMENT_DELETED, actor, payload);
     }
 
     private Map<String, Object> taskPayload(Task task) {
