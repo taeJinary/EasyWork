@@ -48,6 +48,7 @@ public class S3TaskAttachmentStorage implements TaskAttachmentStorage {
                     .bucket(bucket)
                     .key(objectKey)
                     .contentType(contentType)
+                    .contentDisposition("attachment")
                     .build();
             s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
         } catch (IOException | RuntimeException exception) {

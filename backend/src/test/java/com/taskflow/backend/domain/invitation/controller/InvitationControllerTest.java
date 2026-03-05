@@ -12,6 +12,9 @@ import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,6 +49,9 @@ class InvitationControllerTest {
 
     @MockBean
     private InvitationService invitationService;
+
+    @MockBean
+    private ApiRateLimitService apiRateLimitService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -72,7 +80,7 @@ class InvitationControllerTest {
                 10L,
                 2L,
                 "member@example.com",
-                "팀원",
+                "member",
                 ProjectRole.MEMBER,
                 InvitationStatus.PENDING,
                 LocalDateTime.of(2026, 3, 8, 10, 30)
@@ -89,8 +97,27 @@ class InvitationControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.projectId").value(10L))
                 .andExpect(jsonPath("$.data.inviteeEmail").value("member@example.com"))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
-                .andExpect(jsonPath("$.message").value("초대가 생성되었습니다."));
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
+
+        then(apiRateLimitService).should().checkInvitationCreate(1L);
+    }
+
+    @Test
+    void createInvitationReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        CreateInvitationRequest request = new CreateInvitationRequest("member@example.com", ProjectRole.MEMBER);
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkInvitationCreate(1L);
+
+        mockMvc.perform(post("/projects/10/invitations")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(invitationService).should(never()).createInvitation(eq(1L), eq(10L), any(CreateInvitationRequest.class));
     }
 
     @Test
@@ -100,7 +127,7 @@ class InvitationControllerTest {
                 1L,
                 "TaskFlow",
                 1L,
-                "오너",
+                "owner",
                 ProjectRole.MEMBER,
                 InvitationStatus.PENDING,
                 LocalDateTime.of(2026, 3, 8, 10, 30),
@@ -143,8 +170,7 @@ class InvitationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.invitationId").value(10L))
-                .andExpect(jsonPath("$.data.status").value("ACCEPTED"))
-                .andExpect(jsonPath("$.message").value("초대를 수락했습니다."));
+                .andExpect(jsonPath("$.data.status").value("ACCEPTED"));
 
         then(invitationService).should().acceptInvitation(1L, 10L);
     }
@@ -165,8 +191,7 @@ class InvitationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.invitationId").value(10L))
-                .andExpect(jsonPath("$.data.status").value("REJECTED"))
-                .andExpect(jsonPath("$.message").value("초대를 거절했습니다."));
+                .andExpect(jsonPath("$.data.status").value("REJECTED"));
 
         then(invitationService).should().rejectInvitation(1L, 10L);
     }
@@ -186,8 +211,7 @@ class InvitationControllerTest {
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.status").value("CANCELED"))
-                .andExpect(jsonPath("$.message").value("초대를 취소했습니다."));
+                .andExpect(jsonPath("$.data.status").value("CANCELED"));
 
         then(invitationService).should().cancelInvitation(1L, 10L, 10L);
     }

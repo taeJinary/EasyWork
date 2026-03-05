@@ -120,6 +120,46 @@ app:
       retention-days: 7
       pending-warn-threshold: 100
       delete-batch-size: 500
+  rate-limit:
+    auth:
+      login:
+        ip:
+          max-attempts: 30
+        email:
+          max-attempts: 10
+        window-seconds: 60
+      token-reissue:
+        ip:
+          max-attempts: 60
+        window-seconds: 60
+      oauth-login:
+        ip:
+          max-attempts: 30
+        window-seconds: 60
+      oauth-code-login:
+        ip:
+          max-attempts: 30
+        window-seconds: 60
+    invitation:
+      create:
+        user:
+          max-attempts: 20
+        window-seconds: 60
+    comment:
+      create:
+        user:
+          max-attempts: 60
+        window-seconds: 60
+    attachment:
+      upload:
+        user:
+          max-attempts: 20
+        window-seconds: 60
+    notification:
+      push-token-register:
+        user:
+          max-attempts: 30
+        window-seconds: 60
 
 # === Logging ===
 logging:

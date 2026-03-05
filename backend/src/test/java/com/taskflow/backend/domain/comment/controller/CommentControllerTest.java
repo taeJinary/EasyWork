@@ -9,6 +9,9 @@ import com.taskflow.backend.domain.comment.service.CommentService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -43,6 +48,9 @@ class CommentControllerTest {
 
     @MockBean
     private CommentService commentService;
+
+    @MockBean
+    private ApiRateLimitService apiRateLimitService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -87,7 +95,26 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.data.content").value("로그인 실패"))
                 .andExpect(jsonPath("$.data.editable").value(true));
 
+        then(apiRateLimitService).should().checkCommentCreate(1L);
         then(commentService).should().createComment(eq(1L), eq(100L), any(CreateCommentRequest.class));
+    }
+
+    @Test
+    void createCommentReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        CreateCommentRequest request = new CreateCommentRequest("rate limit");
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkCommentCreate(1L);
+
+        mockMvc.perform(post("/tasks/100/comments")
+                        .principal(principalAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(commentService).should(never()).createComment(eq(1L), eq(100L), any(CreateCommentRequest.class));
     }
 
     @Test

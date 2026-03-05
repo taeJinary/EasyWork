@@ -8,6 +8,7 @@ import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,14 +26,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationPushTokenController {
 
     private final NotificationPushTokenService notificationPushTokenService;
+    private final ApiRateLimitService apiRateLimitService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<NotificationPushTokenResponse>> registerPushToken(
             Authentication authentication,
             @Valid @RequestBody RegisterNotificationPushTokenRequest request
     ) {
+        Long userId = extractUserId(authentication);
+        apiRateLimitService.checkPushTokenRegister(userId);
         NotificationPushTokenResponse response = notificationPushTokenService.registerPushToken(
-                extractUserId(authentication),
+                userId,
                 request.token(),
                 request.platform()
         );

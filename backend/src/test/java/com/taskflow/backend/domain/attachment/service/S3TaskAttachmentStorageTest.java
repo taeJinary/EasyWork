@@ -48,6 +48,8 @@ class S3TaskAttachmentStorageTest {
         assertThat(request.key()).startsWith("task-attachments/10/");
         assertThat(request.key()).endsWith(".pdf");
         assertThat(request.contentType()).isEqualTo("application/pdf");
+        assertThat(request.acl()).isNull();
+        assertThat(request.contentDisposition()).contains("attachment");
 
         assertThat(stored.storagePath()).isEqualTo(request.key());
         assertThat(stored.storedFilename()).isNotBlank();

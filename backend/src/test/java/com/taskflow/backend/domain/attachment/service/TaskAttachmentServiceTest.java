@@ -138,6 +138,30 @@ class TaskAttachmentServiceTest {
     }
 
     @Test
+    void uploadAttachmentThrowsWhenMimeTypeDoesNotMatchExtension() {
+        User uploader = activeUser(1L, "uploader@example.com", "uploader");
+        Project project = project(10L, uploader);
+        Task task = task(100L, project, uploader);
+        ProjectMember membership = membership(1000L, project, uploader, ProjectRole.MEMBER);
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "report.pdf",
+                "image/png",
+                "hello".getBytes()
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> taskAttachmentService.uploadAttachment(1L, 100L, multipartFile))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+
+        verify(taskAttachmentStorage, never()).store(any(), any(MultipartFile.class));
+    }
+
+    @Test
     void uploadAttachmentDeletesStoredFileWhenRepositorySaveFails() {
         User uploader = activeUser(1L, "uploader@example.com", "uploader");
         Project project = project(10L, uploader);

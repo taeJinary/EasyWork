@@ -5,6 +5,9 @@ import com.taskflow.backend.domain.attachment.service.TaskAttachmentService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -35,6 +40,9 @@ class TaskAttachmentControllerTest {
 
     @MockBean
     private TaskAttachmentService taskAttachmentService;
+
+    @MockBean
+    private ApiRateLimitService apiRateLimitService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -60,7 +68,30 @@ class TaskAttachmentControllerTest {
                 .andExpect(jsonPath("$.data.taskId").value(100L))
                 .andExpect(jsonPath("$.data.originalFilename").value("report.pdf"));
 
+        then(apiRateLimitService).should().checkAttachmentUpload(1L);
         then(taskAttachmentService).should().uploadAttachment(eq(1L), eq(100L), any());
+    }
+
+    @Test
+    void uploadAttachmentReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "report.pdf",
+                "application/pdf",
+                "hello".getBytes()
+        );
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkAttachmentUpload(1L);
+
+        mockMvc.perform(multipart("/tasks/100/attachments")
+                        .file(file)
+                        .principal(principalAuth()))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(taskAttachmentService).should(never()).uploadAttachment(eq(1L), eq(100L), any());
     }
 
     @Test

@@ -13,6 +13,8 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,30 @@ public class TaskAttachmentService {
     private static final long MAX_ATTACHMENT_SIZE_BYTES = 10L * 1024 * 1024;
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             "png", "jpg", "jpeg", "gif", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip"
+    );
+    private static final Map<String, Set<String>> ALLOWED_MIME_TYPES_BY_EXTENSION = Map.ofEntries(
+            Map.entry("png", Set.of("image/png")),
+            Map.entry("jpg", Set.of("image/jpeg")),
+            Map.entry("jpeg", Set.of("image/jpeg")),
+            Map.entry("gif", Set.of("image/gif")),
+            Map.entry("pdf", Set.of("application/pdf")),
+            Map.entry("doc", Set.of("application/msword", "application/octet-stream")),
+            Map.entry("docx", Set.of(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/octet-stream"
+            )),
+            Map.entry("xls", Set.of("application/vnd.ms-excel", "application/octet-stream")),
+            Map.entry("xlsx", Set.of(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/octet-stream"
+            )),
+            Map.entry("ppt", Set.of("application/vnd.ms-powerpoint", "application/octet-stream")),
+            Map.entry("pptx", Set.of(
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    "application/octet-stream"
+            )),
+            Map.entry("txt", Set.of("text/plain")),
+            Map.entry("zip", Set.of("application/zip", "application/x-zip-compressed", "application/octet-stream"))
     );
 
     private final TaskRepository taskRepository;
@@ -130,6 +156,8 @@ public class TaskAttachmentService {
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
+
+        validateMimeType(extension, file.getContentType());
     }
 
     private String extractExtension(String filename) {
@@ -137,7 +165,28 @@ public class TaskAttachmentService {
         if (dotIndex < 0 || dotIndex == filename.length() - 1) {
             return "";
         }
-        return filename.substring(dotIndex + 1).toLowerCase();
+        return filename.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private void validateMimeType(String extension, String contentType) {
+        Set<String> allowedMimeTypes = ALLOWED_MIME_TYPES_BY_EXTENSION.get(extension);
+        if (allowedMimeTypes == null || allowedMimeTypes.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        String normalizedContentType = normalizeContentType(contentType);
+        if (!allowedMimeTypes.contains(normalizedContentType)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private String normalizeContentType(String contentType) {
+        if (!StringUtils.hasText(contentType)) {
+            return "";
+        }
+        String trimmed = contentType.trim().toLowerCase(Locale.ROOT);
+        int delimiterIndex = trimmed.indexOf(';');
+        return delimiterIndex >= 0 ? trimmed.substring(0, delimiterIndex).trim() : trimmed;
     }
 
     private TaskAttachmentResponse toResponse(TaskAttachment attachment) {
