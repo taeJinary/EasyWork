@@ -72,14 +72,14 @@ class ApiRateLimitServiceTest {
     }
 
     @Test
-    void checkAuthOauthLoginUsesFirstForwardedIp() {
+    void checkAuthOauthLoginUsesRemoteAddrEvenWhenForwardedHeaderPresent() {
         when(redisService.increment(anyString())).thenReturn(1L);
         MockHttpServletRequest request = requestWithIp("10.0.0.10");
         request.addHeader("X-Forwarded-For", "198.51.100.7, 10.0.0.10");
 
         apiRateLimitService.checkAuthOauthLogin(request);
 
-        verify(redisService).increment("rate-limit:auth:oauth-login:ip:198.51.100.7");
+        verify(redisService).increment("rate-limit:auth:oauth-login:ip:10.0.0.10");
     }
 
     @Test

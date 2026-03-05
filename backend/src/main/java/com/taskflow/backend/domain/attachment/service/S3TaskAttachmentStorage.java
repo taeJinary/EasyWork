@@ -13,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Component
@@ -49,7 +48,6 @@ public class S3TaskAttachmentStorage implements TaskAttachmentStorage {
                     .bucket(bucket)
                     .key(objectKey)
                     .contentType(contentType)
-                    .acl(ObjectCannedACL.PRIVATE)
                     .contentDisposition("attachment")
                     .build();
             s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));

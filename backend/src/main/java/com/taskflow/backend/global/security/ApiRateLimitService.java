@@ -16,7 +16,6 @@ public class ApiRateLimitService {
 
     private static final String KEY_PREFIX = "rate-limit";
     private static final String UNKNOWN = "unknown";
-    private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 
     private final RedisService redisService;
 
@@ -163,13 +162,6 @@ public class ApiRateLimitService {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader(X_FORWARDED_FOR);
-        if (StringUtils.hasText(forwardedFor)) {
-            String[] split = forwardedFor.split(",");
-            if (split.length > 0 && StringUtils.hasText(split[0])) {
-                return split[0].trim();
-            }
-        }
         return StringUtils.hasText(request.getRemoteAddr()) ? request.getRemoteAddr() : UNKNOWN;
     }
 

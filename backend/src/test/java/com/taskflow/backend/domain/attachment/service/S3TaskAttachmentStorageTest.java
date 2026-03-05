@@ -11,7 +11,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,7 +48,7 @@ class S3TaskAttachmentStorageTest {
         assertThat(request.key()).startsWith("task-attachments/10/");
         assertThat(request.key()).endsWith(".pdf");
         assertThat(request.contentType()).isEqualTo("application/pdf");
-        assertThat(request.acl()).isEqualTo(ObjectCannedACL.PRIVATE);
+        assertThat(request.acl()).isNull();
         assertThat(request.contentDisposition()).contains("attachment");
 
         assertThat(stored.storagePath()).isEqualTo(request.key());
