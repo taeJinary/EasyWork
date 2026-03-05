@@ -5,6 +5,7 @@ import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.infra.redis.RedisService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
+import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -169,7 +170,7 @@ public class ApiRateLimitService {
         if (!StringUtils.hasText(email)) {
             return UNKNOWN;
         }
-        return email.trim().toLowerCase();
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeUserId(Long userId) {

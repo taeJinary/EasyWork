@@ -4,6 +4,7 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.infra.redis.RedisService;
 import java.time.Duration;
+import java.util.Locale;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -101,6 +102,22 @@ class ApiRateLimitServiceTest {
                 "rate-limit:notification:push-token-register:user:55",
                 Duration.ofSeconds(60)
         );
+    }
+
+    @Test
+    void checkAuthLoginNormalizesEmailWithLocaleRoot() {
+        Locale previousLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            when(redisService.increment("rate-limit:auth:login:ip:203.0.113.10")).thenReturn(1L);
+            when(redisService.increment("rate-limit:auth:login:email:iuser@example.com")).thenReturn(1L);
+
+            apiRateLimitService.checkAuthLogin(requestWithIp("203.0.113.10"), "IUSER@example.com");
+
+            verify(redisService).increment("rate-limit:auth:login:email:iuser@example.com");
+        } finally {
+            Locale.setDefault(previousLocale);
+        }
     }
 
     private MockHttpServletRequest requestWithIp(String remoteAddr) {

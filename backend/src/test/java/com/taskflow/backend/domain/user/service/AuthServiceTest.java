@@ -180,6 +180,24 @@ class AuthServiceTest {
     }
 
     @Test
+    void loginNormalizesEmailWhenApplyingLockAndFailKeys() {
+        LoginRequest request = new LoginRequest("  USER@Example.com  ", "wrong-password");
+
+        when(redisService.hasKey("login:lock:user@example.com")).thenReturn(false);
+        when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
+        when(redisService.increment("login:fail:user@example.com")).thenReturn(1L);
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+
+        verify(redisService).hasKey("login:lock:user@example.com");
+        verify(redisService).increment("login:fail:user@example.com");
+        verify(redisService).expire("login:fail:user@example.com", Duration.ofMinutes(5));
+    }
+
+    @Test
     void loginLocksAccountWhenFailCountReachesFive() {
         User user = activeUser();
         LoginRequest request = new LoginRequest(user.getEmail(), "wrong-password");
