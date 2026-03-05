@@ -11,6 +11,7 @@ import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +44,9 @@ class InvitationEmailRetryServiceTest {
     @Mock
     private ProjectInvitationRepository projectInvitationRepository;
 
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
+
     @InjectMocks
     private InvitationEmailRetryService invitationEmailRetryService;
 
@@ -73,6 +77,7 @@ class InvitationEmailRetryServiceTest {
         assertThat(saved.getCompletedAt()).isNull();
         assertThat(saved.getNextRetryAt()).isNotNull();
         assertThat(saved.getLastErrorMessage()).contains("smtp down");
+        verify(operationalMetricsService).incrementInvitationEmailRetryEnqueued();
     }
 
     @Test
@@ -110,6 +115,7 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(0);
         verify(invitationEmailService).sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
         verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementInvitationEmailRetryCompleted();
     }
 
     @Test
@@ -140,6 +146,7 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getLastErrorMessage()).contains("temporary smtp failure");
         assertThat(job.getNextRetryAt()).isAfter(LocalDateTime.now().minusSeconds(5));
         verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementInvitationEmailRetryRescheduled();
     }
 
     @Test
@@ -225,6 +232,7 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(3);
         assertThat(job.getLastErrorMessage()).contains("smtp down again");
         verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementInvitationEmailRetryDeadLetter();
     }
 
     @Test

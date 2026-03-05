@@ -73,6 +73,11 @@ public class RetryQueueMaintenanceService {
                 .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
         long deletedAttachment = taskAttachmentCleanupJobRepository
                 .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
+        operationalMetricsService.recordRetryQueueHistoryDeleted(
+                deletedInvitation,
+                deletedNotification,
+                deletedAttachment
+        );
         long totalDeleted = deletedInvitation + deletedNotification + deletedAttachment;
 
         if (totalDeleted > 0L) {

@@ -12,6 +12,7 @@ import com.taskflow.backend.global.common.enums.NotificationType;
 import com.taskflow.backend.global.common.enums.PushPlatform;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +49,9 @@ class NotificationPushRetryServiceTest {
     @Mock
     private NotificationPushDispatchService notificationPushDispatchService;
 
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
+
     @InjectMocks
     private NotificationPushRetryService notificationPushRetryService;
 
@@ -76,6 +80,7 @@ class NotificationPushRetryServiceTest {
         assertThat(saved.getOpenKey()).isEqualTo("101:501");
         assertThat(saved.getNextRetryAt()).isNotNull();
         assertThat(saved.getLastErrorMessage()).contains("temporary push failure");
+        verify(operationalMetricsService).incrementNotificationPushRetryEnqueued();
     }
 
     @Test
@@ -129,6 +134,7 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getCompletedAt()).isNotNull();
         assertThat(job.getRetryCount()).isEqualTo(0);
         verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementNotificationPushRetryCompleted();
     }
 
     @Test
@@ -157,6 +163,7 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getLastErrorMessage()).contains("Transient push delivery failure");
         assertThat(job.getNextRetryAt()).isAfter(LocalDateTime.now().minusSeconds(5));
         verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementNotificationPushRetryRescheduled();
     }
 
     @Test
@@ -234,6 +241,7 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(3);
         assertThat(job.getLastErrorMessage()).contains("Transient push delivery failure");
         verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementNotificationPushRetryDeadLetter();
     }
 
     @Test

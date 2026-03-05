@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.entity.TaskAttachmentCleanupJob;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class TaskAttachmentCleanupRetryService {
 
     private final TaskAttachmentCleanupJobRepository cleanupJobRepository;
     private final TaskAttachmentStorage taskAttachmentStorage;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Value("${app.attachment.cleanup.retry-delay-seconds:300}")
     private long retryDelaySeconds;
@@ -49,6 +51,7 @@ public class TaskAttachmentCleanupRetryService {
                 LocalDateTime.now()
         );
         cleanupJobRepository.save(job);
+        operationalMetricsService.incrementAttachmentCleanupRetryEnqueued();
     }
 
     @Transactional
@@ -71,9 +74,15 @@ public class TaskAttachmentCleanupRetryService {
             taskAttachmentStorage.delete(job.getStoragePath());
             job.markCompleted(now);
             cleanupJobRepository.save(job);
+            operationalMetricsService.incrementAttachmentCleanupRetryCompleted();
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
             cleanupJobRepository.save(job);
+            if (job.getCompletedAt() != null) {
+                operationalMetricsService.incrementAttachmentCleanupRetryDeadLetter();
+            } else {
+                operationalMetricsService.incrementAttachmentCleanupRetryRescheduled();
+            }
 
             log.error(
                     "Failed to retry attachment cleanup delete. attachmentId={}, storagePath={}, retryCount={}",

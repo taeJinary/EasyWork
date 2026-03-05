@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.entity.TaskAttachmentCleanupJob;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,9 @@ class TaskAttachmentCleanupRetryServiceTest {
     @Mock
     private TaskAttachmentStorage taskAttachmentStorage;
 
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
+
     @InjectMocks
     private TaskAttachmentCleanupRetryService cleanupRetryService;
 
@@ -56,6 +60,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(saved.getRetryCount()).isEqualTo(0);
         assertThat(saved.getCompletedAt()).isNull();
         assertThat(saved.getNextRetryAt()).isNotNull();
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryEnqueued();
     }
 
     @Test
@@ -85,6 +90,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
         assertThat(job.getCompletedAt()).isNotNull();
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryCompleted();
     }
 
     @Test
@@ -109,6 +115,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getLastErrorMessage()).contains("storage down");
         assertThat(job.getNextRetryAt()).isAfter(LocalDateTime.now().minusSeconds(5));
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryRescheduled();
     }
 
     @Test
@@ -136,6 +143,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(3);
         assertThat(job.getLastErrorMessage()).contains("storage down again");
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryDeadLetter();
     }
 
     @Test

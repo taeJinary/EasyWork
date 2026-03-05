@@ -4,6 +4,7 @@ import com.taskflow.backend.domain.invitation.entity.InvitationEmailRetryJob;
 import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import com.taskflow.backend.domain.invitation.repository.InvitationEmailRetryJobRepository;
 import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class InvitationEmailRetryService {
     private final InvitationEmailRetryJobRepository invitationEmailRetryJobRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
     private final InvitationEmailService invitationEmailService;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Value("${app.invitation.email.retry.delay-seconds:300}")
     private long retryDelaySeconds;
@@ -51,6 +53,7 @@ public class InvitationEmailRetryService {
                 errorMessage
         );
         invitationEmailRetryJobRepository.save(job);
+        operationalMetricsService.incrementInvitationEmailRetryEnqueued();
     }
 
     @Transactional
@@ -72,6 +75,7 @@ public class InvitationEmailRetryService {
         if (shouldSkipRetry(job)) {
             job.markCompleted(now);
             invitationEmailRetryJobRepository.save(job);
+            operationalMetricsService.incrementInvitationEmailRetryCompleted();
             return;
         }
 
@@ -87,9 +91,15 @@ public class InvitationEmailRetryService {
             invitationEmailService.sendInvitationCreatedEmail(event);
             job.markCompleted(now);
             invitationEmailRetryJobRepository.save(job);
+            operationalMetricsService.incrementInvitationEmailRetryCompleted();
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
             invitationEmailRetryJobRepository.save(job);
+            if (job.getCompletedAt() != null) {
+                operationalMetricsService.incrementInvitationEmailRetryDeadLetter();
+            } else {
+                operationalMetricsService.incrementInvitationEmailRetryRescheduled();
+            }
 
             log.error(
                     "Failed to retry invitation email send. invitationId={}, retryCount={}",
