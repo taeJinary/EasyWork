@@ -23,10 +23,16 @@ public class RateLimitPropertiesValidator {
     private final long invitationCreateIpWindowSeconds;
     private final int invitationCreateUserMaxAttempts;
     private final long invitationCreateWindowSeconds;
+    private final int commentCreateIpMaxAttempts;
+    private final long commentCreateIpWindowSeconds;
     private final int commentCreateUserMaxAttempts;
     private final long commentCreateWindowSeconds;
+    private final int attachmentUploadIpMaxAttempts;
+    private final long attachmentUploadIpWindowSeconds;
     private final int attachmentUploadUserMaxAttempts;
     private final long attachmentUploadWindowSeconds;
+    private final int pushTokenRegisterIpMaxAttempts;
+    private final long pushTokenRegisterIpWindowSeconds;
     private final int pushTokenRegisterUserMaxAttempts;
     private final long pushTokenRegisterWindowSeconds;
 
@@ -44,10 +50,16 @@ public class RateLimitPropertiesValidator {
             @Value("${app.rate-limit.invitation.create.ip.window-seconds:60}") long invitationCreateIpWindowSeconds,
             @Value("${app.rate-limit.invitation.create.user.max-attempts:20}") int invitationCreateUserMaxAttempts,
             @Value("${app.rate-limit.invitation.create.window-seconds:60}") long invitationCreateWindowSeconds,
+            @Value("${app.rate-limit.comment.create.ip.max-attempts:60}") int commentCreateIpMaxAttempts,
+            @Value("${app.rate-limit.comment.create.ip.window-seconds:60}") long commentCreateIpWindowSeconds,
             @Value("${app.rate-limit.comment.create.user.max-attempts:60}") int commentCreateUserMaxAttempts,
             @Value("${app.rate-limit.comment.create.window-seconds:60}") long commentCreateWindowSeconds,
+            @Value("${app.rate-limit.attachment.upload.ip.max-attempts:20}") int attachmentUploadIpMaxAttempts,
+            @Value("${app.rate-limit.attachment.upload.ip.window-seconds:60}") long attachmentUploadIpWindowSeconds,
             @Value("${app.rate-limit.attachment.upload.user.max-attempts:20}") int attachmentUploadUserMaxAttempts,
             @Value("${app.rate-limit.attachment.upload.window-seconds:60}") long attachmentUploadWindowSeconds,
+            @Value("${app.rate-limit.notification.push-token-register.ip.max-attempts:30}") int pushTokenRegisterIpMaxAttempts,
+            @Value("${app.rate-limit.notification.push-token-register.ip.window-seconds:60}") long pushTokenRegisterIpWindowSeconds,
             @Value("${app.rate-limit.notification.push-token-register.user.max-attempts:30}") int pushTokenRegisterUserMaxAttempts,
             @Value("${app.rate-limit.notification.push-token-register.window-seconds:60}") long pushTokenRegisterWindowSeconds
     ) {
@@ -64,10 +76,16 @@ public class RateLimitPropertiesValidator {
         this.invitationCreateIpWindowSeconds = invitationCreateIpWindowSeconds;
         this.invitationCreateUserMaxAttempts = invitationCreateUserMaxAttempts;
         this.invitationCreateWindowSeconds = invitationCreateWindowSeconds;
+        this.commentCreateIpMaxAttempts = commentCreateIpMaxAttempts;
+        this.commentCreateIpWindowSeconds = commentCreateIpWindowSeconds;
         this.commentCreateUserMaxAttempts = commentCreateUserMaxAttempts;
         this.commentCreateWindowSeconds = commentCreateWindowSeconds;
+        this.attachmentUploadIpMaxAttempts = attachmentUploadIpMaxAttempts;
+        this.attachmentUploadIpWindowSeconds = attachmentUploadIpWindowSeconds;
         this.attachmentUploadUserMaxAttempts = attachmentUploadUserMaxAttempts;
         this.attachmentUploadWindowSeconds = attachmentUploadWindowSeconds;
+        this.pushTokenRegisterIpMaxAttempts = pushTokenRegisterIpMaxAttempts;
+        this.pushTokenRegisterIpWindowSeconds = pushTokenRegisterIpWindowSeconds;
         this.pushTokenRegisterUserMaxAttempts = pushTokenRegisterUserMaxAttempts;
         this.pushTokenRegisterWindowSeconds = pushTokenRegisterWindowSeconds;
     }
@@ -110,14 +128,29 @@ public class RateLimitPropertiesValidator {
                 "app.rate-limit.invitation.create.user.max-attempts"
         );
         requirePositiveAndAtMost(
+                commentCreateIpMaxAttempts,
+                MAX_MAX_ATTEMPTS,
+                "app.rate-limit.comment.create.ip.max-attempts"
+        );
+        requirePositiveAndAtMost(
                 commentCreateUserMaxAttempts,
                 MAX_MAX_ATTEMPTS,
                 "app.rate-limit.comment.create.user.max-attempts"
         );
         requirePositiveAndAtMost(
+                attachmentUploadIpMaxAttempts,
+                MAX_MAX_ATTEMPTS,
+                "app.rate-limit.attachment.upload.ip.max-attempts"
+        );
+        requirePositiveAndAtMost(
                 attachmentUploadUserMaxAttempts,
                 MAX_MAX_ATTEMPTS,
                 "app.rate-limit.attachment.upload.user.max-attempts"
+        );
+        requirePositiveAndAtMost(
+                pushTokenRegisterIpMaxAttempts,
+                MAX_MAX_ATTEMPTS,
+                "app.rate-limit.notification.push-token-register.ip.max-attempts"
         );
         requirePositiveAndAtMost(
                 pushTokenRegisterUserMaxAttempts,
@@ -156,14 +189,29 @@ public class RateLimitPropertiesValidator {
                 "app.rate-limit.invitation.create.window-seconds"
         );
         requirePositiveAndAtMost(
+                commentCreateIpWindowSeconds,
+                MAX_WINDOW_SECONDS,
+                "app.rate-limit.comment.create.ip.window-seconds"
+        );
+        requirePositiveAndAtMost(
                 commentCreateWindowSeconds,
                 MAX_WINDOW_SECONDS,
                 "app.rate-limit.comment.create.window-seconds"
         );
         requirePositiveAndAtMost(
+                attachmentUploadIpWindowSeconds,
+                MAX_WINDOW_SECONDS,
+                "app.rate-limit.attachment.upload.ip.window-seconds"
+        );
+        requirePositiveAndAtMost(
                 attachmentUploadWindowSeconds,
                 MAX_WINDOW_SECONDS,
                 "app.rate-limit.attachment.upload.window-seconds"
+        );
+        requirePositiveAndAtMost(
+                pushTokenRegisterIpWindowSeconds,
+                MAX_WINDOW_SECONDS,
+                "app.rate-limit.notification.push-token-register.ip.window-seconds"
         );
         requirePositiveAndAtMost(
                 pushTokenRegisterWindowSeconds,

@@ -33,10 +33,16 @@ public class ApiRateLimitService {
     private final long invitationCreateIpWindowSeconds;
     private final int invitationCreateUserMaxAttempts;
     private final long invitationCreateWindowSeconds;
+    private final int commentCreateIpMaxAttempts;
+    private final long commentCreateIpWindowSeconds;
     private final int commentCreateUserMaxAttempts;
     private final long commentCreateWindowSeconds;
+    private final int attachmentUploadIpMaxAttempts;
+    private final long attachmentUploadIpWindowSeconds;
     private final int attachmentUploadUserMaxAttempts;
     private final long attachmentUploadWindowSeconds;
+    private final int pushTokenRegisterIpMaxAttempts;
+    private final long pushTokenRegisterIpWindowSeconds;
     private final int pushTokenRegisterUserMaxAttempts;
     private final long pushTokenRegisterWindowSeconds;
 
@@ -55,10 +61,16 @@ public class ApiRateLimitService {
             @Value("${app.rate-limit.invitation.create.ip.window-seconds:60}") long invitationCreateIpWindowSeconds,
             @Value("${app.rate-limit.invitation.create.user.max-attempts:20}") int invitationCreateUserMaxAttempts,
             @Value("${app.rate-limit.invitation.create.window-seconds:60}") long invitationCreateWindowSeconds,
+            @Value("${app.rate-limit.comment.create.ip.max-attempts:60}") int commentCreateIpMaxAttempts,
+            @Value("${app.rate-limit.comment.create.ip.window-seconds:60}") long commentCreateIpWindowSeconds,
             @Value("${app.rate-limit.comment.create.user.max-attempts:60}") int commentCreateUserMaxAttempts,
             @Value("${app.rate-limit.comment.create.window-seconds:60}") long commentCreateWindowSeconds,
+            @Value("${app.rate-limit.attachment.upload.ip.max-attempts:20}") int attachmentUploadIpMaxAttempts,
+            @Value("${app.rate-limit.attachment.upload.ip.window-seconds:60}") long attachmentUploadIpWindowSeconds,
             @Value("${app.rate-limit.attachment.upload.user.max-attempts:20}") int attachmentUploadUserMaxAttempts,
             @Value("${app.rate-limit.attachment.upload.window-seconds:60}") long attachmentUploadWindowSeconds,
+            @Value("${app.rate-limit.notification.push-token-register.ip.max-attempts:30}") int pushTokenRegisterIpMaxAttempts,
+            @Value("${app.rate-limit.notification.push-token-register.ip.window-seconds:60}") long pushTokenRegisterIpWindowSeconds,
             @Value("${app.rate-limit.notification.push-token-register.user.max-attempts:30}") int pushTokenRegisterUserMaxAttempts,
             @Value("${app.rate-limit.notification.push-token-register.window-seconds:60}") long pushTokenRegisterWindowSeconds
     ) {
@@ -76,10 +88,16 @@ public class ApiRateLimitService {
         this.invitationCreateIpWindowSeconds = invitationCreateIpWindowSeconds;
         this.invitationCreateUserMaxAttempts = invitationCreateUserMaxAttempts;
         this.invitationCreateWindowSeconds = invitationCreateWindowSeconds;
+        this.commentCreateIpMaxAttempts = commentCreateIpMaxAttempts;
+        this.commentCreateIpWindowSeconds = commentCreateIpWindowSeconds;
         this.commentCreateUserMaxAttempts = commentCreateUserMaxAttempts;
         this.commentCreateWindowSeconds = commentCreateWindowSeconds;
+        this.attachmentUploadIpMaxAttempts = attachmentUploadIpMaxAttempts;
+        this.attachmentUploadIpWindowSeconds = attachmentUploadIpWindowSeconds;
         this.attachmentUploadUserMaxAttempts = attachmentUploadUserMaxAttempts;
         this.attachmentUploadWindowSeconds = attachmentUploadWindowSeconds;
+        this.pushTokenRegisterIpMaxAttempts = pushTokenRegisterIpMaxAttempts;
+        this.pushTokenRegisterIpWindowSeconds = pushTokenRegisterIpWindowSeconds;
         this.pushTokenRegisterUserMaxAttempts = pushTokenRegisterUserMaxAttempts;
         this.pushTokenRegisterWindowSeconds = pushTokenRegisterWindowSeconds;
     }
@@ -136,8 +154,8 @@ public class ApiRateLimitService {
         enforce(
                 "comment:create:ip",
                 resolveClientIp(request),
-                commentCreateUserMaxAttempts,
-                commentCreateWindowSeconds
+                commentCreateIpMaxAttempts,
+                commentCreateIpWindowSeconds
         );
         enforce(
                 "comment:create:user",
@@ -151,8 +169,8 @@ public class ApiRateLimitService {
         enforce(
                 "attachment:upload:ip",
                 resolveClientIp(request),
-                attachmentUploadUserMaxAttempts,
-                attachmentUploadWindowSeconds
+                attachmentUploadIpMaxAttempts,
+                attachmentUploadIpWindowSeconds
         );
         enforce(
                 "attachment:upload:user",
@@ -166,8 +184,8 @@ public class ApiRateLimitService {
         enforce(
                 "notification:push-token-register:ip",
                 resolveClientIp(request),
-                pushTokenRegisterUserMaxAttempts,
-                pushTokenRegisterWindowSeconds
+                pushTokenRegisterIpMaxAttempts,
+                pushTokenRegisterIpWindowSeconds
         );
         enforce(
                 "notification:push-token-register:user",
