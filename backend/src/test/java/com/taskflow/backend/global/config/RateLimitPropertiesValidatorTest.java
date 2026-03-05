@@ -19,6 +19,8 @@ class RateLimitPropertiesValidatorTest {
                 60,
                 30,
                 60,
+                40,
+                60,
                 20,
                 60,
                 60,
@@ -43,6 +45,8 @@ class RateLimitPropertiesValidatorTest {
                 30,
                 60,
                 30,
+                60,
+                40,
                 60,
                 20,
                 60,
@@ -71,6 +75,8 @@ class RateLimitPropertiesValidatorTest {
                 60,
                 30,
                 60,
+                40,
+                60,
                 20,
                 60,
                 60,
@@ -97,6 +103,8 @@ class RateLimitPropertiesValidatorTest {
                 30,
                 60,
                 30,
+                60,
+                40,
                 60,
                 20,
                 60,
@@ -125,6 +133,8 @@ class RateLimitPropertiesValidatorTest {
                 60,
                 30,
                 60,
+                40,
+                60,
                 20,
                 60,
                 60,
@@ -138,5 +148,34 @@ class RateLimitPropertiesValidatorTest {
         assertThatThrownBy(validator::validateAtStartup)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("app.rate-limit.auth.login.window-seconds");
+    }
+
+    @Test
+    void nonPositiveInvitationIpMaxAttemptsFailsValidation() {
+        RateLimitPropertiesValidator validator = new RateLimitPropertiesValidator(
+                30,
+                10,
+                60,
+                60,
+                60,
+                30,
+                60,
+                30,
+                60,
+                0,
+                60,
+                20,
+                60,
+                60,
+                60,
+                20,
+                60,
+                30,
+                60
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.rate-limit.invitation.create.ip.max-attempts");
     }
 }

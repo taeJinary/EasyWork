@@ -99,7 +99,7 @@ class InvitationControllerTest {
                 .andExpect(jsonPath("$.data.inviteeEmail").value("member@example.com"))
                 .andExpect(jsonPath("$.data.status").value("PENDING"));
 
-        then(apiRateLimitService).should().checkInvitationCreate(1L);
+        then(apiRateLimitService).should().checkInvitationCreate(any(), eq(1L));
     }
 
     @Test
@@ -107,7 +107,7 @@ class InvitationControllerTest {
         CreateInvitationRequest request = new CreateInvitationRequest("member@example.com", ProjectRole.MEMBER);
         doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
                 .when(apiRateLimitService)
-                .checkInvitationCreate(1L);
+                .checkInvitationCreate(any(), eq(1L));
 
         mockMvc.perform(post("/projects/10/invitations")
                         .principal(principalAuth())
