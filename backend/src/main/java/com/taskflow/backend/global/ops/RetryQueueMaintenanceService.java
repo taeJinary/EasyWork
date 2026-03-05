@@ -40,54 +40,65 @@ public class RetryQueueMaintenanceService {
             return;
         }
 
-        long invitationPending = invitationEmailRetryJobRepository.countByCompletedAtIsNull();
-        long notificationPending = notificationPushRetryJobRepository.countByCompletedAtIsNull();
-        long attachmentPending = taskAttachmentCleanupJobRepository.countByCompletedAtIsNull();
-        long totalPending = invitationPending + notificationPending + attachmentPending;
-        operationalMetricsService.updateRetryQueueBacklog(invitationPending, notificationPending, attachmentPending);
+        try {
+            long invitationPending = invitationEmailRetryJobRepository.countByCompletedAtIsNull();
+            long notificationPending = notificationPushRetryJobRepository.countByCompletedAtIsNull();
+            long attachmentPending = taskAttachmentCleanupJobRepository.countByCompletedAtIsNull();
+            long totalPending = invitationPending + notificationPending + attachmentPending;
+            operationalMetricsService.updateRetryQueueBacklog(invitationPending, notificationPending, attachmentPending);
 
-        if (totalPending > 0L && totalPending >= pendingWarnThreshold) {
-            log.warn(
-                    "Retry queue backlog is high. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
-                    invitationPending,
-                    notificationPending,
-                    attachmentPending,
-                    totalPending
-            );
-        } else if (totalPending > 0L) {
-            log.info(
-                    "Retry queue backlog snapshot. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
-                    invitationPending,
-                    notificationPending,
-                    attachmentPending,
-                    totalPending
-            );
-        } else {
-            log.debug("Retry queue backlog snapshot. totalPending=0");
-        }
+            if (totalPending > 0L && totalPending >= pendingWarnThreshold) {
+                log.warn(
+                        "Retry queue backlog is high. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
+                        invitationPending,
+                        notificationPending,
+                        attachmentPending,
+                        totalPending
+                );
+            } else if (totalPending > 0L) {
+                log.info(
+                        "Retry queue backlog snapshot. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
+                        invitationPending,
+                        notificationPending,
+                        attachmentPending,
+                        totalPending
+                );
+            } else {
+                log.debug("Retry queue backlog snapshot. totalPending=0");
+            }
 
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
-        long deletedInvitation = invitationEmailRetryJobRepository
-                .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
-        long deletedNotification = notificationPushRetryJobRepository
-                .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
-        long deletedAttachment = taskAttachmentCleanupJobRepository
-                .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
-        operationalMetricsService.recordRetryQueueHistoryDeleted(
-                deletedInvitation,
-                deletedNotification,
-                deletedAttachment
-        );
-        long totalDeleted = deletedInvitation + deletedNotification + deletedAttachment;
-
-        if (totalDeleted > 0L) {
-            log.info(
-                    "Deleted expired retry queue history. invitationDeleted={}, notificationDeleted={}, attachmentDeleted={}, totalDeleted={}",
+            LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
+            long deletedInvitation = invitationEmailRetryJobRepository
+                    .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
+            long deletedNotification = notificationPushRetryJobRepository
+                    .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
+            long deletedAttachment = taskAttachmentCleanupJobRepository
+                    .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
+            operationalMetricsService.recordRetryQueueHistoryDeleted(
                     deletedInvitation,
                     deletedNotification,
-                    deletedAttachment,
-                    totalDeleted
+                    deletedAttachment
             );
+            long totalDeleted = deletedInvitation + deletedNotification + deletedAttachment;
+
+            if (totalDeleted > 0L) {
+                log.info(
+                        "Deleted expired retry queue history. invitationDeleted={}, notificationDeleted={}, attachmentDeleted={}, totalDeleted={}",
+                        deletedInvitation,
+                        deletedNotification,
+                        deletedAttachment,
+                        totalDeleted
+                );
+            }
+        } catch (RuntimeException exception) {
+            operationalMetricsService.incrementRetryQueueMaintenanceExecutionFailure();
+            log.error(
+                    "Failed to execute retry queue maintenance. retentionDays={}, deleteBatchSize={}",
+                    retentionDays,
+                    deleteBatchSize,
+                    exception
+            );
+            throw exception;
         }
     }
 }

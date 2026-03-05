@@ -13,6 +13,7 @@ public class OperationalMetricsService {
     private final Counter refreshReissueFailureCounter;
     private final Counter websocketConnectFailureCounter;
     private final Counter fileUploadFailureCounter;
+    private final Counter retryQueueMaintenanceExecutionFailureCounter;
     private final Counter invitationEmailRetryEnqueuedCounter;
     private final Counter invitationEmailRetryCompletedCounter;
     private final Counter invitationEmailRetryRescheduledCounter;
@@ -52,6 +53,9 @@ public class OperationalMetricsService {
                 .register(meterRegistry);
         this.fileUploadFailureCounter = Counter.builder("taskflow.attachment.upload.failure.total")
                 .description("Total number of failed task attachment uploads")
+                .register(meterRegistry);
+        this.retryQueueMaintenanceExecutionFailureCounter = Counter.builder("taskflow.retry.maintenance.execution.failure.total")
+                .description("Total number of failed retry queue maintenance executions")
                 .register(meterRegistry);
         this.invitationEmailRetryEnqueuedCounter = Counter.builder("taskflow.retry.invitation.enqueued.total")
                 .description("Total number of enqueued invitation email retry jobs")
@@ -145,6 +149,10 @@ public class OperationalMetricsService {
 
     public void incrementFileUploadFailure() {
         fileUploadFailureCounter.increment();
+    }
+
+    public void incrementRetryQueueMaintenanceExecutionFailure() {
+        retryQueueMaintenanceExecutionFailureCounter.increment();
     }
 
     public void updateRetryQueueBacklog(long invitationPending, long notificationPending, long attachmentPending) {

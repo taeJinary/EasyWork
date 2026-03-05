@@ -11,11 +11,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -64,6 +66,7 @@ class RetryQueueMaintenanceServiceTest {
         verify(notificationPushRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(taskAttachmentCleanupJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(operationalMetricsService).recordRetryQueueHistoryDeleted(4L, 5L, 6L);
+        verify(operationalMetricsService, never()).incrementRetryQueueMaintenanceExecutionFailure();
     }
 
     @Test
@@ -78,5 +81,22 @@ class RetryQueueMaintenanceServiceTest {
         verify(operationalMetricsService, never()).updateRetryQueueBacklog(anyLong(), anyLong(), anyLong());
         verify(invitationEmailRetryJobRepository, never())
                 .deleteCompletedHistoryBefore(any(LocalDateTime.class), anyInt());
+        verify(operationalMetricsService, never()).incrementRetryQueueMaintenanceExecutionFailure();
+    }
+
+    @Test
+    void maintainRecordsExecutionFailureMetricAndRethrowsWhenRepositoryFails() {
+        ReflectionTestUtils.setField(retryQueueMaintenanceService, "enabled", true);
+
+        willThrow(new RuntimeException("db unavailable"))
+                .given(invitationEmailRetryJobRepository)
+                .countByCompletedAtIsNull();
+
+        assertThatThrownBy(() -> retryQueueMaintenanceService.maintain())
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db unavailable");
+
+        verify(operationalMetricsService).incrementRetryQueueMaintenanceExecutionFailure();
+        verify(operationalMetricsService, never()).recordRetryQueueHistoryDeleted(anyLong(), anyLong(), anyLong());
     }
 }
