@@ -16,6 +16,7 @@ import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +58,9 @@ class TaskAttachmentServiceTest {
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
 
     @InjectMocks
     private TaskAttachmentService taskAttachmentService;
@@ -133,6 +137,7 @@ class TaskAttachmentServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
 
+        verify(operationalMetricsService).incrementFileUploadFailure();
         verify(taskAttachmentRepository, never()).save(any(TaskAttachment.class));
         verify(taskAttachmentStorage, never()).store(any(), any(MultipartFile.class));
     }
@@ -189,6 +194,7 @@ class TaskAttachmentServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("db fail");
 
+        verify(operationalMetricsService).incrementFileUploadFailure();
         verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
     }
 

@@ -11,6 +11,7 @@ import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -67,35 +68,41 @@ public class TaskAttachmentService {
     private final TaskAttachmentRepository taskAttachmentRepository;
     private final TaskAttachmentStorage taskAttachmentStorage;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Transactional
     public TaskAttachmentResponse uploadAttachment(Long userId, Long taskId, MultipartFile file) {
-        Task task = findActiveTask(taskId);
-        ProjectMember membership = findMembership(task.getProject().getId(), userId);
-        validateAttachmentFile(file);
-
-        TaskAttachmentStorage.StoredAttachment storedAttachment =
-                taskAttachmentStorage.store(task.getProject().getId(), file);
-        AtomicBoolean cleanupCompleted = new AtomicBoolean(false);
-
         try {
-            String originalFilename = file.getOriginalFilename();
-            TaskAttachment attachment = TaskAttachment.create(
-                    task,
-                    membership.getUser(),
-                    StringUtils.hasText(originalFilename) ? originalFilename : storedAttachment.storedFilename(),
-                    storedAttachment.storedFilename(),
-                    storedAttachment.storagePath(),
-                    storedAttachment.contentType(),
-                    storedAttachment.sizeBytes()
-            );
+            Task task = findActiveTask(taskId);
+            ProjectMember membership = findMembership(task.getProject().getId(), userId);
+            validateAttachmentFile(file);
 
-            TaskAttachment saved = taskAttachmentRepository.saveAndFlush(attachment);
-            registerRollbackCleanup(storedAttachment.storagePath(), cleanupCompleted);
-            task.getProject().touch(LocalDateTime.now());
-            return toResponse(saved);
+            TaskAttachmentStorage.StoredAttachment storedAttachment =
+                    taskAttachmentStorage.store(task.getProject().getId(), file);
+            AtomicBoolean cleanupCompleted = new AtomicBoolean(false);
+
+            try {
+                String originalFilename = file.getOriginalFilename();
+                TaskAttachment attachment = TaskAttachment.create(
+                        task,
+                        membership.getUser(),
+                        StringUtils.hasText(originalFilename) ? originalFilename : storedAttachment.storedFilename(),
+                        storedAttachment.storedFilename(),
+                        storedAttachment.storagePath(),
+                        storedAttachment.contentType(),
+                        storedAttachment.sizeBytes()
+                );
+
+                TaskAttachment saved = taskAttachmentRepository.saveAndFlush(attachment);
+                registerRollbackCleanup(storedAttachment.storagePath(), cleanupCompleted);
+                task.getProject().touch(LocalDateTime.now());
+                return toResponse(saved);
+            } catch (RuntimeException exception) {
+                cleanupStoredFileIfNeeded(storedAttachment.storagePath(), cleanupCompleted);
+                throw exception;
+            }
         } catch (RuntimeException exception) {
-            cleanupStoredFileIfNeeded(storedAttachment.storagePath(), cleanupCompleted);
+            operationalMetricsService.incrementFileUploadFailure();
             throw exception;
         }
     }

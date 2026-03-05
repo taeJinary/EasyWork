@@ -7,6 +7,7 @@ import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import java.security.Principal;
 import java.util.Set;
@@ -41,6 +42,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private final UserRepository userRepository;
     private final RedisService redisService;
     private final ProjectMemberRepository projectMemberRepository;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -50,7 +52,12 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
 
         if (accessor.getCommand() == StompCommand.CONNECT) {
-            authenticate(accessor);
+            try {
+                authenticate(accessor);
+            } catch (BusinessException exception) {
+                operationalMetricsService.incrementWebSocketConnectFailure();
+                throw exception;
+            }
         } else if (accessor.getCommand() == StompCommand.SUBSCRIBE) {
             authorizeSubscribe(accessor);
         }
