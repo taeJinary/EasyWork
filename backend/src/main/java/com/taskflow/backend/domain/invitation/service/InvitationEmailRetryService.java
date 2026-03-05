@@ -4,6 +4,7 @@ import com.taskflow.backend.domain.invitation.entity.InvitationEmailRetryJob;
 import com.taskflow.backend.domain.invitation.event.InvitationCreatedEvent;
 import com.taskflow.backend.domain.invitation.repository.InvitationEmailRetryJobRepository;
 import com.taskflow.backend.domain.invitation.repository.ProjectInvitationRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class InvitationEmailRetryService {
     private final InvitationEmailRetryJobRepository invitationEmailRetryJobRepository;
     private final ProjectInvitationRepository projectInvitationRepository;
     private final InvitationEmailService invitationEmailService;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Value("${app.invitation.email.retry.delay-seconds:300}")
     private long retryDelaySeconds;
@@ -51,6 +53,7 @@ public class InvitationEmailRetryService {
                 errorMessage
         );
         invitationEmailRetryJobRepository.save(job);
+        operationalMetricsService.incrementInvitationEmailRetryEnqueued();
     }
 
     @Transactional
@@ -71,7 +74,7 @@ public class InvitationEmailRetryService {
         LocalDateTime now = LocalDateTime.now();
         if (shouldSkipRetry(job)) {
             job.markCompleted(now);
-            invitationEmailRetryJobRepository.save(job);
+            saveJobAndRecordMetric(job, RetryOutcome.COMPLETED);
             return;
         }
 
@@ -83,13 +86,14 @@ public class InvitationEmailRetryService {
                 job.getRole()
         );
 
+        RetryOutcome outcome;
         try {
             invitationEmailService.sendInvitationCreatedEmail(event);
             job.markCompleted(now);
-            invitationEmailRetryJobRepository.save(job);
+            outcome = RetryOutcome.COMPLETED;
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
-            invitationEmailRetryJobRepository.save(job);
+            outcome = determineRetryOutcome(job);
 
             log.error(
                     "Failed to retry invitation email send. invitationId={}, retryCount={}",
@@ -98,6 +102,8 @@ public class InvitationEmailRetryService {
                     exception
             );
         }
+
+        saveJobAndRecordMetric(job, outcome);
     }
 
     private void markFailedOrDeadLetter(InvitationEmailRetryJob job, String errorMessage, LocalDateTime now) {
@@ -137,5 +143,24 @@ public class InvitationEmailRetryService {
         return projectInvitationRepository.findById(job.getInvitationId())
                 .map(invitation -> !invitation.isPending() || invitation.getExpiresAt().isBefore(LocalDateTime.now()))
                 .orElse(true);
+    }
+
+    private RetryOutcome determineRetryOutcome(InvitationEmailRetryJob job) {
+        return job.getCompletedAt() != null ? RetryOutcome.DEAD_LETTER : RetryOutcome.RESCHEDULED;
+    }
+
+    private void saveJobAndRecordMetric(InvitationEmailRetryJob job, RetryOutcome outcome) {
+        invitationEmailRetryJobRepository.save(job);
+        switch (outcome) {
+            case COMPLETED -> operationalMetricsService.incrementInvitationEmailRetryCompleted();
+            case RESCHEDULED -> operationalMetricsService.incrementInvitationEmailRetryRescheduled();
+            case DEAD_LETTER -> operationalMetricsService.incrementInvitationEmailRetryDeadLetter();
+        }
+    }
+
+    private enum RetryOutcome {
+        COMPLETED,
+        RESCHEDULED,
+        DEAD_LETTER
     }
 }

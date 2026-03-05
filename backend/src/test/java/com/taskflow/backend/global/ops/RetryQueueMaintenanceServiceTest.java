@@ -63,6 +63,7 @@ class RetryQueueMaintenanceServiceTest {
         verify(invitationEmailRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(notificationPushRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(taskAttachmentCleanupJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
+        verify(operationalMetricsService).recordRetryQueueHistoryDeleted(4L, 5L, 6L);
     }
 
     @Test

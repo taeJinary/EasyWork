@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.entity.TaskAttachmentCleanupJob;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -30,6 +32,9 @@ class TaskAttachmentCleanupRetryServiceTest {
 
     @Mock
     private TaskAttachmentStorage taskAttachmentStorage;
+
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
 
     @InjectMocks
     private TaskAttachmentCleanupRetryService cleanupRetryService;
@@ -56,6 +61,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(saved.getRetryCount()).isEqualTo(0);
         assertThat(saved.getCompletedAt()).isNull();
         assertThat(saved.getNextRetryAt()).isNotNull();
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryEnqueued();
     }
 
     @Test
@@ -85,6 +91,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
         assertThat(job.getCompletedAt()).isNotNull();
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryCompleted();
     }
 
     @Test
@@ -109,6 +116,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getLastErrorMessage()).contains("storage down");
         assertThat(job.getNextRetryAt()).isAfter(LocalDateTime.now().minusSeconds(5));
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryRescheduled();
     }
 
     @Test
@@ -136,6 +144,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(3);
         assertThat(job.getLastErrorMessage()).contains("storage down again");
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryDeadLetter();
     }
 
     @Test
@@ -167,5 +176,59 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getNextRetryAt()).isAfter(startedAt.plusSeconds(110));
         assertThat(job.getNextRetryAt()).isBefore(startedAt.plusSeconds(130));
         verify(cleanupJobRepository).save(job);
+    }
+
+    @Test
+    void retryPendingDeletesDoesNotRecordCompletedMetricWhenSaveFailsAfterDeleteSuccess() {
+        TaskAttachmentCleanupJob job = TaskAttachmentCleanupJob.createPending(
+                2000L,
+                "task-attachments/10/abc-report.pdf",
+                LocalDateTime.now().minusMinutes(1)
+        );
+        given(cleanupJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(cleanupJobRepository.save(job)).willThrow(new RuntimeException("db write failed"));
+
+        assertThatThrownBy(() -> cleanupRetryService.retryPendingDeletes(50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db write failed");
+
+        verify(taskAttachmentStorage).delete("task-attachments/10/abc-report.pdf");
+        assertThat(job.getCompletedAt()).isNotNull();
+        assertThat(job.getRetryCount()).isEqualTo(0);
+        verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryCompleted();
+        verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryRescheduled();
+        verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryDeadLetter();
+    }
+
+    @Test
+    void retryPendingDeletesDoesNotDoubleMarkWhenSaveFailsAfterDeleteFailure() {
+        TaskAttachmentCleanupJob job = TaskAttachmentCleanupJob.createPending(
+                2000L,
+                "task-attachments/10/abc-report.pdf",
+                LocalDateTime.now().minusMinutes(1)
+        );
+        given(cleanupJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        willThrow(new RuntimeException("storage down"))
+                .given(taskAttachmentStorage)
+                .delete(anyString());
+        given(cleanupJobRepository.save(job)).willThrow(new RuntimeException("db write failed"));
+
+        assertThatThrownBy(() -> cleanupRetryService.retryPendingDeletes(50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db write failed");
+
+        assertThat(job.getCompletedAt()).isNull();
+        assertThat(job.getRetryCount()).isEqualTo(1);
+        verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryCompleted();
+        verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryRescheduled();
+        verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryDeadLetter();
     }
 }

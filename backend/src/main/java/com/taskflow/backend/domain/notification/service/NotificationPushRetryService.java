@@ -6,6 +6,7 @@ import com.taskflow.backend.domain.notification.entity.NotificationPushRetryJob;
 import com.taskflow.backend.domain.notification.repository.NotificationPushTokenRepository;
 import com.taskflow.backend.domain.notification.repository.NotificationPushRetryJobRepository;
 import com.taskflow.backend.domain.notification.repository.NotificationRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class NotificationPushRetryService {
     private final NotificationRepository notificationRepository;
     private final NotificationPushTokenRepository notificationPushTokenRepository;
     private final NotificationPushDispatchService notificationPushDispatchService;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Value("${app.notification.push.retry.delay-seconds:300}")
     private long retryDelaySeconds;
@@ -59,6 +61,7 @@ public class NotificationPushRetryService {
         );
         try {
             notificationPushRetryJobRepository.save(job);
+            operationalMetricsService.incrementNotificationPushRetryEnqueued();
         } catch (DataIntegrityViolationException exception) {
             if (isOpenJobDuplicateViolation(exception)) {
                 log.debug(
@@ -91,7 +94,7 @@ public class NotificationPushRetryService {
         Notification notification = notificationRepository.findById(job.getNotificationId()).orElse(null);
         if (notification == null) {
             job.markCompleted(now);
-            notificationPushRetryJobRepository.save(job);
+            saveJobAndRecordMetric(job, RetryOutcome.COMPLETED);
             return;
         }
         NotificationPushToken pushToken = notificationPushTokenRepository.findById(job.getPushTokenId()).orElse(null);
@@ -99,21 +102,23 @@ public class NotificationPushRetryService {
                 || !pushToken.isActive()
                 || !pushToken.getUser().getId().equals(notification.getUser().getId())) {
             job.markCompleted(now);
-            notificationPushRetryJobRepository.save(job);
+            saveJobAndRecordMetric(job, RetryOutcome.COMPLETED);
             return;
         }
 
+        RetryOutcome outcome;
         try {
             boolean hasTransientFailure = notificationPushDispatchService.sendToToken(notification, pushToken);
             if (hasTransientFailure) {
                 markFailedOrDeadLetter(job, "Transient push delivery failure", now);
+                outcome = determineRetryOutcome(job);
             } else {
                 job.markCompleted(now);
+                outcome = RetryOutcome.COMPLETED;
             }
-            notificationPushRetryJobRepository.save(job);
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
-            notificationPushRetryJobRepository.save(job);
+            outcome = determineRetryOutcome(job);
             log.error(
                     "Failed to retry push notification dispatch. notificationId={}, retryCount={}",
                     job.getNotificationId(),
@@ -121,6 +126,8 @@ public class NotificationPushRetryService {
                     exception
             );
         }
+
+        saveJobAndRecordMetric(job, outcome);
     }
 
     private void markFailedOrDeadLetter(NotificationPushRetryJob job, String errorMessage, LocalDateTime now) {
@@ -161,5 +168,24 @@ public class NotificationPushRetryService {
         Throwable rootCause = exception.getMostSpecificCause();
         String message = rootCause == null ? exception.getMessage() : rootCause.getMessage();
         return message != null && message.contains(OPEN_JOB_UNIQUE_KEY);
+    }
+
+    private RetryOutcome determineRetryOutcome(NotificationPushRetryJob job) {
+        return job.getCompletedAt() != null ? RetryOutcome.DEAD_LETTER : RetryOutcome.RESCHEDULED;
+    }
+
+    private void saveJobAndRecordMetric(NotificationPushRetryJob job, RetryOutcome outcome) {
+        notificationPushRetryJobRepository.save(job);
+        switch (outcome) {
+            case COMPLETED -> operationalMetricsService.incrementNotificationPushRetryCompleted();
+            case RESCHEDULED -> operationalMetricsService.incrementNotificationPushRetryRescheduled();
+            case DEAD_LETTER -> operationalMetricsService.incrementNotificationPushRetryDeadLetter();
+        }
+    }
+
+    private enum RetryOutcome {
+        COMPLETED,
+        RESCHEDULED,
+        DEAD_LETTER
     }
 }

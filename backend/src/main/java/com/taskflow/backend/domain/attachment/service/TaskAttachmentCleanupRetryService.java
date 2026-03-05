@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.entity.TaskAttachmentCleanupJob;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class TaskAttachmentCleanupRetryService {
 
     private final TaskAttachmentCleanupJobRepository cleanupJobRepository;
     private final TaskAttachmentStorage taskAttachmentStorage;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Value("${app.attachment.cleanup.retry-delay-seconds:300}")
     private long retryDelaySeconds;
@@ -49,6 +51,7 @@ public class TaskAttachmentCleanupRetryService {
                 LocalDateTime.now()
         );
         cleanupJobRepository.save(job);
+        operationalMetricsService.incrementAttachmentCleanupRetryEnqueued();
     }
 
     @Transactional
@@ -67,13 +70,14 @@ public class TaskAttachmentCleanupRetryService {
 
     private void processDeleteJob(TaskAttachmentCleanupJob job) {
         LocalDateTime now = LocalDateTime.now();
+        RetryOutcome outcome;
         try {
             taskAttachmentStorage.delete(job.getStoragePath());
             job.markCompleted(now);
-            cleanupJobRepository.save(job);
+            outcome = RetryOutcome.COMPLETED;
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
-            cleanupJobRepository.save(job);
+            outcome = determineRetryOutcome(job);
 
             log.error(
                     "Failed to retry attachment cleanup delete. attachmentId={}, storagePath={}, retryCount={}",
@@ -83,6 +87,8 @@ public class TaskAttachmentCleanupRetryService {
                     exception
             );
         }
+
+        saveJobAndRecordMetric(job, outcome);
     }
 
     private void markFailedOrDeadLetter(TaskAttachmentCleanupJob job, String errorMessage, LocalDateTime now) {
@@ -116,5 +122,24 @@ public class TaskAttachmentCleanupRetryService {
             computedDelay = Long.MAX_VALUE;
         }
         return Math.min(computedDelay, maxDelaySeconds);
+    }
+
+    private RetryOutcome determineRetryOutcome(TaskAttachmentCleanupJob job) {
+        return job.getCompletedAt() != null ? RetryOutcome.DEAD_LETTER : RetryOutcome.RESCHEDULED;
+    }
+
+    private void saveJobAndRecordMetric(TaskAttachmentCleanupJob job, RetryOutcome outcome) {
+        cleanupJobRepository.save(job);
+        switch (outcome) {
+            case COMPLETED -> operationalMetricsService.incrementAttachmentCleanupRetryCompleted();
+            case RESCHEDULED -> operationalMetricsService.incrementAttachmentCleanupRetryRescheduled();
+            case DEAD_LETTER -> operationalMetricsService.incrementAttachmentCleanupRetryDeadLetter();
+        }
+    }
+
+    private enum RetryOutcome {
+        COMPLETED,
+        RESCHEDULED,
+        DEAD_LETTER
     }
 }
