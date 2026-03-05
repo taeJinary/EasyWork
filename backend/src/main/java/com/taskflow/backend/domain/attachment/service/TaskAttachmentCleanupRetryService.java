@@ -70,19 +70,14 @@ public class TaskAttachmentCleanupRetryService {
 
     private void processDeleteJob(TaskAttachmentCleanupJob job) {
         LocalDateTime now = LocalDateTime.now();
+        RetryOutcome outcome;
         try {
             taskAttachmentStorage.delete(job.getStoragePath());
             job.markCompleted(now);
-            cleanupJobRepository.save(job);
-            operationalMetricsService.incrementAttachmentCleanupRetryCompleted();
+            outcome = RetryOutcome.COMPLETED;
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
-            cleanupJobRepository.save(job);
-            if (job.getCompletedAt() != null) {
-                operationalMetricsService.incrementAttachmentCleanupRetryDeadLetter();
-            } else {
-                operationalMetricsService.incrementAttachmentCleanupRetryRescheduled();
-            }
+            outcome = determineRetryOutcome(job);
 
             log.error(
                     "Failed to retry attachment cleanup delete. attachmentId={}, storagePath={}, retryCount={}",
@@ -92,6 +87,8 @@ public class TaskAttachmentCleanupRetryService {
                     exception
             );
         }
+
+        saveJobAndRecordMetric(job, outcome);
     }
 
     private void markFailedOrDeadLetter(TaskAttachmentCleanupJob job, String errorMessage, LocalDateTime now) {
@@ -125,5 +122,24 @@ public class TaskAttachmentCleanupRetryService {
             computedDelay = Long.MAX_VALUE;
         }
         return Math.min(computedDelay, maxDelaySeconds);
+    }
+
+    private RetryOutcome determineRetryOutcome(TaskAttachmentCleanupJob job) {
+        return job.getCompletedAt() != null ? RetryOutcome.DEAD_LETTER : RetryOutcome.RESCHEDULED;
+    }
+
+    private void saveJobAndRecordMetric(TaskAttachmentCleanupJob job, RetryOutcome outcome) {
+        cleanupJobRepository.save(job);
+        switch (outcome) {
+            case COMPLETED -> operationalMetricsService.incrementAttachmentCleanupRetryCompleted();
+            case RESCHEDULED -> operationalMetricsService.incrementAttachmentCleanupRetryRescheduled();
+            case DEAD_LETTER -> operationalMetricsService.incrementAttachmentCleanupRetryDeadLetter();
+        }
+    }
+
+    private enum RetryOutcome {
+        COMPLETED,
+        RESCHEDULED,
+        DEAD_LETTER
     }
 }

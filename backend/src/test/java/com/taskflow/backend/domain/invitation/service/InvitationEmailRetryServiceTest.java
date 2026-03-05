@@ -26,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -269,6 +270,74 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(3);
         assertThat(job.getNextRetryAt()).isAfter(startedAt.plusSeconds(110));
         assertThat(job.getNextRetryAt()).isBefore(startedAt.plusSeconds(130));
+    }
+
+    @Test
+    void retryPendingEmailsDoesNotRecordCompletedMetricWhenSaveFailsAfterSuccessfulSend() {
+        InvitationEmailRetryJob job = InvitationEmailRetryJob.createPending(
+                10L,
+                "invitee@example.com",
+                "TaskFlow",
+                "owner",
+                ProjectRole.MEMBER,
+                LocalDateTime.now().minusMinutes(1),
+                "smtp down"
+        );
+        given(invitationEmailRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L))
+                .willReturn(Optional.of(invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().plusDays(1))));
+        given(invitationEmailRetryJobRepository.save(job))
+                .willThrow(new RuntimeException("db write failed"));
+
+        assertThatThrownBy(() -> invitationEmailRetryService.retryPendingEmails(50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db write failed");
+
+        assertThat(job.getCompletedAt()).isNotNull();
+        assertThat(job.getRetryCount()).isEqualTo(0);
+        verify(invitationEmailService).sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
+        verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService, never()).incrementInvitationEmailRetryCompleted();
+        verify(operationalMetricsService, never()).incrementInvitationEmailRetryRescheduled();
+        verify(operationalMetricsService, never()).incrementInvitationEmailRetryDeadLetter();
+    }
+
+    @Test
+    void retryPendingEmailsDoesNotDoubleMarkWhenSaveFailsAfterSendFailure() {
+        InvitationEmailRetryJob job = InvitationEmailRetryJob.createPending(
+                10L,
+                "invitee@example.com",
+                "TaskFlow",
+                "owner",
+                ProjectRole.MEMBER,
+                LocalDateTime.now().minusMinutes(1),
+                "smtp down"
+        );
+        given(invitationEmailRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(projectInvitationRepository.findById(10L))
+                .willReturn(Optional.of(invitation(10L, InvitationStatus.PENDING, LocalDateTime.now().plusDays(1))));
+        willThrow(new RuntimeException("temporary smtp failure"))
+                .given(invitationEmailService)
+                .sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
+        given(invitationEmailRetryJobRepository.save(job))
+                .willThrow(new RuntimeException("db write failed"));
+
+        assertThatThrownBy(() -> invitationEmailRetryService.retryPendingEmails(50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db write failed");
+
+        assertThat(job.getCompletedAt()).isNull();
+        assertThat(job.getRetryCount()).isEqualTo(1);
+        verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService, never()).incrementInvitationEmailRetryCompleted();
+        verify(operationalMetricsService, never()).incrementInvitationEmailRetryRescheduled();
+        verify(operationalMetricsService, never()).incrementInvitationEmailRetryDeadLetter();
     }
 
     private InvitationCreatedEvent invitationCreatedEvent(Long invitationId) {
