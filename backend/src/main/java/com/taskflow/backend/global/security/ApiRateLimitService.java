@@ -29,6 +29,8 @@ public class ApiRateLimitService {
     private final long authOauthLoginWindowSeconds;
     private final int authOauthCodeLoginIpMaxAttempts;
     private final long authOauthCodeLoginWindowSeconds;
+    private final int invitationCreateIpMaxAttempts;
+    private final long invitationCreateIpWindowSeconds;
     private final int invitationCreateUserMaxAttempts;
     private final long invitationCreateWindowSeconds;
     private final int commentCreateUserMaxAttempts;
@@ -49,6 +51,8 @@ public class ApiRateLimitService {
             @Value("${app.rate-limit.auth.oauth-login.window-seconds:60}") long authOauthLoginWindowSeconds,
             @Value("${app.rate-limit.auth.oauth-code-login.ip.max-attempts:30}") int authOauthCodeLoginIpMaxAttempts,
             @Value("${app.rate-limit.auth.oauth-code-login.window-seconds:60}") long authOauthCodeLoginWindowSeconds,
+            @Value("${app.rate-limit.invitation.create.ip.max-attempts:60}") int invitationCreateIpMaxAttempts,
+            @Value("${app.rate-limit.invitation.create.ip.window-seconds:60}") long invitationCreateIpWindowSeconds,
             @Value("${app.rate-limit.invitation.create.user.max-attempts:20}") int invitationCreateUserMaxAttempts,
             @Value("${app.rate-limit.invitation.create.window-seconds:60}") long invitationCreateWindowSeconds,
             @Value("${app.rate-limit.comment.create.user.max-attempts:60}") int commentCreateUserMaxAttempts,
@@ -68,6 +72,8 @@ public class ApiRateLimitService {
         this.authOauthLoginWindowSeconds = authOauthLoginWindowSeconds;
         this.authOauthCodeLoginIpMaxAttempts = authOauthCodeLoginIpMaxAttempts;
         this.authOauthCodeLoginWindowSeconds = authOauthCodeLoginWindowSeconds;
+        this.invitationCreateIpMaxAttempts = invitationCreateIpMaxAttempts;
+        this.invitationCreateIpWindowSeconds = invitationCreateIpWindowSeconds;
         this.invitationCreateUserMaxAttempts = invitationCreateUserMaxAttempts;
         this.invitationCreateWindowSeconds = invitationCreateWindowSeconds;
         this.commentCreateUserMaxAttempts = commentCreateUserMaxAttempts;
@@ -111,7 +117,13 @@ public class ApiRateLimitService {
         );
     }
 
-    public void checkInvitationCreate(Long userId) {
+    public void checkInvitationCreate(HttpServletRequest request, Long userId) {
+        enforce(
+                "invitation:create:ip",
+                resolveClientIp(request),
+                invitationCreateIpMaxAttempts,
+                invitationCreateIpWindowSeconds
+        );
         enforce(
                 "invitation:create:user",
                 normalizeUserId(userId),
@@ -163,6 +175,9 @@ public class ApiRateLimitService {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
+        if (request == null) {
+            return UNKNOWN;
+        }
         return StringUtils.hasText(request.getRemoteAddr()) ? request.getRemoteAddr() : UNKNOWN;
     }
 

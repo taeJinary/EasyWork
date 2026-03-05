@@ -11,6 +11,7 @@ import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.security.ApiRateLimitService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -34,12 +35,13 @@ public class InvitationController {
 
     @PostMapping("/projects/{projectId}/invitations")
     public ResponseEntity<ApiResponse<InvitationSummaryResponse>> createInvitation(
+            HttpServletRequest httpServletRequest,
             Authentication authentication,
             @PathVariable Long projectId,
             @Valid @RequestBody CreateInvitationRequest request
     ) {
         Long userId = extractUserId(authentication);
-        apiRateLimitService.checkInvitationCreate(userId);
+        apiRateLimitService.checkInvitationCreate(httpServletRequest, userId);
         InvitationSummaryResponse response = invitationService.createInvitation(
                 userId,
                 projectId,

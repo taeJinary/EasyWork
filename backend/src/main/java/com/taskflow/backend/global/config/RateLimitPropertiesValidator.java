@@ -19,6 +19,8 @@ public class RateLimitPropertiesValidator {
     private final long authOauthLoginWindowSeconds;
     private final int authOauthCodeLoginIpMaxAttempts;
     private final long authOauthCodeLoginWindowSeconds;
+    private final int invitationCreateIpMaxAttempts;
+    private final long invitationCreateIpWindowSeconds;
     private final int invitationCreateUserMaxAttempts;
     private final long invitationCreateWindowSeconds;
     private final int commentCreateUserMaxAttempts;
@@ -38,6 +40,8 @@ public class RateLimitPropertiesValidator {
             @Value("${app.rate-limit.auth.oauth-login.window-seconds:60}") long authOauthLoginWindowSeconds,
             @Value("${app.rate-limit.auth.oauth-code-login.ip.max-attempts:30}") int authOauthCodeLoginIpMaxAttempts,
             @Value("${app.rate-limit.auth.oauth-code-login.window-seconds:60}") long authOauthCodeLoginWindowSeconds,
+            @Value("${app.rate-limit.invitation.create.ip.max-attempts:60}") int invitationCreateIpMaxAttempts,
+            @Value("${app.rate-limit.invitation.create.ip.window-seconds:60}") long invitationCreateIpWindowSeconds,
             @Value("${app.rate-limit.invitation.create.user.max-attempts:20}") int invitationCreateUserMaxAttempts,
             @Value("${app.rate-limit.invitation.create.window-seconds:60}") long invitationCreateWindowSeconds,
             @Value("${app.rate-limit.comment.create.user.max-attempts:60}") int commentCreateUserMaxAttempts,
@@ -56,6 +60,8 @@ public class RateLimitPropertiesValidator {
         this.authOauthLoginWindowSeconds = authOauthLoginWindowSeconds;
         this.authOauthCodeLoginIpMaxAttempts = authOauthCodeLoginIpMaxAttempts;
         this.authOauthCodeLoginWindowSeconds = authOauthCodeLoginWindowSeconds;
+        this.invitationCreateIpMaxAttempts = invitationCreateIpMaxAttempts;
+        this.invitationCreateIpWindowSeconds = invitationCreateIpWindowSeconds;
         this.invitationCreateUserMaxAttempts = invitationCreateUserMaxAttempts;
         this.invitationCreateWindowSeconds = invitationCreateWindowSeconds;
         this.commentCreateUserMaxAttempts = commentCreateUserMaxAttempts;
@@ -92,6 +98,11 @@ public class RateLimitPropertiesValidator {
                 authOauthCodeLoginIpMaxAttempts,
                 MAX_MAX_ATTEMPTS,
                 "app.rate-limit.auth.oauth-code-login.ip.max-attempts"
+        );
+        requirePositiveAndAtMost(
+                invitationCreateIpMaxAttempts,
+                MAX_MAX_ATTEMPTS,
+                "app.rate-limit.invitation.create.ip.max-attempts"
         );
         requirePositiveAndAtMost(
                 invitationCreateUserMaxAttempts,
@@ -133,6 +144,11 @@ public class RateLimitPropertiesValidator {
                 authOauthCodeLoginWindowSeconds,
                 MAX_WINDOW_SECONDS,
                 "app.rate-limit.auth.oauth-code-login.window-seconds"
+        );
+        requirePositiveAndAtMost(
+                invitationCreateIpWindowSeconds,
+                MAX_WINDOW_SECONDS,
+                "app.rate-limit.invitation.create.ip.window-seconds"
         );
         requirePositiveAndAtMost(
                 invitationCreateWindowSeconds,

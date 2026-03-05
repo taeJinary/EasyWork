@@ -35,6 +35,7 @@ class ApiRateLimitServiceTest {
                 5, 60,
                 5, 60,
                 5, 60,
+                5, 60,
                 5, 60
         );
     }
@@ -64,12 +65,24 @@ class ApiRateLimitServiceTest {
 
     @Test
     void checkInvitationCreateUsesUnknownKeyWhenUserIdIsNull() {
+        when(redisService.increment("rate-limit:invitation:create:ip:198.51.100.10")).thenReturn(1L);
         when(redisService.increment("rate-limit:invitation:create:user:unknown")).thenReturn(6L);
 
-        assertThatThrownBy(() -> apiRateLimitService.checkInvitationCreate(null))
+        assertThatThrownBy(() -> apiRateLimitService.checkInvitationCreate(requestWithIp("198.51.100.10"), null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void checkInvitationCreateIncrementsIpAndUser() {
+        when(redisService.increment("rate-limit:invitation:create:ip:198.51.100.10")).thenReturn(1L);
+        when(redisService.increment("rate-limit:invitation:create:user:55")).thenReturn(1L);
+
+        apiRateLimitService.checkInvitationCreate(requestWithIp("198.51.100.10"), 55L);
+
+        verify(redisService).expire("rate-limit:invitation:create:ip:198.51.100.10", Duration.ofSeconds(60));
+        verify(redisService).expire("rate-limit:invitation:create:user:55", Duration.ofSeconds(60));
     }
 
     @Test
