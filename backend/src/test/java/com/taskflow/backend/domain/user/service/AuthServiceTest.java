@@ -22,6 +22,7 @@ import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import java.time.Duration;
 import java.util.Optional;
@@ -72,6 +73,9 @@ class AuthServiceTest {
 
     @Mock
     private OAuthAccessTokenExchanger oauthAccessTokenExchanger;
+
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
 
     @InjectMocks
     private AuthService authService;
@@ -166,6 +170,7 @@ class AuthServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
 
+        verify(operationalMetricsService).incrementLoginFailure();
         verify(redisService).expire("login:fail:" + user.getEmail(), Duration.ofMinutes(5));
         verify(redisService, never()).setValue(
                 "login:lock:" + user.getEmail(),
@@ -235,6 +240,8 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.TOKEN_INVALID);
+
+        verify(operationalMetricsService).incrementRefreshReissueFailure();
     }
 
     @Test

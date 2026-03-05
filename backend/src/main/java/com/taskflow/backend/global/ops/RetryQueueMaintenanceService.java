@@ -19,6 +19,7 @@ public class RetryQueueMaintenanceService {
     private final InvitationEmailRetryJobRepository invitationEmailRetryJobRepository;
     private final NotificationPushRetryJobRepository notificationPushRetryJobRepository;
     private final TaskAttachmentCleanupJobRepository taskAttachmentCleanupJobRepository;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Value("${app.retry-queue.maintenance.enabled:true}")
     private boolean enabled;
@@ -43,6 +44,7 @@ public class RetryQueueMaintenanceService {
         long notificationPending = notificationPushRetryJobRepository.countByCompletedAtIsNull();
         long attachmentPending = taskAttachmentCleanupJobRepository.countByCompletedAtIsNull();
         long totalPending = invitationPending + notificationPending + attachmentPending;
+        operationalMetricsService.updateRetryQueueBacklog(invitationPending, notificationPending, attachmentPending);
 
         if (totalPending > 0L && totalPending >= pendingWarnThreshold) {
             log.warn(

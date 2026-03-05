@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -29,6 +30,9 @@ class RetryQueueMaintenanceServiceTest {
 
     @Mock
     private TaskAttachmentCleanupJobRepository taskAttachmentCleanupJobRepository;
+
+    @Mock
+    private OperationalMetricsService operationalMetricsService;
 
     @InjectMocks
     private RetryQueueMaintenanceService retryQueueMaintenanceService;
@@ -55,6 +59,7 @@ class RetryQueueMaintenanceServiceTest {
         verify(invitationEmailRetryJobRepository).countByCompletedAtIsNull();
         verify(notificationPushRetryJobRepository).countByCompletedAtIsNull();
         verify(taskAttachmentCleanupJobRepository).countByCompletedAtIsNull();
+        verify(operationalMetricsService).updateRetryQueueBacklog(2L, 3L, 1L);
         verify(invitationEmailRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(notificationPushRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(taskAttachmentCleanupJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
@@ -69,6 +74,7 @@ class RetryQueueMaintenanceServiceTest {
         verify(invitationEmailRetryJobRepository, never()).countByCompletedAtIsNull();
         verify(notificationPushRetryJobRepository, never()).countByCompletedAtIsNull();
         verify(taskAttachmentCleanupJobRepository, never()).countByCompletedAtIsNull();
+        verify(operationalMetricsService, never()).updateRetryQueueBacklog(anyLong(), anyLong(), anyLong());
         verify(invitationEmailRetryJobRepository, never())
                 .deleteCompletedHistoryBefore(any(LocalDateTime.class), anyInt());
     }

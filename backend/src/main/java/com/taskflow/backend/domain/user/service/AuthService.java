@@ -21,6 +21,7 @@ import com.taskflow.backend.global.common.enums.OAuthProvider;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -52,6 +53,7 @@ public class AuthService {
     private final RedisService redisService;
     private final OAuthClientRegistry oauthClientRegistry;
     private final OAuthAccessTokenExchanger oauthAccessTokenExchanger;
+    private final OperationalMetricsService operationalMetricsService;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -129,37 +131,42 @@ public class AuthService {
 
     @Transactional
     public ReissueTokens reissue(String refreshToken) {
-        Long userId = extractUserIdFromToken(refreshToken);
-        String sessionId = extractSessionIdFromRefreshToken(refreshToken);
-        String tokenKey = refreshTokenKey(userId, sessionId);
+        try {
+            Long userId = extractUserIdFromToken(refreshToken);
+            String sessionId = extractSessionIdFromRefreshToken(refreshToken);
+            String tokenKey = refreshTokenKey(userId, sessionId);
 
-        String storedToken = redisService.getValue(tokenKey).orElse(null);
-        if (storedToken == null || !storedToken.equals(refreshToken)) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+            String storedToken = redisService.getValue(tokenKey).orElse(null);
+            if (storedToken == null || !storedToken.equals(refreshToken)) {
+                throw new BusinessException(ErrorCode.TOKEN_INVALID);
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+            if (user.isDeleted()) {
+                throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
+            }
+
+            String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
+            String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), sessionId);
+
+            redisService.setValue(
+                    tokenKey,
+                    newRefreshToken,
+                    Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
+            );
+
+            return new ReissueTokens(
+                    newAccessToken,
+                    newRefreshToken,
+                    jwtProperties.getAccessTokenExpiration(),
+                    jwtProperties.getRefreshTokenExpiration()
+            );
+        } catch (BusinessException exception) {
+            operationalMetricsService.incrementRefreshReissueFailure();
+            throw exception;
         }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        if (user.isDeleted()) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
-        }
-
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), sessionId);
-
-        redisService.setValue(
-                tokenKey,
-                newRefreshToken,
-                Duration.ofMillis(jwtProperties.getRefreshTokenExpiration())
-        );
-
-        return new ReissueTokens(
-                newAccessToken,
-                newRefreshToken,
-                jwtProperties.getAccessTokenExpiration(),
-                jwtProperties.getRefreshTokenExpiration()
-        );
     }
 
     @Transactional
@@ -193,6 +200,7 @@ public class AuthService {
     }
 
     private void handleLoginFailure(String email) {
+        operationalMetricsService.incrementLoginFailure();
         String failKey = loginFailKey(email);
         Long failCount = redisService.increment(failKey);
         redisService.expire(failKey, LOGIN_LOCK_DURATION);

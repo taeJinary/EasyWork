@@ -9,6 +9,7 @@ import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import java.security.Principal;
 import java.util.Optional;
@@ -28,6 +29,7 @@ import org.springframework.security.core.Authentication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class WebSocketAuthChannelInterceptorTest {
@@ -45,6 +47,9 @@ class WebSocketAuthChannelInterceptorTest {
     private ProjectMemberRepository projectMemberRepository;
 
     @Mock
+    private OperationalMetricsService operationalMetricsService;
+
+    @Mock
     private MessageChannel messageChannel;
 
     private WebSocketAuthChannelInterceptor interceptor;
@@ -55,7 +60,8 @@ class WebSocketAuthChannelInterceptorTest {
                 jwtTokenProvider,
                 userRepository,
                 redisService,
-                projectMemberRepository
+                projectMemberRepository,
+                operationalMetricsService
         );
     }
 
@@ -87,6 +93,8 @@ class WebSocketAuthChannelInterceptorTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verify(operationalMetricsService).incrementWebSocketConnectFailure();
     }
 
     @Test

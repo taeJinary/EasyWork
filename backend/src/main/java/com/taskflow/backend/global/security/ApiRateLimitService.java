@@ -150,7 +150,7 @@ public class ApiRateLimitService {
         String key = KEY_PREFIX + ":" + scope + ":" + identifier;
         Long count = redisService.increment(key);
         if (count == null) {
-            log.warn("Rate limit increment returned null. scope={}, identifier={}", scope, identifier);
+            log.warn("Rate limit increment returned null. scope={}", scope);
             return;
         }
         if (count == 1L) {
