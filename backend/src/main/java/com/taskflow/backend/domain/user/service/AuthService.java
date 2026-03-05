@@ -26,6 +26,7 @@ import com.taskflow.backend.infra.redis.RedisService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -244,15 +245,22 @@ public class AuthService {
     }
 
     private String loginFailKey(String email) {
-        return LOGIN_FAIL_KEY_PREFIX + email;
+        return LOGIN_FAIL_KEY_PREFIX + normalizeLoginKeyIdentifier(email);
     }
 
     private String loginLockKey(String email) {
-        return LOGIN_LOCK_KEY_PREFIX + email;
+        return LOGIN_LOCK_KEY_PREFIX + normalizeLoginKeyIdentifier(email);
     }
 
     private String blackListKey(String accessTokenId) {
         return BLACKLIST_KEY_PREFIX + accessTokenId;
+    }
+
+    private String normalizeLoginKeyIdentifier(String email) {
+        if (!StringUtils.hasText(email)) {
+            return "unknown";
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private LoginTokens issueLoginTokens(User user) {
