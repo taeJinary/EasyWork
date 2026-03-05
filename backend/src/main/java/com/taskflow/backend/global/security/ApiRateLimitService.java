@@ -132,7 +132,13 @@ public class ApiRateLimitService {
         );
     }
 
-    public void checkCommentCreate(Long userId) {
+    public void checkCommentCreate(HttpServletRequest request, Long userId) {
+        enforce(
+                "comment:create:ip",
+                resolveClientIp(request),
+                commentCreateUserMaxAttempts,
+                commentCreateWindowSeconds
+        );
         enforce(
                 "comment:create:user",
                 normalizeUserId(userId),
@@ -141,7 +147,13 @@ public class ApiRateLimitService {
         );
     }
 
-    public void checkAttachmentUpload(Long userId) {
+    public void checkAttachmentUpload(HttpServletRequest request, Long userId) {
+        enforce(
+                "attachment:upload:ip",
+                resolveClientIp(request),
+                attachmentUploadUserMaxAttempts,
+                attachmentUploadWindowSeconds
+        );
         enforce(
                 "attachment:upload:user",
                 normalizeUserId(userId),
@@ -150,7 +162,13 @@ public class ApiRateLimitService {
         );
     }
 
-    public void checkPushTokenRegister(Long userId) {
+    public void checkPushTokenRegister(HttpServletRequest request, Long userId) {
+        enforce(
+                "notification:push-token-register:ip",
+                resolveClientIp(request),
+                pushTokenRegisterUserMaxAttempts,
+                pushTokenRegisterWindowSeconds
+        );
         enforce(
                 "notification:push-token-register:user",
                 normalizeUserId(userId),

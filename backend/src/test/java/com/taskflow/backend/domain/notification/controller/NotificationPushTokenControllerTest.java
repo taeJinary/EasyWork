@@ -17,6 +17,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
@@ -67,7 +69,7 @@ class NotificationPushTokenControllerTest {
                 .andExpect(jsonPath("$.data.platform").value("WEB"))
                 .andExpect(jsonPath("$.data.active").value(true));
 
-        then(apiRateLimitService).should().checkPushTokenRegister(1L);
+        then(apiRateLimitService).should().checkPushTokenRegister(any(), eq(1L));
         then(notificationPushTokenService).should().registerPushToken(1L, "token-1", PushPlatform.WEB);
     }
 
@@ -75,7 +77,7 @@ class NotificationPushTokenControllerTest {
     void registerPushTokenReturnsTooManyRequestsWhenRateLimited() throws Exception {
         doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
                 .when(apiRateLimitService)
-                .checkPushTokenRegister(1L);
+                .checkPushTokenRegister(any(), eq(1L));
 
         mockMvc.perform(post("/notifications/push-tokens")
                         .principal(principalAuth())
