@@ -34,8 +34,11 @@ class ApiRateLimitServiceTest {
                 5, 60,
                 5, 60,
                 5, 60,
+                7, 60,
                 5, 60,
+                4, 60,
                 5, 60,
+                6, 60,
                 5, 60
         );
     }
@@ -98,19 +101,52 @@ class ApiRateLimitServiceTest {
 
     @Test
     void checkCommentCreateFailsOpenWhenRedisIncrementReturnsNull() {
+        when(redisService.increment("rate-limit:comment:create:ip:198.51.100.10")).thenReturn(1L);
         when(redisService.increment("rate-limit:comment:create:user:1")).thenReturn(null);
 
-        assertThatCode(() -> apiRateLimitService.checkCommentCreate(1L))
+        assertThatCode(() -> apiRateLimitService.checkCommentCreate(requestWithIp("198.51.100.10"), 1L))
                 .doesNotThrowAnyException();
+        verify(redisService).expire("rate-limit:comment:create:ip:198.51.100.10", Duration.ofSeconds(60));
         verify(redisService, never()).expire("rate-limit:comment:create:user:1", Duration.ofSeconds(60));
     }
 
     @Test
+    void checkCommentCreateAppliesDedicatedIpQuota() {
+        ApiRateLimitService service = new ApiRateLimitService(
+                redisService,
+                3, 2, 60,
+                5, 60,
+                5, 60,
+                5, 60,
+                5, 60,
+                5, 60,
+                1, 60,
+                100, 60,
+                5, 60,
+                5, 60,
+                5, 60,
+                5, 60
+        );
+        when(redisService.increment("rate-limit:comment:create:ip:198.51.100.10")).thenReturn(2L);
+
+        assertThatThrownBy(() -> service.checkCommentCreate(requestWithIp("198.51.100.10"), 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+        verify(redisService, never()).increment("rate-limit:comment:create:user:1");
+    }
+
+    @Test
     void checkPushTokenRegisterUsesUserKey() {
+        when(redisService.increment("rate-limit:notification:push-token-register:ip:198.51.100.10")).thenReturn(1L);
         when(redisService.increment("rate-limit:notification:push-token-register:user:55")).thenReturn(1L);
 
-        apiRateLimitService.checkPushTokenRegister(55L);
+        apiRateLimitService.checkPushTokenRegister(requestWithIp("198.51.100.10"), 55L);
 
+        verify(redisService).expire(
+                "rate-limit:notification:push-token-register:ip:198.51.100.10",
+                Duration.ofSeconds(60)
+        );
         verify(redisService).expire(
                 "rate-limit:notification:push-token-register:user:55",
                 Duration.ofSeconds(60)

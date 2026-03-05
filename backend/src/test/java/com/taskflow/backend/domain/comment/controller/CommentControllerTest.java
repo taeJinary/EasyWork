@@ -95,7 +95,7 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.data.content").value("로그인 실패"))
                 .andExpect(jsonPath("$.data.editable").value(true));
 
-        then(apiRateLimitService).should().checkCommentCreate(1L);
+        then(apiRateLimitService).should().checkCommentCreate(any(), eq(1L));
         then(commentService).should().createComment(eq(1L), eq(100L), any(CreateCommentRequest.class));
     }
 
@@ -104,7 +104,7 @@ class CommentControllerTest {
         CreateCommentRequest request = new CreateCommentRequest("rate limit");
         doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
                 .when(apiRateLimitService)
-                .checkCommentCreate(1L);
+                .checkCommentCreate(any(), eq(1L));
 
         mockMvc.perform(post("/tasks/100/comments")
                         .principal(principalAuth())

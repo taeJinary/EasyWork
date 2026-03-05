@@ -68,7 +68,7 @@ class TaskAttachmentControllerTest {
                 .andExpect(jsonPath("$.data.taskId").value(100L))
                 .andExpect(jsonPath("$.data.originalFilename").value("report.pdf"));
 
-        then(apiRateLimitService).should().checkAttachmentUpload(1L);
+        then(apiRateLimitService).should().checkAttachmentUpload(any(), eq(1L));
         then(taskAttachmentService).should().uploadAttachment(eq(1L), eq(100L), any());
     }
 
@@ -82,7 +82,7 @@ class TaskAttachmentControllerTest {
         );
         doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
                 .when(apiRateLimitService)
-                .checkAttachmentUpload(1L);
+                .checkAttachmentUpload(any(), eq(1L));
 
         mockMvc.perform(multipart("/tasks/100/attachments")
                         .file(file)

@@ -7,6 +7,7 @@ import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.security.ApiRateLimitService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,12 +36,13 @@ public class TaskAttachmentController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<ApiResponse<TaskAttachmentResponse>> uploadAttachment(
+            HttpServletRequest httpServletRequest,
             Authentication authentication,
             @PathVariable Long taskId,
             @RequestPart("file") MultipartFile file
     ) {
         Long userId = extractUserId(authentication);
-        apiRateLimitService.checkAttachmentUpload(userId);
+        apiRateLimitService.checkAttachmentUpload(httpServletRequest, userId);
         TaskAttachmentResponse response = taskAttachmentService.uploadAttachment(
                 userId,
                 taskId,

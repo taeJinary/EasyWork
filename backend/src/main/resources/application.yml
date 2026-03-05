@@ -142,21 +142,29 @@ app:
         window-seconds: 60
     invitation:
       create:
+        ip:
+          max-attempts: 60
         user:
           max-attempts: 20
         window-seconds: 60
     comment:
       create:
+        ip:
+          max-attempts: 60
         user:
           max-attempts: 60
         window-seconds: 60
     attachment:
       upload:
+        ip:
+          max-attempts: 20
         user:
           max-attempts: 20
         window-seconds: 60
     notification:
       push-token-register:
+        ip:
+          max-attempts: 30
         user:
           max-attempts: 30
         window-seconds: 60
