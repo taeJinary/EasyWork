@@ -94,8 +94,7 @@ public class NotificationPushRetryService {
         Notification notification = notificationRepository.findById(job.getNotificationId()).orElse(null);
         if (notification == null) {
             job.markCompleted(now);
-            notificationPushRetryJobRepository.save(job);
-            operationalMetricsService.incrementNotificationPushRetryCompleted();
+            saveJobAndRecordMetric(job, RetryOutcome.COMPLETED);
             return;
         }
         NotificationPushToken pushToken = notificationPushTokenRepository.findById(job.getPushTokenId()).orElse(null);
@@ -103,33 +102,23 @@ public class NotificationPushRetryService {
                 || !pushToken.isActive()
                 || !pushToken.getUser().getId().equals(notification.getUser().getId())) {
             job.markCompleted(now);
-            notificationPushRetryJobRepository.save(job);
-            operationalMetricsService.incrementNotificationPushRetryCompleted();
+            saveJobAndRecordMetric(job, RetryOutcome.COMPLETED);
             return;
         }
 
+        RetryOutcome outcome;
         try {
             boolean hasTransientFailure = notificationPushDispatchService.sendToToken(notification, pushToken);
             if (hasTransientFailure) {
                 markFailedOrDeadLetter(job, "Transient push delivery failure", now);
-                if (job.getCompletedAt() != null) {
-                    operationalMetricsService.incrementNotificationPushRetryDeadLetter();
-                } else {
-                    operationalMetricsService.incrementNotificationPushRetryRescheduled();
-                }
+                outcome = determineRetryOutcome(job);
             } else {
                 job.markCompleted(now);
-                operationalMetricsService.incrementNotificationPushRetryCompleted();
+                outcome = RetryOutcome.COMPLETED;
             }
-            notificationPushRetryJobRepository.save(job);
         } catch (Exception exception) {
             markFailedOrDeadLetter(job, exception.getMessage(), now);
-            notificationPushRetryJobRepository.save(job);
-            if (job.getCompletedAt() != null) {
-                operationalMetricsService.incrementNotificationPushRetryDeadLetter();
-            } else {
-                operationalMetricsService.incrementNotificationPushRetryRescheduled();
-            }
+            outcome = determineRetryOutcome(job);
             log.error(
                     "Failed to retry push notification dispatch. notificationId={}, retryCount={}",
                     job.getNotificationId(),
@@ -137,6 +126,8 @@ public class NotificationPushRetryService {
                     exception
             );
         }
+
+        saveJobAndRecordMetric(job, outcome);
     }
 
     private void markFailedOrDeadLetter(NotificationPushRetryJob job, String errorMessage, LocalDateTime now) {
@@ -177,5 +168,24 @@ public class NotificationPushRetryService {
         Throwable rootCause = exception.getMostSpecificCause();
         String message = rootCause == null ? exception.getMessage() : rootCause.getMessage();
         return message != null && message.contains(OPEN_JOB_UNIQUE_KEY);
+    }
+
+    private RetryOutcome determineRetryOutcome(NotificationPushRetryJob job) {
+        return job.getCompletedAt() != null ? RetryOutcome.DEAD_LETTER : RetryOutcome.RESCHEDULED;
+    }
+
+    private void saveJobAndRecordMetric(NotificationPushRetryJob job, RetryOutcome outcome) {
+        notificationPushRetryJobRepository.save(job);
+        switch (outcome) {
+            case COMPLETED -> operationalMetricsService.incrementNotificationPushRetryCompleted();
+            case RESCHEDULED -> operationalMetricsService.incrementNotificationPushRetryRescheduled();
+            case DEAD_LETTER -> operationalMetricsService.incrementNotificationPushRetryDeadLetter();
+        }
+    }
+
+    private enum RetryOutcome {
+        COMPLETED,
+        RESCHEDULED,
+        DEAD_LETTER
     }
 }

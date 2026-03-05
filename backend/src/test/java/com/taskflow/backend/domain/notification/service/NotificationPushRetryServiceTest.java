@@ -29,6 +29,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -164,6 +165,69 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getNextRetryAt()).isAfter(LocalDateTime.now().minusSeconds(5));
         verify(notificationPushRetryJobRepository).save(job);
         verify(operationalMetricsService).incrementNotificationPushRetryRescheduled();
+    }
+
+    @Test
+    void retryPendingPushesDoesNotDoubleMarkOrRecordMetricWhenSaveFailsAfterTransientFailure() {
+        NotificationPushRetryJob job = NotificationPushRetryJob.createPending(
+                101L,
+                501L,
+                LocalDateTime.now().minusMinutes(1),
+                "temporary push failure"
+        );
+        Notification notification = notification(101L);
+        NotificationPushToken pushToken = activePushToken(501L, notification.getUser());
+
+        given(notificationPushRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(notificationRepository.findById(101L)).willReturn(Optional.of(notification));
+        given(notificationPushTokenRepository.findById(501L)).willReturn(Optional.of(pushToken));
+        given(notificationPushDispatchService.sendToToken(notification, pushToken)).willReturn(true);
+        given(notificationPushRetryJobRepository.save(job)).willThrow(new RuntimeException("db write failed"));
+
+        assertThatThrownBy(() -> notificationPushRetryService.retryPendingPushes(50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db write failed");
+
+        assertThat(job.getRetryCount()).isEqualTo(1);
+        verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService, never()).incrementNotificationPushRetryRescheduled();
+        verify(operationalMetricsService, never()).incrementNotificationPushRetryDeadLetter();
+        verify(operationalMetricsService, never()).incrementNotificationPushRetryCompleted();
+    }
+
+    @Test
+    void retryPendingPushesDoesNotRecordCompletedMetricWhenSaveFailsAfterCompletion() {
+        NotificationPushRetryJob job = NotificationPushRetryJob.createPending(
+                101L,
+                501L,
+                LocalDateTime.now().minusMinutes(1),
+                "temporary push failure"
+        );
+        Notification notification = notification(101L);
+        NotificationPushToken pushToken = activePushToken(501L, notification.getUser());
+
+        given(notificationPushRetryJobRepository.findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(
+                any(LocalDateTime.class),
+                any(Pageable.class)
+        )).willReturn(List.of(job));
+        given(notificationRepository.findById(101L)).willReturn(Optional.of(notification));
+        given(notificationPushTokenRepository.findById(501L)).willReturn(Optional.of(pushToken));
+        given(notificationPushDispatchService.sendToToken(notification, pushToken)).willReturn(false);
+        given(notificationPushRetryJobRepository.save(job)).willThrow(new RuntimeException("db write failed"));
+
+        assertThatThrownBy(() -> notificationPushRetryService.retryPendingPushes(50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("db write failed");
+
+        assertThat(job.getCompletedAt()).isNotNull();
+        assertThat(job.getRetryCount()).isEqualTo(0);
+        verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService, never()).incrementNotificationPushRetryCompleted();
+        verify(operationalMetricsService, never()).incrementNotificationPushRetryRescheduled();
+        verify(operationalMetricsService, never()).incrementNotificationPushRetryDeadLetter();
     }
 
     @Test
