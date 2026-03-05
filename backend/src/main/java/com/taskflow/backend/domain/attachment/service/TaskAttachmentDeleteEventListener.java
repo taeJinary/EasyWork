@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.event.TaskAttachmentDeletedEvent;
+import com.taskflow.backend.global.logging.SensitiveValueSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,9 +22,9 @@ public class TaskAttachmentDeleteEventListener {
             taskAttachmentStorage.delete(event.storagePath());
         } catch (Exception exception) {
             log.error(
-                    "Failed to delete attachment file after commit. attachmentId={}, storagePath={}",
+                    "Failed to delete attachment file after commit. attachmentId={}, storagePathHash={}",
                     event.attachmentId(),
-                    event.storagePath(),
+                    SensitiveValueSanitizer.shortHash(event.storagePath()),
                     exception
             );
             cleanupRetryService.enqueueDeleteFailure(event.attachmentId(), event.storagePath());

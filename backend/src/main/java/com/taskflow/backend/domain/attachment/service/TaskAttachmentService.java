@@ -11,6 +11,7 @@ import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.logging.SensitiveValueSanitizer;
 import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -213,7 +214,11 @@ public class TaskAttachmentService {
         try {
             taskAttachmentStorage.delete(storagePath);
         } catch (Exception exception) {
-            log.warn("Failed to cleanup stored attachment file. storagePath={}", storagePath, exception);
+            log.warn(
+                    "Failed to cleanup stored attachment file. storagePathHash={}",
+                    SensitiveValueSanitizer.shortHash(storagePath),
+                    exception
+            );
         }
     }
 
