@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.attachment.service;
 
 import com.taskflow.backend.domain.attachment.entity.TaskAttachmentCleanupJob;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
+import com.taskflow.backend.global.logging.SensitiveValueSanitizer;
 import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -80,9 +81,9 @@ public class TaskAttachmentCleanupRetryService {
             outcome = determineRetryOutcome(job);
 
             log.error(
-                    "Failed to retry attachment cleanup delete. attachmentId={}, storagePath={}, retryCount={}",
+                    "Failed to retry attachment cleanup delete. attachmentId={}, storagePathHash={}, retryCount={}",
                     job.getAttachmentId(),
-                    job.getStoragePath(),
+                    SensitiveValueSanitizer.shortHash(job.getStoragePath()),
                     job.getRetryCount(),
                     exception
             );
