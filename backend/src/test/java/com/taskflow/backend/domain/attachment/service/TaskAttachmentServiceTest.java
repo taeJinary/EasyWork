@@ -17,6 +17,7 @@ import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.ops.OperationalMetricsService;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -78,7 +79,7 @@ class TaskAttachmentServiceTest {
                 "file",
                 "report.pdf",
                 "application/pdf",
-                "hello".getBytes()
+                validPdfBytes()
         );
 
         TaskAttachmentStorage.StoredAttachment storedAttachment = new TaskAttachmentStorage.StoredAttachment(
@@ -167,6 +168,30 @@ class TaskAttachmentServiceTest {
     }
 
     @Test
+    void uploadAttachmentThrowsWhenFileSignatureDoesNotMatchExtensionAndMime() {
+        User uploader = activeUser(1L, "uploader@example.com", "uploader");
+        Project project = project(10L, uploader);
+        Task task = task(100L, project, uploader);
+        ProjectMember membership = membership(1000L, project, uploader, ProjectRole.MEMBER);
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "report.pdf",
+                "application/pdf",
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> taskAttachmentService.uploadAttachment(1L, 100L, multipartFile))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+
+        verify(taskAttachmentStorage, never()).store(any(), any(MultipartFile.class));
+    }
+
+    @Test
     void uploadAttachmentDeletesStoredFileWhenRepositorySaveFails() {
         User uploader = activeUser(1L, "uploader@example.com", "uploader");
         Project project = project(10L, uploader);
@@ -176,7 +201,7 @@ class TaskAttachmentServiceTest {
                 "file",
                 "report.pdf",
                 "application/pdf",
-                "hello".getBytes()
+                validPdfBytes()
         );
         TaskAttachmentStorage.StoredAttachment storedAttachment = new TaskAttachmentStorage.StoredAttachment(
                 "task-attachments/10/abc-report.pdf",
@@ -209,7 +234,7 @@ class TaskAttachmentServiceTest {
                 "file",
                 "report.pdf",
                 "application/pdf",
-                "hello".getBytes()
+                validPdfBytes()
         );
 
         TaskAttachmentStorage.StoredAttachment storedAttachment = new TaskAttachmentStorage.StoredAttachment(
@@ -401,5 +426,9 @@ class TaskAttachmentServiceTest {
                 .joinedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
                 .updatedAt(LocalDateTime.of(2026, 3, 1, 9, 0))
                 .build();
+    }
+
+    private byte[] validPdfBytes() {
+        return "%PDF-1.7\n1 0 obj\n<<>>\nendobj\n".getBytes(StandardCharsets.UTF_8);
     }
 }
