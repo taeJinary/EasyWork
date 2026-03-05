@@ -16,7 +16,10 @@ class RetryQueuePropertiesValidatorTest {
                 500,
                 10,
                 10,
-                10
+                10,
+                50,
+                50,
+                50
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
@@ -31,7 +34,10 @@ class RetryQueuePropertiesValidatorTest {
                 500,
                 10,
                 10,
-                10
+                10,
+                50,
+                50,
+                50
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -48,7 +54,10 @@ class RetryQueuePropertiesValidatorTest {
                 500,
                 0,
                 10,
-                10
+                10,
+                50,
+                50,
+                50
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -65,11 +74,94 @@ class RetryQueuePropertiesValidatorTest {
                 0,
                 10,
                 10,
-                10
+                10,
+                50,
+                50,
+                50
         );
 
         assertThatThrownBy(validator::validateAtStartup)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("app.retry-queue.maintenance.delete-batch-size");
+    }
+
+    @Test
+    void excessiveMaintenanceDeleteBatchSizeFailsValidation() {
+        RetryQueuePropertiesValidator validator = new RetryQueuePropertiesValidator(
+                300000L,
+                7L,
+                100L,
+                1001,
+                10,
+                10,
+                10,
+                50,
+                50,
+                50
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.retry-queue.maintenance.delete-batch-size");
+    }
+
+    @Test
+    void excessiveInvitationRetryBatchSizeFailsValidation() {
+        RetryQueuePropertiesValidator validator = new RetryQueuePropertiesValidator(
+                300000L,
+                7L,
+                100L,
+                500,
+                10,
+                10,
+                10,
+                1001,
+                50,
+                50
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.invitation.email.retry.batch-size");
+    }
+
+    @Test
+    void excessiveNotificationRetryBatchSizeFailsValidation() {
+        RetryQueuePropertiesValidator validator = new RetryQueuePropertiesValidator(
+                300000L,
+                7L,
+                100L,
+                500,
+                10,
+                10,
+                10,
+                50,
+                1001,
+                50
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.notification.push.retry.batch-size");
+    }
+
+    @Test
+    void excessiveAttachmentCleanupBatchSizeFailsValidation() {
+        RetryQueuePropertiesValidator validator = new RetryQueuePropertiesValidator(
+                300000L,
+                7L,
+                100L,
+                500,
+                10,
+                10,
+                10,
+                50,
+                50,
+                1001
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.attachment.cleanup.batch-size");
     }
 }
