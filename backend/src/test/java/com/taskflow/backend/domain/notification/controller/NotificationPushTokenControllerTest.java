@@ -6,6 +6,9 @@ import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import com.taskflow.backend.global.common.enums.PushPlatform;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,6 +36,9 @@ class NotificationPushTokenControllerTest {
 
     @MockBean
     private NotificationPushTokenService notificationPushTokenService;
+
+    @MockBean
+    private ApiRateLimitService apiRateLimitService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -59,7 +67,30 @@ class NotificationPushTokenControllerTest {
                 .andExpect(jsonPath("$.data.platform").value("WEB"))
                 .andExpect(jsonPath("$.data.active").value(true));
 
+        then(apiRateLimitService).should().checkPushTokenRegister(1L);
         then(notificationPushTokenService).should().registerPushToken(1L, "token-1", PushPlatform.WEB);
+    }
+
+    @Test
+    void registerPushTokenReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkPushTokenRegister(1L);
+
+        mockMvc.perform(post("/notifications/push-tokens")
+                        .principal(principalAuth())
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "token-1",
+                                  "platform": "WEB"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(notificationPushTokenService).should(never()).registerPushToken(1L, "token-1", PushPlatform.WEB);
     }
 
     @Test

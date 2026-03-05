@@ -10,6 +10,7 @@ import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.common.enums.InvitationStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InvitationController {
 
     private final InvitationService invitationService;
+    private final ApiRateLimitService apiRateLimitService;
 
     @PostMapping("/projects/{projectId}/invitations")
     public ResponseEntity<ApiResponse<InvitationSummaryResponse>> createInvitation(
@@ -36,8 +38,10 @@ public class InvitationController {
             @PathVariable Long projectId,
             @Valid @RequestBody CreateInvitationRequest request
     ) {
+        Long userId = extractUserId(authentication);
+        apiRateLimitService.checkInvitationCreate(userId);
         InvitationSummaryResponse response = invitationService.createInvitation(
-                extractUserId(authentication),
+                userId,
                 projectId,
                 request
         );

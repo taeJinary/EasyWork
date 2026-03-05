@@ -6,6 +6,7 @@ import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class TaskAttachmentController {
 
     private final TaskAttachmentService taskAttachmentService;
+    private final ApiRateLimitService apiRateLimitService;
 
     @PostMapping(
             value = "/tasks/{taskId}/attachments",
@@ -37,8 +39,10 @@ public class TaskAttachmentController {
             @PathVariable Long taskId,
             @RequestPart("file") MultipartFile file
     ) {
+        Long userId = extractUserId(authentication);
+        apiRateLimitService.checkAttachmentUpload(userId);
         TaskAttachmentResponse response = taskAttachmentService.uploadAttachment(
-                extractUserId(authentication),
+                userId,
                 taskId,
                 file
         );

@@ -13,6 +13,7 @@ import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,6 +53,7 @@ public class AuthController {
     private String refreshTokenCookieSameSite;
 
     private final AuthService authService;
+    private final ApiRateLimitService apiRateLimitService;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(
@@ -65,8 +67,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpServletRequest,
             HttpServletResponse response
     ) {
+        apiRateLimitService.checkAuthLogin(httpServletRequest, request.email());
         LoginTokens tokens = authService.login(request);
         addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
@@ -81,8 +85,10 @@ public class AuthController {
     @PostMapping("/oauth/login")
     public ResponseEntity<ApiResponse<LoginResponse>> oauthLogin(
             @Valid @RequestBody OAuthLoginRequest request,
+            HttpServletRequest httpServletRequest,
             HttpServletResponse response
     ) {
+        apiRateLimitService.checkAuthOauthLogin(httpServletRequest);
         LoginTokens tokens = authService.oauthLogin(request);
         addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
@@ -97,8 +103,10 @@ public class AuthController {
     @PostMapping("/oauth/code/login")
     public ResponseEntity<ApiResponse<LoginResponse>> oauthCodeLogin(
             @Valid @RequestBody OAuthCodeLoginRequest request,
+            HttpServletRequest httpServletRequest,
             HttpServletResponse response
     ) {
+        apiRateLimitService.checkAuthOauthCodeLogin(httpServletRequest);
         LoginTokens tokens = authService.oauthCodeLogin(request);
         addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
@@ -115,6 +123,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
+        apiRateLimitService.checkAuthTokenReissue(request);
         String refreshToken = resolveRefreshToken(request);
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);

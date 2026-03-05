@@ -11,6 +11,9 @@ import com.taskflow.backend.domain.user.service.AuthService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.common.enums.OAuthProvider;
+import com.taskflow.backend.global.error.BusinessException;
+import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -48,6 +52,9 @@ class AuthControllerTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private ApiRateLimitService apiRateLimitService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -107,6 +114,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
                 .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.data.user.userId").value(1L));
+
+        then(apiRateLimitService).should().checkAuthLogin(any(), eq("user@example.com"));
     }
 
     @Test
@@ -125,6 +134,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.accessToken").value("new-access"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
                 .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
+
+        then(apiRateLimitService).should().checkAuthTokenReissue(any());
     }
 
     @Test
@@ -159,6 +170,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
                 .andExpect(jsonPath("$.data.user.userId").value(2L));
+
+        then(apiRateLimitService).should().checkAuthOauthLogin(any());
     }
 
     @Test
@@ -185,6 +198,25 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
                 .andExpect(jsonPath("$.data.user.userId").value(2L));
+
+        then(apiRateLimitService).should().checkAuthOauthCodeLogin(any());
+    }
+
+    @Test
+    void loginReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        LoginRequest request = new LoginRequest("user@example.com", "Pass123!");
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkAuthLogin(any(), eq("user@example.com"));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(authService).should(never()).login(any(LoginRequest.class));
     }
 
     @Test

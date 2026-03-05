@@ -9,6 +9,7 @@ import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.common.dto.ApiResponse;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import com.taskflow.backend.global.security.ApiRateLimitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommentController {
 
     private final CommentService commentService;
+    private final ApiRateLimitService apiRateLimitService;
 
     @PostMapping("/tasks/{taskId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
@@ -37,8 +39,10 @@ public class CommentController {
             @PathVariable Long taskId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
+        Long userId = extractUserId(authentication);
+        apiRateLimitService.checkCommentCreate(userId);
         CommentResponse response = commentService.createComment(
-                extractUserId(authentication),
+                userId,
                 taskId,
                 request
         );
