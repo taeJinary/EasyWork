@@ -13,6 +13,8 @@ import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.logging.SensitiveValueSanitizer;
 import com.taskflow.backend.global.ops.OperationalMetricsService;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -62,6 +64,52 @@ public class TaskAttachmentService {
             )),
             Map.entry("txt", Set.of("text/plain")),
             Map.entry("zip", Set.of("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+    );
+    private static final byte[] PNG_SIGNATURE = new byte[]{
+            (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+    };
+    private static final byte[] JPEG_SIGNATURE = new byte[]{
+            (byte) 0xFF, (byte) 0xD8, (byte) 0xFF
+    };
+    private static final byte[] GIF87A_SIGNATURE = new byte[]{
+            0x47, 0x49, 0x46, 0x38, 0x37, 0x61
+    };
+    private static final byte[] GIF89A_SIGNATURE = new byte[]{
+            0x47, 0x49, 0x46, 0x38, 0x39, 0x61
+    };
+    private static final byte[] PDF_SIGNATURE = new byte[]{
+            0x25, 0x50, 0x44, 0x46, 0x2D
+    };
+    private static final byte[] ZIP_LOCAL_FILE_SIGNATURE = new byte[]{
+            0x50, 0x4B, 0x03, 0x04
+    };
+    private static final byte[] ZIP_EMPTY_ARCHIVE_SIGNATURE = new byte[]{
+            0x50, 0x4B, 0x05, 0x06
+    };
+    private static final byte[] ZIP_SPANNED_ARCHIVE_SIGNATURE = new byte[]{
+            0x50, 0x4B, 0x07, 0x08
+    };
+    private static final byte[] OLE_SIGNATURE = new byte[]{
+            (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1
+    };
+    private static final List<byte[]> ZIP_SIGNATURES = List.of(
+            ZIP_LOCAL_FILE_SIGNATURE,
+            ZIP_EMPTY_ARCHIVE_SIGNATURE,
+            ZIP_SPANNED_ARCHIVE_SIGNATURE
+    );
+    private static final Map<String, List<byte[]>> ALLOWED_SIGNATURES_BY_EXTENSION = Map.ofEntries(
+            Map.entry("png", List.of(PNG_SIGNATURE)),
+            Map.entry("jpg", List.of(JPEG_SIGNATURE)),
+            Map.entry("jpeg", List.of(JPEG_SIGNATURE)),
+            Map.entry("gif", List.of(GIF87A_SIGNATURE, GIF89A_SIGNATURE)),
+            Map.entry("pdf", List.of(PDF_SIGNATURE)),
+            Map.entry("doc", List.of(OLE_SIGNATURE)),
+            Map.entry("xls", List.of(OLE_SIGNATURE)),
+            Map.entry("ppt", List.of(OLE_SIGNATURE)),
+            Map.entry("docx", ZIP_SIGNATURES),
+            Map.entry("xlsx", ZIP_SIGNATURES),
+            Map.entry("pptx", ZIP_SIGNATURES),
+            Map.entry("zip", ZIP_SIGNATURES)
     );
 
     private final TaskRepository taskRepository;
@@ -166,6 +214,7 @@ public class TaskAttachmentService {
         }
 
         validateMimeType(extension, file.getContentType());
+        validateFileSignature(extension, file);
     }
 
     private String extractExtension(String filename) {
@@ -195,6 +244,47 @@ public class TaskAttachmentService {
         String trimmed = contentType.trim().toLowerCase(Locale.ROOT);
         int delimiterIndex = trimmed.indexOf(';');
         return delimiterIndex >= 0 ? trimmed.substring(0, delimiterIndex).trim() : trimmed;
+    }
+
+    private void validateFileSignature(String extension, MultipartFile file) {
+        List<byte[]> allowedSignatures = ALLOWED_SIGNATURES_BY_EXTENSION.get(extension);
+        if (allowedSignatures == null || allowedSignatures.isEmpty()) {
+            return;
+        }
+
+        int maxSignatureLength = allowedSignatures.stream()
+                .mapToInt(signature -> signature.length)
+                .max()
+                .orElse(0);
+        byte[] filePrefix = readFilePrefix(file, maxSignatureLength);
+        boolean signatureMatched = allowedSignatures.stream()
+                .anyMatch(signature -> startsWith(filePrefix, signature));
+        if (!signatureMatched) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private byte[] readFilePrefix(MultipartFile file, int maxLength) {
+        if (maxLength <= 0) {
+            return new byte[0];
+        }
+        try (InputStream inputStream = file.getInputStream()) {
+            return inputStream.readNBytes(maxLength);
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private boolean startsWith(byte[] source, byte[] prefix) {
+        if (source.length < prefix.length) {
+            return false;
+        }
+        for (int i = 0; i < prefix.length; i++) {
+            if (source[i] != prefix[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private TaskAttachmentResponse toResponse(TaskAttachment attachment) {
