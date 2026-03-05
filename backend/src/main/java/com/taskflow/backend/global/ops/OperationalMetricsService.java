@@ -18,16 +18,19 @@ public class OperationalMetricsService {
     private final Counter invitationEmailRetryRescheduledCounter;
     private final Counter invitationEmailRetryDeadLetterCounter;
     private final Counter invitationEmailRetryPersistenceFailureCounter;
+    private final Counter invitationEmailRetryExecutionFailureCounter;
     private final Counter notificationPushRetryEnqueuedCounter;
     private final Counter notificationPushRetryCompletedCounter;
     private final Counter notificationPushRetryRescheduledCounter;
     private final Counter notificationPushRetryDeadLetterCounter;
     private final Counter notificationPushRetryPersistenceFailureCounter;
+    private final Counter notificationPushRetryExecutionFailureCounter;
     private final Counter attachmentCleanupRetryEnqueuedCounter;
     private final Counter attachmentCleanupRetryCompletedCounter;
     private final Counter attachmentCleanupRetryRescheduledCounter;
     private final Counter attachmentCleanupRetryDeadLetterCounter;
     private final Counter attachmentCleanupRetryPersistenceFailureCounter;
+    private final Counter attachmentCleanupRetryExecutionFailureCounter;
     private final Counter invitationRetryHistoryDeletedCounter;
     private final Counter notificationRetryHistoryDeletedCounter;
     private final Counter attachmentRetryHistoryDeletedCounter;
@@ -65,6 +68,9 @@ public class OperationalMetricsService {
         this.invitationEmailRetryPersistenceFailureCounter = Counter.builder("taskflow.retry.invitation.persistence.failure.total")
                 .description("Total number of failed invitation email retry job persistence attempts")
                 .register(meterRegistry);
+        this.invitationEmailRetryExecutionFailureCounter = Counter.builder("taskflow.retry.invitation.execution.failure.total")
+                .description("Total number of failed invitation email retry scheduler executions")
+                .register(meterRegistry);
         this.notificationPushRetryEnqueuedCounter = Counter.builder("taskflow.retry.push.enqueued.total")
                 .description("Total number of enqueued push retry jobs")
                 .register(meterRegistry);
@@ -80,6 +86,9 @@ public class OperationalMetricsService {
         this.notificationPushRetryPersistenceFailureCounter = Counter.builder("taskflow.retry.push.persistence.failure.total")
                 .description("Total number of failed push retry job persistence attempts")
                 .register(meterRegistry);
+        this.notificationPushRetryExecutionFailureCounter = Counter.builder("taskflow.retry.push.execution.failure.total")
+                .description("Total number of failed push retry scheduler executions")
+                .register(meterRegistry);
         this.attachmentCleanupRetryEnqueuedCounter = Counter.builder("taskflow.retry.attachment.enqueued.total")
                 .description("Total number of enqueued attachment cleanup retry jobs")
                 .register(meterRegistry);
@@ -94,6 +103,9 @@ public class OperationalMetricsService {
                 .register(meterRegistry);
         this.attachmentCleanupRetryPersistenceFailureCounter = Counter.builder("taskflow.retry.attachment.persistence.failure.total")
                 .description("Total number of failed attachment cleanup retry job persistence attempts")
+                .register(meterRegistry);
+        this.attachmentCleanupRetryExecutionFailureCounter = Counter.builder("taskflow.retry.attachment.execution.failure.total")
+                .description("Total number of failed attachment cleanup retry scheduler executions")
                 .register(meterRegistry);
         this.invitationRetryHistoryDeletedCounter = Counter.builder("taskflow.retry.invitation.history.deleted.total")
                 .description("Total number of deleted invitation retry history rows")
@@ -162,6 +174,10 @@ public class OperationalMetricsService {
         invitationEmailRetryPersistenceFailureCounter.increment();
     }
 
+    public void incrementInvitationEmailRetryExecutionFailure() {
+        invitationEmailRetryExecutionFailureCounter.increment();
+    }
+
     public void incrementNotificationPushRetryEnqueued() {
         notificationPushRetryEnqueuedCounter.increment();
     }
@@ -182,6 +198,10 @@ public class OperationalMetricsService {
         notificationPushRetryPersistenceFailureCounter.increment();
     }
 
+    public void incrementNotificationPushRetryExecutionFailure() {
+        notificationPushRetryExecutionFailureCounter.increment();
+    }
+
     public void incrementAttachmentCleanupRetryEnqueued() {
         attachmentCleanupRetryEnqueuedCounter.increment();
     }
@@ -200,6 +220,10 @@ public class OperationalMetricsService {
 
     public void incrementAttachmentCleanupRetryPersistenceFailure() {
         attachmentCleanupRetryPersistenceFailureCounter.increment();
+    }
+
+    public void incrementAttachmentCleanupRetryExecutionFailure() {
+        attachmentCleanupRetryExecutionFailureCounter.increment();
     }
 
     public void recordRetryQueueHistoryDeleted(long invitationDeleted, long notificationDeleted, long attachmentDeleted) {
