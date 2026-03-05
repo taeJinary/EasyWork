@@ -17,10 +17,13 @@ import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.ops.OperationalMetricsService;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -189,6 +192,74 @@ class TaskAttachmentServiceTest {
                 .isEqualTo(ErrorCode.INVALID_INPUT);
 
         verify(taskAttachmentStorage, never()).store(any(), any(MultipartFile.class));
+    }
+
+    @Test
+    void uploadAttachmentThrowsWhenOfficePackageMissingRequiredEntries() {
+        User uploader = activeUser(1L, "uploader@example.com", "uploader");
+        Project project = project(10L, uploader);
+        Task task = task(100L, project, uploader);
+        ProjectMember membership = membership(1000L, project, uploader, ProjectRole.MEMBER);
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "spec.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                zipWithoutOfficeEntries()
+        );
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> taskAttachmentService.uploadAttachment(1L, 100L, multipartFile))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT);
+
+        verify(taskAttachmentStorage, never()).store(any(), any(MultipartFile.class));
+    }
+
+    @Test
+    void uploadAttachmentAllowsValidOfficePackage() {
+        User uploader = activeUser(1L, "uploader@example.com", "uploader");
+        Project project = project(10L, uploader);
+        Task task = task(100L, project, uploader);
+        ProjectMember membership = membership(1000L, project, uploader, ProjectRole.MEMBER);
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "spec.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                minimalDocx()
+        );
+
+        TaskAttachmentStorage.StoredAttachment storedAttachment = new TaskAttachmentStorage.StoredAttachment(
+                "task-attachments/10/abc-spec.docx",
+                "abc-spec.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                (long) multipartFile.getSize()
+        );
+
+        TaskAttachment saved = TaskAttachment.builder()
+                .id(2001L)
+                .task(task)
+                .uploader(uploader)
+                .originalFilename("spec.docx")
+                .storedFilename("abc-spec.docx")
+                .storagePath("task-attachments/10/abc-spec.docx")
+                .contentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                .sizeBytes(multipartFile.getSize())
+                .build();
+        ReflectionTestUtils.setField(saved, "createdAt", LocalDateTime.of(2026, 3, 3, 10, 5));
+
+        given(taskRepository.findByIdAndDeletedAtIsNull(100L)).willReturn(Optional.of(task));
+        given(projectMemberRepository.findByProjectIdAndUserId(10L, 1L)).willReturn(Optional.of(membership));
+        given(taskAttachmentStorage.store(eq(10L), any(MultipartFile.class))).willReturn(storedAttachment);
+        given(taskAttachmentRepository.saveAndFlush(any(TaskAttachment.class))).willReturn(saved);
+
+        TaskAttachmentResponse response = taskAttachmentService.uploadAttachment(1L, 100L, multipartFile);
+
+        assertThat(response.attachmentId()).isEqualTo(2001L);
+        assertThat(response.originalFilename()).isEqualTo("spec.docx");
+        verify(taskAttachmentStorage).store(eq(10L), any(MultipartFile.class));
     }
 
     @Test
@@ -430,5 +501,36 @@ class TaskAttachmentServiceTest {
 
     private byte[] validPdfBytes() {
         return "%PDF-1.7\n1 0 obj\n<<>>\nendobj\n".getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] zipWithoutOfficeEntries() {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zos = new ZipOutputStream(baos)) {
+            zos.putNextEntry(new ZipEntry("hello.txt"));
+            zos.write("hello".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+            zos.finish();
+            return baos.toByteArray();
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
+    }
+
+    private byte[] minimalDocx() {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zos = new ZipOutputStream(baos)) {
+            zos.putNextEntry(new ZipEntry("[Content_Types].xml"));
+            zos.write("<Types></Types>".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+
+            zos.putNextEntry(new ZipEntry("word/document.xml"));
+            zos.write("<w:document></w:document>".getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+
+            zos.finish();
+            return baos.toByteArray();
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
     }
 }

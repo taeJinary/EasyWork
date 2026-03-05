@@ -16,11 +16,14 @@ import com.taskflow.backend.global.ops.OperationalMetricsService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -260,6 +263,39 @@ public class TaskAttachmentService {
         boolean signatureMatched = allowedSignatures.stream()
                 .anyMatch(signature -> startsWith(filePrefix, signature));
         if (!signatureMatched) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        validateOfficeOpenXmlPackage(extension, file);
+    }
+
+    private void validateOfficeOpenXmlPackage(String extension, MultipartFile file) {
+        Set<String> requiredEntries = switch (extension) {
+            case "docx" -> Set.of("[Content_Types].xml", "word/document.xml");
+            case "xlsx" -> Set.of("[Content_Types].xml", "xl/workbook.xml");
+            case "pptx" -> Set.of("[Content_Types].xml", "ppt/presentation.xml");
+            default -> Set.of();
+        };
+        if (requiredEntries.isEmpty()) {
+            return;
+        }
+
+        try (InputStream inputStream = file.getInputStream();
+             ZipInputStream zipInputStream = new ZipInputStream(inputStream)) {
+            Set<String> foundEntries = new HashSet<>();
+            ZipEntry entry;
+            while ((entry = zipInputStream.getNextEntry()) != null
+                    && foundEntries.size() < requiredEntries.size()) {
+                String entryName = entry.getName();
+                if (requiredEntries.contains(entryName)) {
+                    foundEntries.add(entryName);
+                }
+            }
+
+            if (!foundEntries.containsAll(requiredEntries)) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT);
+            }
+        } catch (IOException exception) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
     }
