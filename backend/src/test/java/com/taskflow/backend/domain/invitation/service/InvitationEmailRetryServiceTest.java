@@ -300,6 +300,7 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getRetryCount()).isEqualTo(0);
         verify(invitationEmailService).sendInvitationCreatedEmail(any(InvitationCreatedEvent.class));
         verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementInvitationEmailRetryPersistenceFailure();
         verify(operationalMetricsService, never()).incrementInvitationEmailRetryCompleted();
         verify(operationalMetricsService, never()).incrementInvitationEmailRetryRescheduled();
         verify(operationalMetricsService, never()).incrementInvitationEmailRetryDeadLetter();
@@ -335,6 +336,7 @@ class InvitationEmailRetryServiceTest {
         assertThat(job.getCompletedAt()).isNull();
         assertThat(job.getRetryCount()).isEqualTo(1);
         verify(invitationEmailRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementInvitationEmailRetryPersistenceFailure();
         verify(operationalMetricsService, never()).incrementInvitationEmailRetryCompleted();
         verify(operationalMetricsService, never()).incrementInvitationEmailRetryRescheduled();
         verify(operationalMetricsService, never()).incrementInvitationEmailRetryDeadLetter();

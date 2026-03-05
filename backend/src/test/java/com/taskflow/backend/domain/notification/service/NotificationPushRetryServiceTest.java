@@ -193,6 +193,7 @@ class NotificationPushRetryServiceTest {
 
         assertThat(job.getRetryCount()).isEqualTo(1);
         verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementNotificationPushRetryPersistenceFailure();
         verify(operationalMetricsService, never()).incrementNotificationPushRetryRescheduled();
         verify(operationalMetricsService, never()).incrementNotificationPushRetryDeadLetter();
         verify(operationalMetricsService, never()).incrementNotificationPushRetryCompleted();
@@ -225,6 +226,7 @@ class NotificationPushRetryServiceTest {
         assertThat(job.getCompletedAt()).isNotNull();
         assertThat(job.getRetryCount()).isEqualTo(0);
         verify(notificationPushRetryJobRepository).save(job);
+        verify(operationalMetricsService).incrementNotificationPushRetryPersistenceFailure();
         verify(operationalMetricsService, never()).incrementNotificationPushRetryCompleted();
         verify(operationalMetricsService, never()).incrementNotificationPushRetryRescheduled();
         verify(operationalMetricsService, never()).incrementNotificationPushRetryDeadLetter();

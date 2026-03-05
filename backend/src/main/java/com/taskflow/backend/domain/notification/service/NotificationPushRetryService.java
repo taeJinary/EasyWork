@@ -175,7 +175,12 @@ public class NotificationPushRetryService {
     }
 
     private void saveJobAndRecordMetric(NotificationPushRetryJob job, RetryOutcome outcome) {
-        notificationPushRetryJobRepository.save(job);
+        try {
+            notificationPushRetryJobRepository.save(job);
+        } catch (RuntimeException exception) {
+            operationalMetricsService.incrementNotificationPushRetryPersistenceFailure();
+            throw exception;
+        }
         switch (outcome) {
             case COMPLETED -> operationalMetricsService.incrementNotificationPushRetryCompleted();
             case RESCHEDULED -> operationalMetricsService.incrementNotificationPushRetryRescheduled();

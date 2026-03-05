@@ -129,7 +129,12 @@ public class TaskAttachmentCleanupRetryService {
     }
 
     private void saveJobAndRecordMetric(TaskAttachmentCleanupJob job, RetryOutcome outcome) {
-        cleanupJobRepository.save(job);
+        try {
+            cleanupJobRepository.save(job);
+        } catch (RuntimeException exception) {
+            operationalMetricsService.incrementAttachmentCleanupRetryPersistenceFailure();
+            throw exception;
+        }
         switch (outcome) {
             case COMPLETED -> operationalMetricsService.incrementAttachmentCleanupRetryCompleted();
             case RESCHEDULED -> operationalMetricsService.incrementAttachmentCleanupRetryRescheduled();

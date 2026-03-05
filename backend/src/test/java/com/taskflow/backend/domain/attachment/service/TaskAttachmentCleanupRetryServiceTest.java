@@ -199,6 +199,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getCompletedAt()).isNotNull();
         assertThat(job.getRetryCount()).isEqualTo(0);
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryPersistenceFailure();
         verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryCompleted();
         verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryRescheduled();
         verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryDeadLetter();
@@ -227,6 +228,7 @@ class TaskAttachmentCleanupRetryServiceTest {
         assertThat(job.getCompletedAt()).isNull();
         assertThat(job.getRetryCount()).isEqualTo(1);
         verify(cleanupJobRepository).save(job);
+        verify(operationalMetricsService).incrementAttachmentCleanupRetryPersistenceFailure();
         verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryCompleted();
         verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryRescheduled();
         verify(operationalMetricsService, never()).incrementAttachmentCleanupRetryDeadLetter();

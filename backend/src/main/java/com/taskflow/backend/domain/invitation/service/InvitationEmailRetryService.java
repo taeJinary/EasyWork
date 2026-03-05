@@ -150,7 +150,12 @@ public class InvitationEmailRetryService {
     }
 
     private void saveJobAndRecordMetric(InvitationEmailRetryJob job, RetryOutcome outcome) {
-        invitationEmailRetryJobRepository.save(job);
+        try {
+            invitationEmailRetryJobRepository.save(job);
+        } catch (RuntimeException exception) {
+            operationalMetricsService.incrementInvitationEmailRetryPersistenceFailure();
+            throw exception;
+        }
         switch (outcome) {
             case COMPLETED -> operationalMetricsService.incrementInvitationEmailRetryCompleted();
             case RESCHEDULED -> operationalMetricsService.incrementInvitationEmailRetryRescheduled();
