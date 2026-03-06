@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -38,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -130,10 +130,13 @@ class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSuppo
         taskAttachmentService.deleteAttachment(uploader.getId(), uploaded.attachmentId());
 
         assertThat(taskAttachmentRepository.findById(uploaded.attachmentId())).isEmpty();
-        verify(applicationEventPublisher).publishEvent(eq(new TaskAttachmentDeletedEvent(
-                uploaded.attachmentId(),
-                "task-attachments/" + project.getId() + "/delete.pdf"
-        )));
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+
+        assertThat(eventCaptor.getValue()).isInstanceOf(TaskAttachmentDeletedEvent.class);
+        TaskAttachmentDeletedEvent event = (TaskAttachmentDeletedEvent) eventCaptor.getValue();
+        assertThat(event.attachmentId()).isEqualTo(uploaded.attachmentId());
+        assertThat(event.storagePath()).isEqualTo("task-attachments/" + project.getId() + "/delete.pdf");
     }
 
     @Test
