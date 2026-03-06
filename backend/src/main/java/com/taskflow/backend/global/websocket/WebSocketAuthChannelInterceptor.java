@@ -32,11 +32,11 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
-    private static final String USER_DESTINATION_PREFIX = "/user/";
+    private static final String USER_DESTINATION_PREFIX = WebSocketContract.USER_PREFIX + "/";
     private static final Set<String> ALLOWED_USER_DESTINATIONS = Set.of(
-            "/user/queue/notifications"
+            WebSocketContract.NOTIFICATION_QUEUE_DESTINATION
     );
-    private static final Pattern PROJECT_BOARD_DESTINATION = Pattern.compile("^/topic/projects/(\\d+)/board$");
+    private static final Pattern PROJECT_BOARD_DESTINATION = WebSocketContract.projectBoardDestinationPattern();
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;

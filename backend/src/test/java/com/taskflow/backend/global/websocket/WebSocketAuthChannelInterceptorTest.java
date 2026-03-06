@@ -127,7 +127,10 @@ class WebSocketAuthChannelInterceptorTest {
 
     @Test
     void subscribeProjectTopicThrowsForbiddenWhenNotProjectMember() {
-        Message<?> message = subscribeMessage("/topic/projects/10/board", authPrincipal(1L, "user@example.com"));
+        Message<?> message = subscribeMessage(
+                WebSocketContract.projectBoardDestination(10L),
+                authPrincipal(1L, "user@example.com")
+        );
 
         given(projectMemberRepository.existsByProjectIdAndUserId(10L, 1L)).willReturn(false);
 
@@ -140,7 +143,7 @@ class WebSocketAuthChannelInterceptorTest {
     @Test
     void subscribePersonalNotificationQueueIsAllowedForAuthenticatedUser() {
         Authentication principal = authPrincipal(1L, "user@example.com");
-        Message<?> message = subscribeMessage("/user/queue/notifications", principal);
+        Message<?> message = subscribeMessage(WebSocketContract.NOTIFICATION_QUEUE_DESTINATION, principal);
 
         Message<?> result = interceptor.preSend(message, messageChannel);
 
@@ -171,7 +174,7 @@ class WebSocketAuthChannelInterceptorTest {
     void subscribePersonalNotificationQueueWithInvalidPrincipalThrowsUnauthorized() {
         UsernamePasswordAuthenticationToken invalidPrincipal =
                 new UsernamePasswordAuthenticationToken("user@example.com", null);
-        Message<?> message = subscribeMessage("/user/queue/notifications", invalidPrincipal);
+        Message<?> message = subscribeMessage(WebSocketContract.NOTIFICATION_QUEUE_DESTINATION, invalidPrincipal);
 
         assertThatThrownBy(() -> interceptor.preSend(message, messageChannel))
                 .isInstanceOf(BusinessException.class)
@@ -181,7 +184,10 @@ class WebSocketAuthChannelInterceptorTest {
 
     @Test
     void subscribeProjectTopicAllowsProjectMember() {
-        Message<?> message = subscribeMessage("/topic/projects/10/board", authPrincipal(1L, "user@example.com"));
+        Message<?> message = subscribeMessage(
+                WebSocketContract.projectBoardDestination(10L),
+                authPrincipal(1L, "user@example.com")
+        );
 
         given(projectMemberRepository.existsByProjectIdAndUserId(10L, 1L)).willReturn(true);
 

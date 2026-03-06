@@ -1,6 +1,7 @@
 package com.taskflow.backend.global.config;
 
 import com.taskflow.backend.global.websocket.WebSocketAuthChannelInterceptor;
+import com.taskflow.backend.global.websocket.WebSocketContract;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,14 +24,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic", "/queue");
-        registry.setApplicationDestinationPrefixes("/app");
-        registry.setUserDestinationPrefix("/user");
+        registry.enableSimpleBroker(WebSocketContract.TOPIC_PREFIX, WebSocketContract.QUEUE_PREFIX);
+        registry.setApplicationDestinationPrefixes(WebSocketContract.APPLICATION_PREFIX);
+        registry.setUserDestinationPrefix(WebSocketContract.USER_PREFIX);
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
+        registry.addEndpoint(WebSocketContract.STOMP_ENDPOINT_PATH)
                 .setAllowedOrigins(allowedOrigins.toArray(String[]::new));
     }
 

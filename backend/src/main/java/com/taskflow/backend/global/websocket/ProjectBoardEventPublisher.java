@@ -15,8 +15,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProjectBoardEventPublisher {
 
-    private static final String BOARD_DESTINATION_FORMAT = "/topic/projects/%d/board";
-
     public static final String TASK_CREATED = "TASK_CREATED";
     public static final String TASK_UPDATED = "TASK_UPDATED";
     public static final String TASK_MOVED = "TASK_MOVED";
@@ -72,7 +70,7 @@ public class ProjectBoardEventPublisher {
     }
 
     private void publish(Long projectId, String type, User actor, Map<String, Object> payload) {
-        String destination = BOARD_DESTINATION_FORMAT.formatted(projectId);
+        String destination = WebSocketContract.projectBoardDestination(projectId);
         WebSocketEventMessage<Map<String, Object>> event = new WebSocketEventMessage<>(
                 type,
                 projectId,
