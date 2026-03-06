@@ -13,12 +13,57 @@ class CookieSecurityPropertiesValidatorTest {
         CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
                 environment("test"),
                 false,
-                "None",
-                "/custom",
-                "custom_refresh_token"
+                "Lax",
+                "/api/v1/auth",
+                "refresh_token"
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
+    }
+
+    @Test
+    void nonProdProfileRejectsCustomSameSite() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("test"),
+                false,
+                "None",
+                "/api/v1/auth",
+                "refresh_token"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.same-site");
+    }
+
+    @Test
+    void nonProdProfileRejectsCustomRefreshTokenPath() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("test"),
+                false,
+                "Lax",
+                "/custom",
+                "refresh_token"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.refresh-token-path");
+    }
+
+    @Test
+    void nonProdProfileRejectsCustomRefreshTokenName() {
+        CookieSecurityPropertiesValidator validator = new CookieSecurityPropertiesValidator(
+                environment("test"),
+                false,
+                "Lax",
+                "/api/v1/auth",
+                "custom_refresh_token"
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.cookie.refresh-token-name");
     }
 
     @Test
