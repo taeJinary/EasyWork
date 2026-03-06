@@ -51,7 +51,7 @@ class LabelControllerTest {
         LabelResponse response = new LabelResponse(1L, "Backend", "#2563EB");
         given(labelService.createLabel(eq(1L), eq(10L), any(CreateLabelRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/projects/10/labels")
+        mockMvc.perform(post(LabelHttpContract.projectLabelsPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -70,7 +70,7 @@ class LabelControllerTest {
                 new LabelResponse(2L, "Auth", "#16A34A")
         ));
 
-        mockMvc.perform(get("/projects/10/labels")
+        mockMvc.perform(get(LabelHttpContract.projectLabelsPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -86,7 +86,7 @@ class LabelControllerTest {
         LabelResponse response = new LabelResponse(1L, "Auth", "#16A34A");
         given(labelService.updateLabel(eq(1L), eq(1L), any(UpdateLabelRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/labels/1")
+        mockMvc.perform(patch(LabelHttpContract.labelPath(1L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -99,7 +99,7 @@ class LabelControllerTest {
 
     @Test
     void deleteLabelReturnsResponse() throws Exception {
-        mockMvc.perform(delete("/labels/1")
+        mockMvc.perform(delete(LabelHttpContract.labelPath(1L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
@@ -116,7 +116,7 @@ class LabelControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/projects/10/labels")
+        mockMvc.perform(post(LabelHttpContract.projectLabelsPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))

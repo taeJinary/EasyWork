@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping(UserHttpContract.BASE_PATH)
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/me")
+    @GetMapping(UserHttpContract.ME_PATH)
     public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile(
             Authentication authentication
     ) {
@@ -35,7 +35,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/me")
+    @PatchMapping(UserHttpContract.ME_PATH)
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateMyProfile(
             Authentication authentication,
             @Valid @RequestBody UpdateProfileRequest request
@@ -44,7 +44,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/me/password")
+    @PatchMapping(UserHttpContract.ME_PASSWORD_PATH)
     public ResponseEntity<ApiResponse<Void>> changePassword(
             Authentication authentication,
             @Valid @RequestBody ChangePasswordRequest request
@@ -53,7 +53,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null, "비밀번호가 변경되었습니다."));
     }
 
-    @DeleteMapping("/me")
+    @DeleteMapping(UserHttpContract.ME_PATH)
     public ResponseEntity<ApiResponse<Void>> withdraw(
             Authentication authentication,
             @Valid @RequestBody WithdrawRequest request

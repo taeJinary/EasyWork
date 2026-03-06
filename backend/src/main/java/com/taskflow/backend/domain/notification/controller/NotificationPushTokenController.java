@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/notifications/push-tokens")
+@RequestMapping(NotificationPushTokenHttpContract.BASE_PATH)
 @RequiredArgsConstructor
 public class NotificationPushTokenController {
 

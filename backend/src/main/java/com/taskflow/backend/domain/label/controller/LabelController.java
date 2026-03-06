@@ -30,7 +30,7 @@ public class LabelController {
 
     private final LabelService labelService;
 
-    @PostMapping("/projects/{projectId}/labels")
+    @PostMapping(LabelHttpContract.PROJECT_LABELS_PATH)
     public ResponseEntity<ApiResponse<LabelResponse>> createLabel(
             Authentication authentication,
             @PathVariable Long projectId,
@@ -41,7 +41,7 @@ public class LabelController {
                 .body(ApiResponse.success(response, "Label has been created."));
     }
 
-    @GetMapping("/projects/{projectId}/labels")
+    @GetMapping(LabelHttpContract.PROJECT_LABELS_PATH)
     public ResponseEntity<ApiResponse<List<LabelResponse>>> getLabels(
             Authentication authentication,
             @PathVariable Long projectId
@@ -50,7 +50,7 @@ public class LabelController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/labels/{labelId}")
+    @PatchMapping(LabelHttpContract.LABEL_PATH)
     public ResponseEntity<ApiResponse<LabelResponse>> updateLabel(
             Authentication authentication,
             @PathVariable Long labelId,
@@ -60,7 +60,7 @@ public class LabelController {
         return ResponseEntity.ok(ApiResponse.success(response, "Label has been updated."));
     }
 
-    @DeleteMapping("/labels/{labelId}")
+    @DeleteMapping(LabelHttpContract.LABEL_PATH)
     public ResponseEntity<ApiResponse<Void>> deleteLabel(
             Authentication authentication,
             @PathVariable Long labelId

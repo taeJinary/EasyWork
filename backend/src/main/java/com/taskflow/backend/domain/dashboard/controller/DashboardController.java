@@ -22,13 +22,13 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    @GetMapping("/dashboard/projects")
+    @GetMapping(DashboardHttpContract.PROJECTS_PATH)
     public ResponseEntity<ApiResponse<DashboardProjectsResponse>> getDashboardProjects(Authentication authentication) {
         DashboardProjectsResponse response = dashboardService.getDashboardProjects(extractUserId(authentication));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/projects/{projectId}/dashboard")
+    @GetMapping(DashboardHttpContract.PROJECT_DASHBOARD_PATH)
     public ResponseEntity<ApiResponse<DashboardProjectStatsResponse>> getProjectDashboard(
             Authentication authentication,
             @PathVariable Long projectId

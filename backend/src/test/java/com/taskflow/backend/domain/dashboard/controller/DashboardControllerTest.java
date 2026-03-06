@@ -54,7 +54,7 @@ class DashboardControllerTest {
 
         given(dashboardService.getDashboardProjects(1L)).willReturn(response);
 
-        mockMvc.perform(get("/dashboard/projects")
+        mockMvc.perform(get(DashboardHttpContract.PROJECTS_PATH)
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -81,7 +81,7 @@ class DashboardControllerTest {
 
         given(dashboardService.getProjectDashboard(1L, 10L)).willReturn(response);
 
-        mockMvc.perform(get("/projects/10/dashboard")
+        mockMvc.perform(get(DashboardHttpContract.projectDashboardPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
