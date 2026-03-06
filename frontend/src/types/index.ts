@@ -206,31 +206,64 @@ export interface TaskListResponse {
   last: boolean;
 }
 
+// ── Task Detail (matches backend TaskDetailResponse) ──
+export interface TaskDetailUserSummary {
+  userId: number;
+  nickname: string;
+}
+
+export interface TaskDetailLabel {
+  labelId: number;
+  name: string;
+  colorHex: string;
+}
+
+export interface TaskStatusHistory {
+  historyId: number;
+  fromStatus: TaskStatus;
+  toStatus: TaskStatus;
+  changedBy: TaskDetailUserSummary;
+  changedAt: string;
+}
+
 export interface TaskDetail {
-  id: number;
+  taskId: number;
+  projectId: number;
   title: string;
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  assignee?: User;
-  creator: User;
-  labels: Label[];
   dueDate?: string;
+  position: number;
+  version: number;
+  creator: TaskDetailUserSummary;
+  assignee?: TaskDetailUserSummary;
+  labels: TaskDetailLabel[];
   commentCount: number;
-  attachmentCount: number;
-  projectId: number;
-  projectName: string;
+  recentStatusHistories: TaskStatusHistory[];
   createdAt: string;
   updatedAt: string;
 }
 
-// ── Comment ──
+// ── Comment (matches backend CommentResponse / CommentListResponse) ──
+export interface CommentAuthor {
+  userId: number;
+  nickname: string;
+}
+
 export interface Comment {
-  id: number;
+  commentId: number;
   content: string;
-  author: User;
+  author: CommentAuthor;
   createdAt: string;
   updatedAt: string;
+  editable: boolean;
+}
+
+export interface CommentListResponse {
+  content: Comment[];
+  nextCursor?: number;
+  hasNext: boolean;
 }
 
 // ── Label ──

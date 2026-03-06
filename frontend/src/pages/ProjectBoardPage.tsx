@@ -59,20 +59,10 @@ export default function ProjectBoardPage() {
     }
   };
 
-  const handleMoveTask = async (taskId: number, newStatus: string) => {
+  // Called by TaskDetailDrawer AFTER it already PATCHes /tasks/{id}/move.
+  // This callback only refreshes the board columns — no duplicate PATCH.
+  const refreshBoard = async () => {
     try {
-      // Find the task to get its version
-      let taskVersion = 0;
-      for (const col of columns) {
-        const t = col.tasks.find((t) => t.taskId === taskId);
-        if (t) { taskVersion = t.version; break; }
-      }
-      await apiClient.patch(`/tasks/${taskId}/move`, {
-        toStatus: newStatus,
-        targetPosition: 0,
-        version: taskVersion,
-      });
-      // Refresh board
       const res = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`);
       const rawColumns = res.data.data.columns;
       const normalized = columnOrder.map((status) => {
@@ -243,7 +233,7 @@ export default function ProjectBoardPage() {
         <TaskDetailDrawer
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
-          onStatusChange={handleMoveTask}
+          onStatusChange={refreshBoard}
         />
       )}
     </div>

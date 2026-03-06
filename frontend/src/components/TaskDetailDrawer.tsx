@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Edit, Trash2, MessageSquare, Paperclip, Clock } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
-import type { ApiResponse, TaskDetail, Comment, Attachment, TaskStatus as TStatus } from '@/types';
+import type { ApiResponse, TaskDetail, Comment, CommentListResponse, Attachment, TaskStatus as TStatus } from '@/types';
 
 interface TaskDetailDrawerProps {
   taskId: number;
@@ -15,7 +15,6 @@ const statusOptions: { value: TStatus; label: string }[] = [
   { value: 'IN_PROGRESS', label: 'IN PROGRESS' },
   { value: 'DONE', label: 'DONE' },
 ];
-
 
 const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'> = {
   URGENT: 'danger',
@@ -56,11 +55,11 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
         setLoading(true);
         const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
           apiClient.get<ApiResponse<TaskDetail>>(`/tasks/${taskId}`),
-          apiClient.get<ApiResponse<Comment[]>>(`/tasks/${taskId}/comments`),
+          apiClient.get<ApiResponse<CommentListResponse>>(`/tasks/${taskId}/comments`),
           apiClient.get<ApiResponse<Attachment[]>>(`/tasks/${taskId}/attachments`),
         ]);
         setTask(taskRes.data.data);
-        setComments(commentsRes.data.data);
+        setComments(commentsRes.data.data.content);
         setAttachments(attachmentsRes.data.data);
       } catch {
         // Error handling
@@ -76,10 +75,11 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
     try {
       await apiClient.patch(`/tasks/${taskId}/move`, {
         toStatus: newStatus,
-        targetPosition: 0,
-        version: 0,
+        targetPosition: task.position,
+        version: task.version,
       });
-      setTask({ ...task, status: newStatus as TStatus });
+      setTask({ ...task, status: newStatus as TStatus, version: task.version + 1 });
+      // Notify parent to refresh board — parent should NOT call PATCH again
       onStatusChange?.(taskId, newStatus);
     } catch {
       // Error handling
@@ -167,7 +167,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                 {task.title}
               </h2>
               <div className="text-[var(--text-xs)] text-[var(--color-text-muted)] mb-[var(--spacing-lg)]">
-                opened by {task.creator.name} · {formatTimeAgo(task.createdAt)} · updated {formatTimeAgo(task.updatedAt)}
+                opened by {task.creator.nickname} · {formatTimeAgo(task.createdAt)} · updated {formatTimeAgo(task.updatedAt)}
               </div>
 
               {/* Description */}
@@ -200,18 +200,18 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                 {/* Comment list */}
                 <div className="space-y-[var(--spacing-md)] mb-[var(--spacing-lg)]">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-[var(--spacing-sm)]">
+                    <div key={comment.commentId} className="flex gap-[var(--spacing-sm)]">
                       <div className="
                         w-[24px] h-[24px] rounded-full bg-[var(--color-primary)]
                         text-white text-[10px] font-semibold
                         flex items-center justify-center shrink-0 mt-[2px]
                       ">
-                        {comment.author.name.charAt(0).toUpperCase()}
+                        {comment.author.nickname.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-[var(--spacing-sm)] mb-[var(--spacing-xs)]">
                           <span className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
-                            {comment.author.name}
+                            {comment.author.nickname}
                           </span>
                           <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
                             {formatTimeAgo(comment.createdAt)}
@@ -298,10 +298,10 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                       text-white text-[10px] font-semibold
                       flex items-center justify-center
                     ">
-                      {task.assignee.name.charAt(0).toUpperCase()}
+                      {task.assignee.nickname.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">
-                      {task.assignee.name}
+                      {task.assignee.nickname}
                     </span>
                   </div>
                 ) : (
@@ -335,7 +335,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                   Creator
                 </div>
                 <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">
-                  {task.creator.name}
+                  {task.creator.nickname}
                 </span>
               </div>
 
@@ -348,15 +348,15 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                   <div className="flex flex-wrap gap-1">
                     {task.labels.map((label) => (
                       <span
-                        key={label.id}
+                        key={label.labelId}
                         className="
                           inline-block px-[5px] py-[1px] text-[11px] font-medium
                           rounded-[var(--radius-sm)] border
                         "
                         style={{
-                          backgroundColor: `${label.color}20`,
-                          borderColor: `${label.color}40`,
-                          color: label.color,
+                          backgroundColor: `${label.colorHex}20`,
+                          borderColor: `${label.colorHex}40`,
+                          color: label.colorHex,
                         }}
                       >
                         {label.name}
@@ -396,15 +396,28 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                 )}
               </div>
 
-              {/* Recent Status History placeholder */}
+              {/* Status History */}
               <div>
                 <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)]">
                   <Clock size={11} />
                   Status History
                 </div>
-                <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                  상태 이력이 여기 표시됩니다
-                </span>
+                {task.recentStatusHistories.length > 0 ? (
+                  <div className="space-y-1">
+                    {task.recentStatusHistories.map((h) => (
+                      <div key={h.historyId} className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                        <span className="font-medium text-[var(--color-text-secondary)]">{h.changedBy.nickname}</span>
+                        {' '}{h.fromStatus} → {h.toStatus}
+                        <br />
+                        <span>{formatTimeAgo(h.changedAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                    상태 이력이 없습니다
+                  </span>
+                )}
               </div>
             </div>
           </div>
