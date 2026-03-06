@@ -1,35 +1,39 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import AppShell from '@/layouts/AppShell';
+import AuthLayout from '@/layouts/AuthLayout';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
+import WorkspacesPage from '@/pages/WorkspacesPage';
+import WorkspaceDetailPage from '@/pages/WorkspaceDetailPage';
+import ProjectsPage from '@/pages/ProjectsPage';
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <Routes>
+      {/* Auth routes */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+      </Route>
 
-export default App
+      {/* Authenticated routes */}
+      <Route element={<AppShell />}>
+        <Route path="/workspaces" element={<WorkspacesPage />} />
+        <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        {/* Placeholder routes for Phase B+ */}
+        <Route path="/projects/:projectId/board" element={<div className="text-[var(--color-text-muted)]">프로젝트 보드 — Phase B에서 구현 예정</div>} />
+        <Route path="/projects/:projectId/tasks" element={<div className="text-[var(--color-text-muted)]">태스크 리스트 — Phase B에서 구현 예정</div>} />
+        <Route path="/projects/:projectId/members" element={<div className="text-[var(--color-text-muted)]">멤버 관리 — Phase C에서 구현 예정</div>} />
+        <Route path="/projects/:projectId/settings" element={<div className="text-[var(--color-text-muted)]">프로젝트 설정 — Phase D에서 구현 예정</div>} />
+        <Route path="/invitations" element={<div className="text-[var(--color-text-muted)]">받은 초대 — Phase C에서 구현 예정</div>} />
+        <Route path="/notifications" element={<div className="text-[var(--color-text-muted)]">알림 — Phase C에서 구현 예정</div>} />
+        <Route path="/settings/profile" element={<div className="text-[var(--color-text-muted)]">프로필 설정 — Phase D에서 구현 예정</div>} />
+        <Route path="/settings/account" element={<div className="text-[var(--color-text-muted)]">계정 설정 — Phase D에서 구현 예정</div>} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}
