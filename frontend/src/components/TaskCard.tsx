@@ -1,9 +1,9 @@
-import type { TaskSummary } from '@/types';
+import type { BoardTaskCard } from '@/types';
 import Badge from '@/components/Badge';
-import { MessageSquare, Paperclip, Calendar } from 'lucide-react';
+import { MessageSquare, Calendar } from 'lucide-react';
 
 interface TaskCardProps {
-  task: TaskSummary;
+  task: BoardTaskCard;
   onClick?: () => void;
 }
 
@@ -35,27 +35,20 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {task.title}
       </div>
 
-      {/* Description preview */}
-      {task.description && (
-        <div className="text-[var(--text-xs)] text-[var(--color-text-muted)] mb-[var(--spacing-sm)] line-clamp-2">
-          {task.description}
-        </div>
-      )}
-
       {/* Labels */}
       {task.labels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-[var(--spacing-sm)]">
           {task.labels.slice(0, 3).map((label) => (
             <span
-              key={label.id}
+              key={label.labelId}
               className="
                 inline-block px-[5px] py-[1px] text-[11px] font-medium
                 rounded-[var(--radius-sm)] border
               "
               style={{
-                backgroundColor: `${label.color}20`,
-                borderColor: `${label.color}40`,
-                color: label.color,
+                backgroundColor: `${label.colorHex}20`,
+                borderColor: `${label.colorHex}40`,
+                color: label.colorHex,
               }}
             >
               {label.name}
@@ -93,13 +86,6 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
               {task.commentCount}
             </span>
           )}
-          {/* Attachments */}
-          {task.attachmentCount > 0 && (
-            <span className="flex items-center gap-[2px]">
-              <Paperclip size={11} />
-              {task.attachmentCount}
-            </span>
-          )}
         </div>
       </div>
 
@@ -111,10 +97,10 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
             text-white text-[10px] font-semibold
             flex items-center justify-center shrink-0
           ">
-            {task.assignee.name.charAt(0).toUpperCase()}
+            {task.assignee.nickname.charAt(0).toUpperCase()}
           </div>
           <span className="text-[var(--text-xs)] text-[var(--color-text-secondary)] truncate">
-            {task.assignee.name}
+            {task.assignee.nickname}
           </span>
         </div>
       )}

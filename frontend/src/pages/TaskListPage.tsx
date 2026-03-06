@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Paperclip, Calendar } from 'lucide-react';
+import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Calendar } from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
-import type { ApiResponse, ProjectDetail, TaskListResponse, TaskSummary, TaskStatus } from '@/types';
+import type { ApiResponse, ProjectDetail, TaskListResponse, TaskListItem, TaskStatus } from '@/types';
 
 type TabType = 'board' | 'list' | 'members' | 'settings';
 
@@ -28,16 +28,6 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   LOW: 'muted',
 };
 
-function formatTimeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.toLocaleString('en', { month: 'short' })} ${d.getDate()}`;
@@ -47,7 +37,7 @@ export default function TaskListPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [tasks, setTasks] = useState<TaskSummary[]>([]);
+  const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -71,8 +61,8 @@ export default function TaskListPage() {
           apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
         ]);
         setProject(projectRes.data.data);
-        setTasks(tasksRes.data.data.tasks);
-        setTotalPages(tasksRes.data.data.pageInfo.totalPages);
+        setTasks(tasksRes.data.data.content);
+        setTotalPages(tasksRes.data.data.totalPages);
       } catch {
         // Error handling
       } finally {
@@ -241,15 +231,15 @@ export default function TaskListPage() {
         </div>
       )}
 
-      {/* Task list - Issue row style per wireframe §7-6 */}
+      {/* Task list */}
       {!loading && tasks.length > 0 && (
         <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-surface)] overflow-hidden">
           {tasks.map((task, index) => {
             const StatusIcon = statusIcons[task.status];
             return (
               <div
-                key={task.id}
-                onClick={() => setSelectedTaskId(task.id)}
+                key={task.taskId}
+                onClick={() => setSelectedTaskId(task.taskId)}
                 className={`
                   px-[var(--spacing-base)] py-[var(--spacing-md)] cursor-pointer
                   hover:bg-[var(--color-surface-muted)] transition-colors
@@ -264,16 +254,11 @@ export default function TaskListPage() {
                     className="shrink-0"
                   />
                   <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] font-mono shrink-0">
-                    TASK-{task.id}
+                    TASK-{task.taskId}
                   </span>
                   <span className="text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] truncate">
                     {task.title}
                   </span>
-                  {task.description && (
-                    <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] truncate hidden sm:inline">
-                      {task.description}
-                    </span>
-                  )}
                   <div className="ml-auto flex items-center gap-[var(--spacing-md)] shrink-0">
                     {task.commentCount > 0 && (
                       <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-muted)]">
@@ -281,40 +266,11 @@ export default function TaskListPage() {
                         {task.commentCount}
                       </span>
                     )}
-                    {task.attachmentCount > 0 && (
-                      <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                        <Paperclip size={12} />
-                        {task.attachmentCount}
-                      </span>
-                    )}
                   </div>
                 </div>
 
-                {/* Row 2: labels + assignee + due date + updated */}
+                {/* Row 2: priority + assignee + due date */}
                 <div className="flex items-center gap-[var(--spacing-md)] mt-[var(--spacing-xs)] ml-[24px]">
-                  {/* Labels */}
-                  <div className="flex items-center gap-1">
-                    {task.labels.slice(0, 3).map((label) => (
-                      <span
-                        key={label.id}
-                        className="
-                          inline-block px-[5px] py-[1px] text-[11px] font-medium
-                          rounded-[var(--radius-sm)] border
-                        "
-                        style={{
-                          backgroundColor: `${label.color}20`,
-                          borderColor: `${label.color}40`,
-                          color: label.color,
-                        }}
-                      >
-                        {label.name}
-                      </span>
-                    ))}
-                    {task.labels.length > 3 && (
-                      <span className="text-[11px] text-[var(--color-text-muted)]">+{task.labels.length - 3}</span>
-                    )}
-                  </div>
-
                   {/* Priority */}
                   <Badge variant={priorityVariant[task.priority] || 'muted'} size="sm">
                     {task.priority}
@@ -328,9 +284,9 @@ export default function TaskListPage() {
                         text-white text-[8px] font-semibold
                         flex items-center justify-center
                       ">
-                        {task.assignee.name.charAt(0).toUpperCase()}
+                        {task.assignee.nickname.charAt(0).toUpperCase()}
                       </div>
-                      {task.assignee.name}
+                      {task.assignee.nickname}
                     </span>
                   )}
 
@@ -341,11 +297,6 @@ export default function TaskListPage() {
                       {formatDate(task.dueDate)}
                     </span>
                   )}
-
-                  {/* Updated */}
-                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] ml-auto">
-                    updated {formatTimeAgo(task.updatedAt)}
-                  </span>
                 </div>
               </div>
             );

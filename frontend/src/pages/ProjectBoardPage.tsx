@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, UserPlus } from 'lucide-react';
-import BoardColumn from '@/components/BoardColumn';
+import BoardColumnComponent from '@/components/BoardColumn';
 import TaskCard from '@/components/TaskCard';
 import FilterBar from '@/components/FilterBar';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
-import type { ApiResponse, ProjectDetail, TaskBoardResponse, TaskSummary } from '@/types';
+import type { ApiResponse, ProjectDetail, TaskBoardResponse, BoardColumn, BoardTaskCard, TaskStatus } from '@/types';
 
 type TabType = 'board' | 'list' | 'members' | 'settings';
+
+const columnOrder: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE'];
 
 export default function ProjectBoardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [board, setBoard] = useState<TaskBoardResponse>({ todo: [], inProgress: [], done: [] });
+  const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
@@ -29,7 +31,13 @@ export default function ProjectBoardPage() {
           apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`),
         ]);
         setProject(projectRes.data.data);
-        setBoard(boardRes.data.data);
+        // Normalize columns to ensure all 3 statuses exist in order
+        const rawColumns = boardRes.data.data.columns;
+        const normalized = columnOrder.map((status) => {
+          const found = rawColumns.find((c) => c.status === status);
+          return found ?? { status, tasks: [] };
+        });
+        setColumns(normalized);
       } catch {
         // Error handling
       } finally {
@@ -53,22 +61,36 @@ export default function ProjectBoardPage() {
 
   const handleMoveTask = async (taskId: number, newStatus: string) => {
     try {
-      await apiClient.patch(`/tasks/${taskId}/move`, { status: newStatus });
+      // Find the task to get its version
+      let taskVersion = 0;
+      for (const col of columns) {
+        const t = col.tasks.find((t) => t.taskId === taskId);
+        if (t) { taskVersion = t.version; break; }
+      }
+      await apiClient.patch(`/tasks/${taskId}/move`, {
+        toStatus: newStatus,
+        targetPosition: 0,
+        version: taskVersion,
+      });
       // Refresh board
       const res = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`);
-      setBoard(res.data.data);
+      const rawColumns = res.data.data.columns;
+      const normalized = columnOrder.map((status) => {
+        const found = rawColumns.find((c) => c.status === status);
+        return found ?? { status, tasks: [] };
+      });
+      setColumns(normalized);
     } catch {
       // Error handling
     }
   };
 
-  const filterTasks = (tasks: TaskSummary[]) => {
+  const filterTasks = (tasks: BoardTaskCard[]) => {
     if (!searchQuery) return tasks;
     const q = searchQuery.toLowerCase();
     return tasks.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
-        t.description?.toLowerCase().includes(q) ||
         t.labels.some((l) => l.name.toLowerCase().includes(q))
     );
   };
@@ -192,55 +214,28 @@ export default function ProjectBoardPage() {
         </select>
       </FilterBar>
 
-      {/* Kanban Board */}
+      {/* Kanban Board — iterate columns */}
       <div className="flex gap-[var(--spacing-base)] mt-[var(--spacing-sm)] overflow-x-auto pb-[var(--spacing-base)]">
-        <BoardColumn status="TODO" count={filterTasks(board.todo).length}>
-          {filterTasks(board.todo).length === 0 ? (
-            <div className="text-center py-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-              태스크 없음
-            </div>
-          ) : (
-            filterTasks(board.todo).map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => setSelectedTaskId(task.id)}
-              />
-            ))
-          )}
-        </BoardColumn>
-
-        <BoardColumn status="IN_PROGRESS" count={filterTasks(board.inProgress).length}>
-          {filterTasks(board.inProgress).length === 0 ? (
-            <div className="text-center py-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-              태스크 없음
-            </div>
-          ) : (
-            filterTasks(board.inProgress).map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => setSelectedTaskId(task.id)}
-              />
-            ))
-          )}
-        </BoardColumn>
-
-        <BoardColumn status="DONE" count={filterTasks(board.done).length}>
-          {filterTasks(board.done).length === 0 ? (
-            <div className="text-center py-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-              태스크 없음
-            </div>
-          ) : (
-            filterTasks(board.done).map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => setSelectedTaskId(task.id)}
-              />
-            ))
-          )}
-        </BoardColumn>
+        {columns.map((col) => {
+          const filtered = filterTasks(col.tasks);
+          return (
+            <BoardColumnComponent key={col.status} status={col.status} count={filtered.length}>
+              {filtered.length === 0 ? (
+                <div className="text-center py-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                  태스크 없음
+                </div>
+              ) : (
+                filtered.map((task) => (
+                  <TaskCard
+                    key={task.taskId}
+                    task={task}
+                    onClick={() => setSelectedTaskId(task.taskId)}
+                  />
+                ))
+              )}
+            </BoardColumnComponent>
+          );
+        })}
       </div>
 
       {/* Task Detail Drawer */}

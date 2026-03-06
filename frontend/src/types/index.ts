@@ -136,15 +136,74 @@ export interface TaskSummary {
   updatedAt: string;
 }
 
+// ── Board Response (matches backend TaskBoardResponse) ──
+export interface BoardAssignee {
+  userId: number;
+  nickname: string;
+}
+
+export interface BoardLabel {
+  labelId: number;
+  name: string;
+  colorHex: string;
+}
+
+export interface BoardTaskCard {
+  taskId: number;
+  title: string;
+  priority: TaskPriority;
+  dueDate?: string;
+  position: number;
+  version: number;
+  assignee?: BoardAssignee;
+  labels: BoardLabel[];
+  commentCount: number;
+}
+
+export interface BoardColumn {
+  status: TaskStatus;
+  tasks: BoardTaskCard[];
+}
+
+export interface BoardFilterResponse {
+  assigneeUserId?: number;
+  priority?: TaskPriority;
+  labelId?: number;
+  keyword?: string;
+}
+
 export interface TaskBoardResponse {
-  todo: TaskSummary[];
-  inProgress: TaskSummary[];
-  done: TaskSummary[];
+  projectId: number;
+  filters: BoardFilterResponse;
+  columns: BoardColumn[];
+}
+
+// ── List Response (matches backend TaskListResponse + TaskListItemResponse) ──
+export interface TaskListItemAssignee {
+  userId: number;
+  nickname: string;
+}
+
+export interface TaskListItem {
+  taskId: number;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string;
+  position: number;
+  version: number;
+  commentCount: number;
+  assignee?: TaskListItemAssignee;
 }
 
 export interface TaskListResponse {
-  tasks: TaskSummary[];
-  pageInfo: PageInfo;
+  content: TaskListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 }
 
 export interface TaskDetail {

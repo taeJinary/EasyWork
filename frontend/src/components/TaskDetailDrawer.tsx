@@ -74,7 +74,11 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
   const handleStatusChange = async (newStatus: string) => {
     if (!task) return;
     try {
-      await apiClient.patch(`/tasks/${taskId}/move`, { status: newStatus });
+      await apiClient.patch(`/tasks/${taskId}/move`, {
+        toStatus: newStatus,
+        targetPosition: 0,
+        version: 0,
+      });
       setTask({ ...task, status: newStatus as TStatus });
       onStatusChange?.(taskId, newStatus);
     } catch {
