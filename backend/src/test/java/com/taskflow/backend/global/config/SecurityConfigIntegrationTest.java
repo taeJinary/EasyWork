@@ -1,5 +1,6 @@
 package com.taskflow.backend.global.config;
 
+import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
 import com.taskflow.backend.global.common.enums.Role;
@@ -31,7 +32,7 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Test
     void loginEndpointPermitsAnonymousRequest() throws Exception {
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -39,7 +40,7 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Test
     void oauthLoginEndpointPermitsAnonymousRequest() throws Exception {
-        mockMvc.perform(post("/auth/oauth/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -47,7 +48,7 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Test
     void oauthCodeLoginEndpointPermitsAnonymousRequest() throws Exception {
-        mockMvc.perform(post("/auth/oauth/code/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -55,7 +56,7 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Test
     void oauthCodeLoginWithNaverRequiresState() throws Exception {
-        mockMvc.perform(post("/auth/oauth/code/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -69,8 +70,16 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
     }
 
     @Test
+    void tokenReissueEndpointPermitsAnonymousRequestAndReturnsUnauthorizedWithoutCookie() throws Exception {
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.TOKEN_REISSUE_PATH))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void logoutEndpointRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/auth/logout"))
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGOUT_PATH))
                 .andExpect(status().isUnauthorized());
     }
 

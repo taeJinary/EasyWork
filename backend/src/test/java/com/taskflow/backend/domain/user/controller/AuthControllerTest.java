@@ -62,7 +62,7 @@ class AuthControllerTest {
 
         given(authService.signup(any(SignupRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/auth/signup")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + "/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -76,7 +76,7 @@ class AuthControllerTest {
     void signupReturnsBadRequestWhenValidationFails() throws Exception {
         SignupRequest request = new SignupRequest("invalid", "short", "a");
 
-        mockMvc.perform(post("/auth/signup")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + "/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -97,14 +97,14 @@ class AuthControllerTest {
 
         given(authService.login(any(LoginRequest.class))).willReturn(tokens);
 
-                mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("access-token"))
@@ -121,13 +121,13 @@ class AuthControllerTest {
 
         given(authService.reissue(eq("refresh-token"))).willReturn(tokens);
 
-        mockMvc.perform(post("/auth/token/reissue")
-                        .cookie(new Cookie("refresh_token", "refresh-token")))
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.TOKEN_REISSUE_PATH)
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, "refresh-token")))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("new-access"))
@@ -139,7 +139,7 @@ class AuthControllerTest {
 
     @Test
     void reissueReturnsUnauthorizedWhenCookieIsMissing() throws Exception {
-        mockMvc.perform(post("/auth/token/reissue"))
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.TOKEN_REISSUE_PATH))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
@@ -158,18 +158,19 @@ class AuthControllerTest {
 
         given(authService.oauthLogin(eq(request))).willReturn(tokens);
 
-        mockMvc.perform(post("/auth/oauth/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.data.user.userId").value(2L));
 
         then(apiRateLimitService).should().checkAuthOauthLogin(any());
@@ -188,18 +189,19 @@ class AuthControllerTest {
 
         given(authService.oauthCodeLogin(eq(request))).willReturn(tokens);
 
-        mockMvc.perform(post("/auth/oauth/code/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.data.user.userId").value(2L));
 
         then(apiRateLimitService).should().checkAuthOauthCodeLogin(any());
@@ -212,7 +214,7 @@ class AuthControllerTest {
                 .when(apiRateLimitService)
                 .checkAuthLogin(any(), eq("user@example.com"));
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
@@ -224,13 +226,13 @@ class AuthControllerTest {
 
     @Test
     void logoutReturnsOkResponse() throws Exception {
-        mockMvc.perform(post("/auth/logout")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGOUT_PATH)
                         .header("Authorization", "Bearer access-token")
-                        .cookie(new Cookie("refresh_token", "refresh-token")))
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, "refresh-token")))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=/api/v1/auth")))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("로그아웃되었습니다."));
@@ -240,8 +242,8 @@ class AuthControllerTest {
 
     @Test
     void logoutReturnsUnauthorizedWhenAuthorizationHeaderIsMissing() throws Exception {
-        mockMvc.perform(post("/auth/logout")
-                        .cookie(new Cookie("refresh_token", "refresh-token")))
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGOUT_PATH)
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, "refresh-token")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
@@ -251,9 +253,9 @@ class AuthControllerTest {
 
     @Test
     void logoutReturnsUnauthorizedWhenAuthorizationHeaderIsInvalid() throws Exception {
-        mockMvc.perform(post("/auth/logout")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGOUT_PATH)
                         .header("Authorization", "Basic access-token")
-                        .cookie(new Cookie("refresh_token", "refresh-token")))
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, "refresh-token")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
