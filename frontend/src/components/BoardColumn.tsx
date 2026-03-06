@@ -25,7 +25,7 @@ export default function BoardColumn({ status, count, children }: BoardColumnProp
         flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-sm)] py-[var(--spacing-sm)]
         mb-[var(--spacing-sm)]
       ">
-        <Icon size={14} style={{ color: config.color }} />
+        <Icon size={14} style={{ color: config.color }} className={status === 'IN_PROGRESS' ? 'animate-spin' : ''} />
         <span className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
           {config.label}
         </span>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Calendar } from 'lucide-react';
+import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Calendar, AlertCircle } from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
@@ -49,43 +49,41 @@ export default function TaskListPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('list');
+  // [Warn 2 fix] refetch trigger to avoid stale closure
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  // [Warn 4 fix] error state
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
-        if (statusFilter) params.status = statusFilter;
-        if (searchQuery) params.keyword = searchQuery;
-
-        const [projectRes, tasksRes] = await Promise.all([
-          apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
-          apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
-        ]);
-        setProject(projectRes.data.data);
-        setTasks(tasksRes.data.data.content);
-        setTotalPages(tasksRes.data.data.totalPages);
-      } catch {
-        // Error handling
-      } finally {
-        setLoading(false);
-      }
-    }
-    if (projectId) fetchData();
-  }, [projectId, page, statusFilter, searchQuery, sortBy, direction]);
-
-  // Refresh list after drawer changes task status (no duplicate PATCH)
-  const refreshList = async () => {
+  const fetchList = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
       const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
       if (statusFilter) params.status = statusFilter;
       if (searchQuery) params.keyword = searchQuery;
-      const res = await apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params });
-      setTasks(res.data.data.content);
-      setTotalPages(res.data.data.totalPages);
-    } catch {
-      // Error handling
+
+      const [projectRes, tasksRes] = await Promise.all([
+        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+        apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
+      ]);
+      setProject(projectRes.data.data);
+      setTasks(tasksRes.data.data.content);
+      setTotalPages(tasksRes.data.data.totalPages);
+    } catch (err) {
+      setError('태스크 목록을 불러오는 데 실패했습니다.');
+      console.error('Failed to fetch task list:', err);
+    } finally {
+      setLoading(false);
     }
+  }, [projectId, page, statusFilter, searchQuery, sortBy, direction, refetchTrigger]);
+
+  useEffect(() => {
+    if (projectId) fetchList();
+  }, [projectId, fetchList]);
+
+  // [Warn 2 fix] trigger refetch via state change instead of stale closure
+  const refreshList = () => {
+    setRefetchTrigger((n) => n + 1);
   };
 
   const handleTabClick = (tab: TabType) => {
@@ -173,6 +171,18 @@ export default function TaskListPage() {
         ))}
       </div>
 
+      {/* [Warn 4 fix] Error banner */}
+      {error && (
+        <div className="
+          flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mt-[var(--spacing-sm)]
+          bg-[var(--color-accent-red)] border border-[var(--color-danger)]
+          rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
+        ">
+          <AlertCircle size={14} className="shrink-0" />
+          {error}
+        </div>
+      )}
+
       {/* Filter bar */}
       <FilterBar
         searchPlaceholder="태스크 검색..."
@@ -194,9 +204,10 @@ export default function TaskListPage() {
           <option value="IN_PROGRESS">IN PROGRESS</option>
           <option value="DONE">DONE</option>
         </select>
+        {/* [Warn 1 fix] setPage(0) on sort/direction change */}
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
           className="
             h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
             rounded-[var(--radius-sm)] bg-[var(--color-surface)]
@@ -210,7 +221,7 @@ export default function TaskListPage() {
         </select>
         <select
           value={direction}
-          onChange={(e) => setDirection(e.target.value)}
+          onChange={(e) => { setDirection(e.target.value); setPage(0); }}
           className="
             h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
             rounded-[var(--radius-sm)] bg-[var(--color-surface)]
@@ -267,7 +278,7 @@ export default function TaskListPage() {
                   <StatusIcon
                     size={16}
                     style={{ color: statusColors[task.status] }}
-                    className="shrink-0"
+                    className={`shrink-0 ${task.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`}
                   />
                   <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] font-mono shrink-0">
                     TASK-{task.taskId}
@@ -357,7 +368,7 @@ export default function TaskListPage() {
         </div>
       )}
 
-      {/* Task Detail Drawer */}
+      {/* Task Detail Drawer — [Warn 2 fix] refreshList triggers refetch via state */}
       {selectedTaskId && (
         <TaskDetailDrawer
           taskId={selectedTaskId}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Edit, Trash2, MessageSquare, Paperclip, Clock } from 'lucide-react';
+import { X, Edit, Trash2, MessageSquare, Paperclip, Clock, AlertCircle } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
 import type { ApiResponse, TaskDetail, Comment, CommentListResponse, Attachment, TaskStatus as TStatus } from '@/types';
@@ -29,9 +29,11 @@ function formatDate(dateStr: string): string {
   return `${y}.${m}.${d}`;
 }
 
+// [Warn 3 fix] "방금 전" for < 1 min
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금 전';
   if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}시간 전`;
@@ -46,11 +48,14 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // [Warn 4 fix] error state for user feedback
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
+        setError(null);
         const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
           apiClient.get<ApiResponse<TaskDetail>>(`/tasks/${taskId}`),
           apiClient.get<ApiResponse<CommentListResponse>>(`/tasks/${taskId}/comments`),
@@ -59,8 +64,9 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
         setTask(taskRes.data.data);
         setComments(commentsRes.data.data.content);
         setAttachments(attachmentsRes.data.data);
-      } catch {
-        // Error handling
+      } catch (err) {
+        setError('태스크를 불러오는 데 실패했습니다.');
+        console.error('Failed to fetch task detail:', err);
       } finally {
         setLoading(false);
       }
@@ -68,33 +74,41 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
     fetchData();
   }, [taskId]);
 
+  // [Bug 1 fix] targetPosition: 0 → 새 컬럼 맨 앞에 배치 (서버가 재정렬)
   const handleStatusChange = async (newStatus: string) => {
     if (!task) return;
     try {
+      setError(null);
       await apiClient.patch(`/tasks/${taskId}/move`, {
         toStatus: newStatus,
-        targetPosition: task.position,
+        targetPosition: 0,
         version: task.version,
       });
       setTask({ ...task, status: newStatus as TStatus, version: task.version + 1 });
-      // Notify parent to refresh board — parent should NOT call PATCH again
       onStatusChange?.(taskId, newStatus);
-    } catch {
-      // Error handling
+    } catch (err) {
+      setError('상태 변경에 실패했습니다. 다시 시도해주세요.');
+      console.error('Failed to move task:', err);
     }
   };
 
+  // [Sug 1 fix] commentCount 증가
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return;
     setSubmitting(true);
     try {
+      setError(null);
       const res = await apiClient.post<ApiResponse<Comment>>(`/tasks/${taskId}/comments`, {
         content: newComment,
       });
       setComments([...comments, res.data.data]);
       setNewComment('');
-    } catch {
-      // Error handling
+      if (task) {
+        setTask({ ...task, commentCount: task.commentCount + 1 });
+      }
+    } catch (err) {
+      setError('댓글 작성에 실패했습니다.');
+      console.error('Failed to submit comment:', err);
     } finally {
       setSubmitting(false);
     }
@@ -102,20 +116,20 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — [Bug 3 fix] z-40 < Drawer z-50 */}
       <div
-        className="fixed inset-0 bg-black/20 z-50"
+        className="fixed inset-0 bg-black/20 z-40"
         onClick={onClose}
       />
 
-      {/* Drawer */}
+      {/* Drawer — [Bug 3 fix] z-50 > Backdrop z-40 */}
       <div className="
         fixed top-0 right-0 h-full w-[680px] max-w-full
         bg-[var(--color-surface)] border-l border-[var(--color-border)]
         z-50 overflow-y-auto
         shadow-[-4px_0_12px_rgba(0,0,0,0.05)]
       ">
-        {/* Close button */}
+        {/* Header */}
         <div className="sticky top-0 bg-[var(--color-surface)] border-b border-[var(--color-border)] px-[var(--spacing-lg)] py-[var(--spacing-md)] flex items-center justify-between z-10">
           <div className="flex items-center gap-[var(--spacing-sm)]">
             <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] font-mono">
@@ -123,18 +137,27 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
             </span>
           </div>
           <div className="flex items-center gap-[var(--spacing-sm)]">
-            <button className="
-              p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
-              text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]
-              bg-transparent border-none cursor-pointer
-            ">
+            {/* [Bug 2 fix] Edit/Delete buttons disabled with tooltip */}
+            <button
+              disabled
+              title="편집 기능 준비 중"
+              className="
+                p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
+                text-[var(--color-text-muted)] bg-transparent border-none
+                cursor-not-allowed opacity-50
+              "
+            >
               <Edit size={14} />
             </button>
-            <button className="
-              p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
-              text-[var(--color-danger)] hover:bg-[var(--color-accent-red)]
-              bg-transparent border-none cursor-pointer
-            ">
+            <button
+              disabled
+              title="삭제 기능 준비 중"
+              className="
+                p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
+                text-[var(--color-text-muted)] bg-transparent border-none
+                cursor-not-allowed opacity-50
+              "
+            >
               <Trash2 size={14} />
             </button>
             <button
@@ -149,6 +172,19 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
             </button>
           </div>
         </div>
+
+        {/* [Warn 4 fix] Error banner */}
+        {error && (
+          <div className="
+            mx-[var(--spacing-lg)] mt-[var(--spacing-sm)]
+            flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)]
+            bg-[var(--color-accent-red)] border border-[var(--color-danger)]
+            rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
+          ">
+            <AlertCircle size={14} className="shrink-0" />
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="p-[var(--spacing-lg)] animate-pulse space-y-4">
@@ -366,7 +402,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                 )}
               </div>
 
-              {/* Attachments */}
+              {/* Attachments — [Sug 4] download deferred (backend needs presigned URL API) */}
               <div>
                 <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)]">
                   <Paperclip size={11} />

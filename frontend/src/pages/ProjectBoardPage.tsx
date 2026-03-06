@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, UserPlus } from 'lucide-react';
+import { Plus, UserPlus, AlertCircle } from 'lucide-react';
 import BoardColumnComponent from '@/components/BoardColumn';
 import TaskCard from '@/components/TaskCard';
 import FilterBar from '@/components/FilterBar';
@@ -21,31 +21,37 @@ export default function ProjectBoardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('board');
+  // [Bug 4 fix] filter states
+  const [priorityFilter, setPriorityFilter] = useState<string>('');
+  // [Warn 4 fix] error state
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBoard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [projectRes, boardRes] = await Promise.all([
+        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+        apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`),
+      ]);
+      setProject(projectRes.data.data);
+      const rawColumns = boardRes.data.data.columns;
+      const normalized = columnOrder.map((status) => {
+        const found = rawColumns.find((c) => c.status === status);
+        return found ?? { status, tasks: [] };
+      });
+      setColumns(normalized);
+    } catch (err) {
+      setError('보드를 불러오는 데 실패했습니다.');
+      console.error('Failed to fetch board:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const [projectRes, boardRes] = await Promise.all([
-          apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
-          apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`),
-        ]);
-        setProject(projectRes.data.data);
-        // Normalize columns to ensure all 3 statuses exist in order
-        const rawColumns = boardRes.data.data.columns;
-        const normalized = columnOrder.map((status) => {
-          const found = rawColumns.find((c) => c.status === status);
-          return found ?? { status, tasks: [] };
-        });
-        setColumns(normalized);
-      } catch {
-        // Error handling
-      } finally {
-        setLoading(false);
-      }
-    }
-    if (projectId) fetchData();
-  }, [projectId]);
+    if (projectId) fetchBoard();
+  }, [projectId, fetchBoard]);
 
   const handleTabClick = (tab: TabType) => {
     if (tab === 'list') {
@@ -63,6 +69,7 @@ export default function ProjectBoardPage() {
   // This callback only refreshes the board columns — no duplicate PATCH.
   const refreshBoard = async () => {
     try {
+      setError(null);
       const res = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`);
       const rawColumns = res.data.data.columns;
       const normalized = columnOrder.map((status) => {
@@ -70,19 +77,27 @@ export default function ProjectBoardPage() {
         return found ?? { status, tasks: [] };
       });
       setColumns(normalized);
-    } catch {
-      // Error handling
+    } catch (err) {
+      setError('보드 새로고침에 실패했습니다.');
+      console.error('Failed to refresh board:', err);
     }
   };
 
+  // [Bug 4 fix] filterTasks now checks searchQuery + priorityFilter
   const filterTasks = (tasks: BoardTaskCard[]) => {
-    if (!searchQuery) return tasks;
-    const q = searchQuery.toLowerCase();
-    return tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.labels.some((l) => l.name.toLowerCase().includes(q))
-    );
+    let result = tasks;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.labels.some((l) => l.name.toLowerCase().includes(q))
+      );
+    }
+    if (priorityFilter) {
+      result = result.filter((t) => t.priority === priorityFilter);
+    }
+    return result;
   };
 
   const tabs: { key: TabType; label: string }[] = [
@@ -90,6 +105,14 @@ export default function ProjectBoardPage() {
     { key: 'list', label: 'List' },
     { key: 'members', label: 'Members' },
     { key: 'settings', label: 'Settings' },
+  ];
+
+  const priorityOptions: { value: string; label: string }[] = [
+    { value: '', label: 'Priority: All' },
+    { value: 'URGENT', label: 'URGENT' },
+    { value: 'HIGH', label: 'HIGH' },
+    { value: 'MEDIUM', label: 'MEDIUM' },
+    { value: 'LOW', label: 'LOW' },
   ];
 
   if (loading) {
@@ -172,35 +195,37 @@ export default function ProjectBoardPage() {
         ))}
       </div>
 
-      {/* Filter bar */}
+      {/* [Warn 4 fix] Error banner */}
+      {error && (
+        <div className="
+          flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mt-[var(--spacing-sm)]
+          bg-[var(--color-accent-red)] border border-[var(--color-danger)]
+          rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
+        ">
+          <AlertCircle size={14} className="shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Filter bar — [Bug 4 fix] filters wired to state */}
       <FilterBar
         searchPlaceholder="태스크 검색..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
       >
-        <select className="
-          h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-          rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-          text-[var(--text-sm)] text-[var(--color-text-secondary)]
-          focus:outline-none focus:border-[var(--color-primary)]
-        ">
-          <option value="">Assignee: All</option>
-        </select>
-        <select className="
-          h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-          rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-          text-[var(--text-sm)] text-[var(--color-text-secondary)]
-          focus:outline-none focus:border-[var(--color-primary)]
-        ">
-          <option value="">Label: All</option>
-        </select>
-        <select className="
-          h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-          rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-          text-[var(--text-sm)] text-[var(--color-text-secondary)]
-          focus:outline-none focus:border-[var(--color-primary)]
-        ">
-          <option value="">Priority: All</option>
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="
+            h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
+            rounded-[var(--radius-sm)] bg-[var(--color-surface)]
+            text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:outline-none focus:border-[var(--color-primary)]
+          "
+        >
+          {priorityOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
       </FilterBar>
 
