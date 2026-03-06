@@ -54,7 +54,7 @@ class NotificationPushTokenControllerTest {
         );
         given(notificationPushTokenService.registerPushToken(1L, "token-1", PushPlatform.WEB)).willReturn(response);
 
-        mockMvc.perform(post("/notifications/push-tokens")
+        mockMvc.perform(post(NotificationPushTokenHttpContract.BASE_PATH)
                         .principal(principalAuth())
                         .contentType(APPLICATION_JSON)
                         .content("""
@@ -79,7 +79,7 @@ class NotificationPushTokenControllerTest {
                 .when(apiRateLimitService)
                 .checkPushTokenRegister(any(), eq(1L));
 
-        mockMvc.perform(post("/notifications/push-tokens")
+        mockMvc.perform(post(NotificationPushTokenHttpContract.BASE_PATH)
                         .principal(principalAuth())
                         .contentType(APPLICATION_JSON)
                         .content("""
@@ -99,7 +99,7 @@ class NotificationPushTokenControllerTest {
     void unregisterPushTokenReturnsRemovedFlag() throws Exception {
         given(notificationPushTokenService.unregisterPushToken(1L, "token-1")).willReturn(true);
 
-        mockMvc.perform(delete("/notifications/push-tokens")
+        mockMvc.perform(delete(NotificationPushTokenHttpContract.BASE_PATH)
                         .principal(principalAuth())
                         .param("token", "token-1"))
                 .andExpect(status().isOk())

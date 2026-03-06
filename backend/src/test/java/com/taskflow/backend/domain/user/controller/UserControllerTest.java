@@ -75,7 +75,7 @@ class UserControllerTest {
 
         given(userService.getMyProfile(1L)).willReturn(response);
 
-        mockMvc.perform(get("/users/me").principal(principalAuth()))
+        mockMvc.perform(get(UserHttpContract.mePath()).principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.userId").value(1L))
@@ -98,7 +98,7 @@ class UserControllerTest {
 
         given(userService.updateMyProfile(eq(1L), any(UpdateProfileRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/users/me")
+        mockMvc.perform(patch(UserHttpContract.mePath())
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -111,7 +111,7 @@ class UserControllerTest {
     void changePasswordReturnsOk() throws Exception {
         ChangePasswordRequest request = new ChangePasswordRequest("OldPass123!", "NewPass123!");
 
-        mockMvc.perform(patch("/users/me/password")
+        mockMvc.perform(patch(UserHttpContract.mePasswordPath())
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -126,7 +126,7 @@ class UserControllerTest {
     void withdrawReturnsOk() throws Exception {
         WithdrawRequest request = new WithdrawRequest("OldPass123!");
 
-        mockMvc.perform(delete("/users/me")
+        mockMvc.perform(delete(UserHttpContract.mePath())
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
