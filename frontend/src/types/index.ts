@@ -136,42 +136,134 @@ export interface TaskSummary {
   updatedAt: string;
 }
 
+// ── Board Response (matches backend TaskBoardResponse) ──
+export interface BoardAssignee {
+  userId: number;
+  nickname: string;
+}
+
+export interface BoardLabel {
+  labelId: number;
+  name: string;
+  colorHex: string;
+}
+
+export interface BoardTaskCard {
+  taskId: number;
+  title: string;
+  priority: TaskPriority;
+  dueDate?: string;
+  position: number;
+  version: number;
+  assignee?: BoardAssignee;
+  labels: BoardLabel[];
+  commentCount: number;
+}
+
+export interface BoardColumn {
+  status: TaskStatus;
+  tasks: BoardTaskCard[];
+}
+
+export interface BoardFilterResponse {
+  assigneeUserId?: number;
+  priority?: TaskPriority;
+  labelId?: number;
+  keyword?: string;
+}
+
 export interface TaskBoardResponse {
-  todo: TaskSummary[];
-  inProgress: TaskSummary[];
-  done: TaskSummary[];
+  projectId: number;
+  filters: BoardFilterResponse;
+  columns: BoardColumn[];
+}
+
+// ── List Response (matches backend TaskListResponse + TaskListItemResponse) ──
+export interface TaskListItemAssignee {
+  userId: number;
+  nickname: string;
+}
+
+export interface TaskListItem {
+  taskId: number;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string;
+  position: number;
+  version: number;
+  commentCount: number;
+  assignee?: TaskListItemAssignee;
 }
 
 export interface TaskListResponse {
-  tasks: TaskSummary[];
-  pageInfo: PageInfo;
+  content: TaskListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+// ── Task Detail (matches backend TaskDetailResponse) ──
+export interface TaskDetailUserSummary {
+  userId: number;
+  nickname: string;
+}
+
+export interface TaskDetailLabel {
+  labelId: number;
+  name: string;
+  colorHex: string;
+}
+
+export interface TaskStatusHistory {
+  historyId: number;
+  fromStatus: TaskStatus;
+  toStatus: TaskStatus;
+  changedBy: TaskDetailUserSummary;
+  changedAt: string;
 }
 
 export interface TaskDetail {
-  id: number;
+  taskId: number;
+  projectId: number;
   title: string;
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  assignee?: User;
-  creator: User;
-  labels: Label[];
   dueDate?: string;
+  position: number;
+  version: number;
+  creator: TaskDetailUserSummary;
+  assignee?: TaskDetailUserSummary;
+  labels: TaskDetailLabel[];
   commentCount: number;
-  attachmentCount: number;
-  projectId: number;
-  projectName: string;
+  recentStatusHistories: TaskStatusHistory[];
   createdAt: string;
   updatedAt: string;
 }
 
-// ── Comment ──
+// ── Comment (matches backend CommentResponse / CommentListResponse) ──
+export interface CommentAuthor {
+  userId: number;
+  nickname: string;
+}
+
 export interface Comment {
-  id: number;
+  commentId: number;
   content: string;
-  author: User;
+  author: CommentAuthor;
   createdAt: string;
   updatedAt: string;
+  editable: boolean;
+}
+
+export interface CommentListResponse {
+  content: Comment[];
+  nextCursor?: number;
+  hasNext: boolean;
 }
 
 // ── Label ──
@@ -212,11 +304,14 @@ export interface Notification {
   createdAt: string;
 }
 
-// ── Attachment ──
+// ── Attachment (matches backend TaskAttachmentResponse) ──
 export interface Attachment {
-  id: number;
-  fileName: string;
-  fileUrl: string;
-  fileSize: number;
+  attachmentId: number;
+  taskId: number;
+  originalFilename: string;
+  contentType: string;
+  sizeBytes: number;
+  uploaderUserId: number;
+  uploaderNickname: string;
   createdAt: string;
 }
