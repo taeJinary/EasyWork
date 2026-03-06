@@ -98,11 +98,14 @@ class DashboardServiceIntegrationTest extends IntegrationTestContainerSupport {
 
         assertThat(ownerDashboard.pendingInvitationCount()).isZero();
         assertThat(ownerDashboard.myProjects()).hasSize(2);
-        assertThat(ownerDashboard.myProjects().get(0).projectId()).isEqualTo(firstProject.projectId());
-        assertThat(ownerDashboard.myProjects().get(0).taskCount()).isEqualTo(1L);
+        assertThat(ownerDashboard.myProjects().get(0).projectId()).isEqualTo(secondProject.projectId());
+        assertThat(ownerDashboard.myProjects().get(0).taskCount()).isEqualTo(0L);
         assertThat(ownerDashboard.myProjects().get(0).doneTaskCount()).isEqualTo(0L);
         assertThat(ownerDashboard.myProjects().get(0).progressRate()).isEqualTo(0);
-        assertThat(ownerDashboard.myProjects().get(1).projectId()).isEqualTo(secondProject.projectId());
+        assertThat(ownerDashboard.myProjects().get(1).projectId()).isEqualTo(firstProject.projectId());
+        assertThat(ownerDashboard.myProjects().get(1).taskCount()).isEqualTo(1L);
+        assertThat(ownerDashboard.myProjects().get(1).doneTaskCount()).isEqualTo(0L);
+        assertThat(ownerDashboard.myProjects().get(1).progressRate()).isEqualTo(0);
 
         assertThat(inviteeDashboard.pendingInvitationCount()).isEqualTo(1L);
         assertThat(inviteeDashboard.myProjects()).isEmpty();
