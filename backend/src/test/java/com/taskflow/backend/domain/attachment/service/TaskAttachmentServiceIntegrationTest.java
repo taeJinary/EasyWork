@@ -27,25 +27,24 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@RecordApplicationEvents
 class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
@@ -69,11 +68,11 @@ class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSuppo
     @Autowired
     private TaskRepository taskRepository;
 
-    @MockBean
-    private TaskAttachmentStorage taskAttachmentStorage;
+    @Autowired
+    private ApplicationEvents applicationEvents;
 
     @MockBean
-    private ApplicationEventPublisher applicationEventPublisher;
+    private TaskAttachmentStorage taskAttachmentStorage;
 
     @MockBean
     private OperationalMetricsService operationalMetricsService;
@@ -98,6 +97,8 @@ class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSuppo
         Project project = saveProject(owner, "attach-project");
         saveMembership(project, owner, ProjectRole.OWNER);
         Task task = saveTask(project, owner, owner, "attach-task");
+        project.touch(LocalDateTime.now().minusSeconds(5));
+        projectRepository.saveAndFlush(project);
         LocalDateTime updatedAtBeforeUpload = projectRepository.findById(project.getId()).orElseThrow().getUpdatedAt();
 
         MockMultipartFile file = pdfFile("report.pdf");
@@ -113,7 +114,7 @@ class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSuppo
         assertThat(attachments.getFirst().attachmentId()).isEqualTo(uploaded.attachmentId());
         assertThat(taskAttachmentRepository.findAllByTaskIdOrderByCreatedAtDesc(task.getId())).hasSize(1);
         assertThat(projectRepository.findById(project.getId()).orElseThrow().getUpdatedAt())
-                .isAfterOrEqualTo(updatedAtBeforeUpload);
+                .isAfter(updatedAtBeforeUpload);
     }
 
     @Test
@@ -130,11 +131,9 @@ class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSuppo
         taskAttachmentService.deleteAttachment(uploader.getId(), uploaded.attachmentId());
 
         assertThat(taskAttachmentRepository.findById(uploaded.attachmentId())).isEmpty();
-        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
-
-        assertThat(eventCaptor.getValue()).isInstanceOf(TaskAttachmentDeletedEvent.class);
-        TaskAttachmentDeletedEvent event = (TaskAttachmentDeletedEvent) eventCaptor.getValue();
+        TaskAttachmentDeletedEvent event = applicationEvents.stream(TaskAttachmentDeletedEvent.class)
+                .findFirst()
+                .orElseThrow();
         assertThat(event.attachmentId()).isEqualTo(uploaded.attachmentId());
         assertThat(event.storagePath()).isEqualTo("task-attachments/" + project.getId() + "/delete.pdf");
     }
@@ -158,7 +157,7 @@ class TaskAttachmentServiceIntegrationTest extends IntegrationTestContainerSuppo
                 .isEqualTo(ErrorCode.INSUFFICIENT_PERMISSION);
 
         assertThat(taskAttachmentRepository.findById(uploaded.attachmentId())).isPresent();
-        verify(applicationEventPublisher, never()).publishEvent(any());
+        assertThat(applicationEvents.stream(TaskAttachmentDeletedEvent.class)).isEmpty();
     }
 
     private Task saveTask(Project project, User creator, User assignee, String title) {
