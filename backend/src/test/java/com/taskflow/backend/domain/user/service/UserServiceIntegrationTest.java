@@ -75,10 +75,16 @@ class UserServiceIntegrationTest extends IntegrationTestContainerSupport {
         return userRepository.save(User.builder()
                 .email(nicknamePrefix + "-" + System.nanoTime() + "@example.com")
                 .password(passwordEncoder.encode(rawPassword))
-                .nickname(nicknamePrefix)
+                .nickname(normalizeNickname(nicknamePrefix))
                 .provider("LOCAL")
                 .role(Role.ROLE_USER)
                 .status(UserStatus.ACTIVE)
                 .build());
+    }
+
+    private String normalizeNickname(String nicknamePrefix) {
+        return nicknamePrefix.length() <= 20
+                ? nicknamePrefix
+                : nicknamePrefix.substring(0, 20);
     }
 }
