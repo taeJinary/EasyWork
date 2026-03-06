@@ -4,6 +4,7 @@ import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
 import com.taskflow.backend.global.auth.jwt.JwtTokenProvider;
 import com.taskflow.backend.global.common.enums.Role;
+import com.taskflow.backend.global.websocket.WebSocketContract;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,7 +116,7 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
 
     @Test
     void wsHandshakeEndpointPermitsAnonymousRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/ws").contextPath("/api/v1"))
+        mockMvc.perform(get("/api/v1" + WebSocketContract.STOMP_ENDPOINT_PATH).contextPath("/api/v1"))
                 .andExpect(anyOf(status().isBadRequest(), status().isSwitchingProtocols()));
     }
 

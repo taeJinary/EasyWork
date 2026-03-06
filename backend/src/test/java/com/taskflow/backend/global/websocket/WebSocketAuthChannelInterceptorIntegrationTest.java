@@ -67,7 +67,8 @@ class WebSocketAuthChannelInterceptorIntegrationTest extends IntegrationTestCont
         projectMemberRepository.save(ProjectMember.create(project, member, ProjectRole.OWNER, LocalDateTime.now()));
 
         Authentication authentication = connectAs(member);
-        Message<byte[]> subscribeMessage = subscribeMessage("/topic/projects/" + project.getId() + "/board", authentication);
+        Message<byte[]> subscribeMessage =
+                subscribeMessage(WebSocketContract.projectBoardDestination(project.getId()), authentication);
 
         assertThatCode(() -> interceptor.preSend(subscribeMessage, null)).doesNotThrowAnyException();
     }
@@ -86,7 +87,8 @@ class WebSocketAuthChannelInterceptorIntegrationTest extends IntegrationTestCont
         projectMemberRepository.save(ProjectMember.create(project, owner, ProjectRole.OWNER, LocalDateTime.now()));
 
         Authentication authentication = connectAs(outsider);
-        Message<byte[]> subscribeMessage = subscribeMessage("/topic/projects/" + project.getId() + "/board", authentication);
+        Message<byte[]> subscribeMessage =
+                subscribeMessage(WebSocketContract.projectBoardDestination(project.getId()), authentication);
 
         assertThatThrownBy(() -> interceptor.preSend(subscribeMessage, null))
                 .isInstanceOf(BusinessException.class)

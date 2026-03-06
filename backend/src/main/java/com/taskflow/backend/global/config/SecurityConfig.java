@@ -1,6 +1,7 @@
 package com.taskflow.backend.global.config;
 
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
+import com.taskflow.backend.global.websocket.WebSocketContract;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.context.annotation.Bean;
@@ -65,7 +66,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/signup", "/auth/login", "/auth/oauth/login", "/auth/oauth/code/login", "/auth/token/reissue").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/ws", "/ws/**").permitAll()
+                        .requestMatchers(
+                                WebSocketContract.STOMP_ENDPOINT_PATH,
+                                WebSocketContract.STOMP_ENDPOINT_PATH + "/**"
+                        ).permitAll()
                         .requestMatchers("/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
