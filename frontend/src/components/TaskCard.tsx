@@ -14,10 +14,11 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   LOW: 'muted',
 };
 
+// Parse YYYY-MM-DD LocalDate without UTC shift
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const month = d.toLocaleString('en', { month: 'short' });
-  return `${month} ${d.getDate()}`;
+  const [, m, d] = dateStr.split('-');
+  const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${monthNames[parseInt(m, 10)]} ${parseInt(d, 10)}`;
 }
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {

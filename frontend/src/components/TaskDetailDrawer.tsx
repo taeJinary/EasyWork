@@ -23,12 +23,10 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   LOW: 'muted',
 };
 
+// Parse YYYY-MM-DD LocalDate without UTC shift
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  const [y, m, d] = dateStr.split('-');
+  return `${y}.${m}.${d}`;
 }
 
 function formatTimeAgo(dateStr: string): string {
@@ -377,18 +375,16 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                 {attachments.length > 0 ? (
                   <div className="space-y-1">
                     {attachments.map((file) => (
-                      <a
-                        key={file.id}
-                        href={file.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="
-                          block text-[var(--text-xs)] text-[var(--color-primary)] truncate
-                          hover:underline
-                        "
+                      <div
+                        key={file.attachmentId}
+                        className="text-[var(--text-xs)] text-[var(--color-text-secondary)]"
                       >
-                        {file.fileName}
-                      </a>
+                        <span className="text-[var(--color-primary)] font-medium">{file.originalFilename}</span>
+                        <br />
+                        <span className="text-[var(--color-text-muted)]">
+                          {file.uploaderNickname} · {(file.sizeBytes / 1024).toFixed(1)}KB
+                        </span>
+                      </div>
                     ))}
                   </div>
                 ) : (

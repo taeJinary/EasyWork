@@ -304,11 +304,14 @@ export interface Notification {
   createdAt: string;
 }
 
-// ── Attachment ──
+// ── Attachment (matches backend TaskAttachmentResponse) ──
 export interface Attachment {
-  id: number;
-  fileName: string;
-  fileUrl: string;
-  fileSize: number;
+  attachmentId: number;
+  taskId: number;
+  originalFilename: string;
+  contentType: string;
+  sizeBytes: number;
+  uploaderUserId: number;
+  uploaderNickname: string;
   createdAt: string;
 }

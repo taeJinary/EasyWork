@@ -28,9 +28,11 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   LOW: 'muted',
 };
 
+// Parse YYYY-MM-DD LocalDate without UTC shift
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.toLocaleString('en', { month: 'short' })} ${d.getDate()}`;
+  const [, m, d] = dateStr.split('-');
+  const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${monthNames[parseInt(m, 10)]} ${parseInt(d, 10)}`;
 }
 
 export default function TaskListPage() {
@@ -71,6 +73,20 @@ export default function TaskListPage() {
     }
     if (projectId) fetchData();
   }, [projectId, page, statusFilter, searchQuery, sortBy, direction]);
+
+  // Refresh list after drawer changes task status (no duplicate PATCH)
+  const refreshList = async () => {
+    try {
+      const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
+      if (statusFilter) params.status = statusFilter;
+      if (searchQuery) params.keyword = searchQuery;
+      const res = await apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params });
+      setTasks(res.data.data.content);
+      setTotalPages(res.data.data.totalPages);
+    } catch {
+      // Error handling
+    }
+  };
 
   const handleTabClick = (tab: TabType) => {
     if (tab === 'board') {
@@ -346,6 +362,7 @@ export default function TaskListPage() {
         <TaskDetailDrawer
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
+          onStatusChange={refreshList}
         />
       )}
     </div>
