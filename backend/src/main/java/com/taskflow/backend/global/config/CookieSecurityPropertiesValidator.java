@@ -36,20 +36,22 @@ public class CookieSecurityPropertiesValidator {
 
     @PostConstruct
     public void validateAtStartup() {
-        if (!isProdProfileActive()) {
-            return;
-        }
-        if (!secure) {
+        validateCookieContract();
+
+        if (isProdProfileActive() && !secure) {
             throw new IllegalStateException("In prod profile, app.cookie.secure must be true");
         }
+    }
+
+    private void validateCookieContract() {
         if (!REQUIRED_SAME_SITE.equalsIgnoreCase(sameSite)) {
-            throw new IllegalStateException("In prod profile, app.cookie.same-site must be Lax");
+            throw new IllegalStateException("app.cookie.same-site must be Lax");
         }
         if (!REQUIRED_REFRESH_TOKEN_PATH.equals(refreshTokenPath)) {
-            throw new IllegalStateException("In prod profile, app.cookie.refresh-token-path must be /api/v1/auth");
+            throw new IllegalStateException("app.cookie.refresh-token-path must be /api/v1/auth");
         }
         if (!REQUIRED_REFRESH_TOKEN_NAME.equals(refreshTokenName)) {
-            throw new IllegalStateException("In prod profile, app.cookie.refresh-token-name must be refresh_token");
+            throw new IllegalStateException("app.cookie.refresh-token-name must be refresh_token");
         }
     }
 
