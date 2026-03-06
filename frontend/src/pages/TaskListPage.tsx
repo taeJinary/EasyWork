@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Calendar } from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
@@ -48,29 +48,31 @@ export default function TaskListPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('list');
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
-        if (statusFilter) params.status = statusFilter;
-        if (searchQuery) params.keyword = searchQuery;
+  const fetchData = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      setLoading(true);
+      const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
+      if (statusFilter) params.status = statusFilter;
+      if (searchQuery) params.keyword = searchQuery;
 
-        const [projectRes, tasksRes] = await Promise.all([
-          apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
-          apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
-        ]);
-        setProject(projectRes.data.data);
-        setTasks(tasksRes.data.data.content);
-        setTotalPages(tasksRes.data.data.totalPages);
-      } catch {
-        // Error handling
-      } finally {
-        setLoading(false);
-      }
+      const [projectRes, tasksRes] = await Promise.all([
+        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+        apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
+      ]);
+      setProject(projectRes.data.data);
+      setTasks(tasksRes.data.data.content);
+      setTotalPages(tasksRes.data.data.totalPages);
+    } catch {
+      // Error handling
+    } finally {
+      setLoading(false);
     }
-    if (projectId) fetchData();
   }, [projectId, page, statusFilter, searchQuery, sortBy, direction]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleTabClick = (tab: TabType) => {
     if (tab === 'board') {
@@ -90,6 +92,12 @@ export default function TaskListPage() {
     { key: 'members', label: 'Members' },
     { key: 'settings', label: 'Settings' },
   ];
+
+  const handleStatusChange = async (taskId: number, newStatus: string) => {
+    void taskId;
+    void newStatus;
+    await fetchData();
+  };
 
   return (
     <div>
@@ -346,6 +354,7 @@ export default function TaskListPage() {
         <TaskDetailDrawer
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
+          onStatusChange={handleStatusChange}
         />
       )}
     </div>
