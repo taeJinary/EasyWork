@@ -94,7 +94,7 @@ class TaskControllerTest {
         );
         given(taskService.createTask(eq(1L), eq(10L), any(CreateTaskRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/projects/10/tasks")
+        mockMvc.perform(post(TaskHttpContract.projectTasksPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -137,7 +137,7 @@ class TaskControllerTest {
 
         given(taskService.getTaskBoard(1L, 10L, 2L, TaskPriority.HIGH, 1L, "API")).willReturn(response);
 
-        mockMvc.perform(get("/projects/10/tasks/board")
+        mockMvc.perform(get(TaskHttpContract.projectTaskBoardPath(10L))
                         .principal(principalAuth())
                         .param("assigneeUserId", "2")
                         .param("priority", "HIGH")
@@ -179,7 +179,7 @@ class TaskControllerTest {
         given(taskService.getTasks(1L, 10L, 0, 20, TaskStatus.TODO, "updatedAt", "DESC", "로그인"))
                 .willReturn(response);
 
-        mockMvc.perform(get("/projects/10/tasks")
+        mockMvc.perform(get(TaskHttpContract.projectTasksPath(10L))
                         .principal(principalAuth())
                         .param("page", "0")
                         .param("size", "20")
@@ -220,7 +220,7 @@ class TaskControllerTest {
 
         given(taskService.getTaskDetail(1L, 100L)).willReturn(response);
 
-        mockMvc.perform(get("/tasks/100")
+        mockMvc.perform(get(TaskHttpContract.taskDetailPath(100L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -271,7 +271,7 @@ class TaskControllerTest {
         );
         given(taskService.updateTask(eq(1L), eq(100L), any(UpdateTaskRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/tasks/100")
+        mockMvc.perform(patch(TaskHttpContract.taskDetailPath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -298,7 +298,7 @@ class TaskControllerTest {
                 }
                 """;
 
-        mockMvc.perform(patch("/tasks/100")
+        mockMvc.perform(patch(TaskHttpContract.taskDetailPath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
@@ -319,7 +319,7 @@ class TaskControllerTest {
         );
         given(taskService.moveTask(eq(1L), eq(100L), any(MoveTaskRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/tasks/100/move")
+        mockMvc.perform(patch(TaskHttpContract.taskMovePath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -342,7 +342,7 @@ class TaskControllerTest {
                 }
                 """;
 
-        mockMvc.perform(patch("/tasks/100/move")
+        mockMvc.perform(patch(TaskHttpContract.taskMovePath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
@@ -353,7 +353,7 @@ class TaskControllerTest {
 
     @Test
     void deleteTaskReturnsOkResponse() throws Exception {
-        mockMvc.perform(delete("/tasks/100")
+        mockMvc.perform(delete(TaskHttpContract.taskDetailPath(100L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));

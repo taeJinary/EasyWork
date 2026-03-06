@@ -62,7 +62,7 @@ class WorkspaceControllerTest {
         );
         given(workspaceService.createWorkspace(eq(1L), any(CreateWorkspaceRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/workspaces")
+        mockMvc.perform(post(WorkspaceHttpContract.BASE_PATH)
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -93,8 +93,10 @@ class WorkspaceControllerTest {
         );
         given(workspaceService.getMyWorkspaces(1L, 0, 20)).willReturn(response);
 
-        mockMvc.perform(get("/workspaces?page=0&size=20")
-                        .principal(principalAuth()))
+        mockMvc.perform(get(WorkspaceHttpContract.BASE_PATH)
+                        .principal(principalAuth())
+                        .param("page", "0")
+                        .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].workspaceId").value(10L))
@@ -116,7 +118,7 @@ class WorkspaceControllerTest {
         );
         given(workspaceService.getWorkspaceDetail(1L, 10L)).willReturn(response);
 
-        mockMvc.perform(get("/workspaces/10")
+        mockMvc.perform(get(WorkspaceHttpContract.detailPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -145,7 +147,7 @@ class WorkspaceControllerTest {
         );
         given(workspaceService.getWorkspaceMembers(1L, 10L)).willReturn(List.of(owner, member));
 
-        mockMvc.perform(get("/workspaces/10/members")
+        mockMvc.perform(get(WorkspaceHttpContract.membersPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -165,7 +167,7 @@ class WorkspaceControllerTest {
 
         given(workspaceService.updateWorkspace(eq(1L), eq(10L), any(UpdateWorkspaceRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/workspaces/10")
+        mockMvc.perform(patch(WorkspaceHttpContract.detailPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -178,7 +180,7 @@ class WorkspaceControllerTest {
 
     @Test
     void deleteWorkspaceReturnsResponse() throws Exception {
-        mockMvc.perform(delete("/workspaces/10")
+        mockMvc.perform(delete(WorkspaceHttpContract.detailPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))

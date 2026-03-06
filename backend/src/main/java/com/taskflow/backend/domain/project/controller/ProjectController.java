@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.taskflow.backend.global.common.enums.ProjectRole;
 
 @RestController
-@RequestMapping("/projects")
+@RequestMapping(ProjectHttpContract.BASE_PATH)
 @RequiredArgsConstructor
 public class ProjectController {
 
@@ -64,7 +64,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/{projectId}")
+    @GetMapping(ProjectHttpContract.DETAIL_PATH)
     public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProjectDetail(
             Authentication authentication,
             @PathVariable Long projectId
@@ -73,7 +73,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/{projectId}")
+    @PatchMapping(ProjectHttpContract.DETAIL_PATH)
     public ResponseEntity<ApiResponse<ProjectSummaryResponse>> updateProject(
             Authentication authentication,
             @PathVariable Long projectId,
@@ -83,7 +83,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success(response, "프로젝트가 수정되었습니다."));
     }
 
-    @DeleteMapping("/{projectId}")
+    @DeleteMapping(ProjectHttpContract.DETAIL_PATH)
     public ResponseEntity<ApiResponse<Void>> deleteProject(
             Authentication authentication,
             @PathVariable Long projectId
@@ -92,7 +92,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success(null, "프로젝트가 삭제되었습니다."));
     }
 
-    @GetMapping("/{projectId}/members")
+    @GetMapping(ProjectHttpContract.MEMBERS_PATH)
     public ResponseEntity<ApiResponse<List<ProjectMemberResponse>>> getProjectMembers(
             Authentication authentication,
             @PathVariable Long projectId
@@ -101,7 +101,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/{projectId}/members/{memberId}/role")
+    @PatchMapping(ProjectHttpContract.MEMBER_ROLE_PATH)
     public ResponseEntity<ApiResponse<ProjectMemberResponse>> changeMemberRole(
             Authentication authentication,
             @PathVariable Long projectId,
@@ -117,7 +117,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success(response, "멤버 역할이 변경되었습니다."));
     }
 
-    @DeleteMapping("/{projectId}/members/{memberId}")
+    @DeleteMapping(ProjectHttpContract.MEMBER_PATH)
     public ResponseEntity<ApiResponse<Void>> removeMember(
             Authentication authentication,
             @PathVariable Long projectId,
