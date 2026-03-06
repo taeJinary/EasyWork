@@ -1,5 +1,6 @@
 package com.taskflow.backend.global.config;
 
+import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -10,10 +11,6 @@ import org.springframework.stereotype.Component;
 public class CookieSecurityPropertiesValidator {
 
     private static final String PROD_PROFILE = "prod";
-    private static final String REQUIRED_SAME_SITE = "Lax";
-    private static final String REQUIRED_REFRESH_TOKEN_PATH = "/api/v1/auth";
-    private static final String REQUIRED_REFRESH_TOKEN_NAME = "refresh_token";
-
     private final Environment environment;
     private final boolean secure;
     private final String sameSite;
@@ -44,13 +41,13 @@ public class CookieSecurityPropertiesValidator {
     }
 
     private void validateCookieContract() {
-        if (!REQUIRED_SAME_SITE.equalsIgnoreCase(sameSite)) {
+        if (!AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE.equalsIgnoreCase(sameSite)) {
             throw new IllegalStateException("app.cookie.same-site must be Lax");
         }
-        if (!REQUIRED_REFRESH_TOKEN_PATH.equals(refreshTokenPath)) {
+        if (!AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH.equals(refreshTokenPath)) {
             throw new IllegalStateException("app.cookie.refresh-token-path must be /api/v1/auth");
         }
-        if (!REQUIRED_REFRESH_TOKEN_NAME.equals(refreshTokenName)) {
+        if (!AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME.equals(refreshTokenName)) {
             throw new IllegalStateException("app.cookie.refresh-token-name must be refresh_token");
         }
     }

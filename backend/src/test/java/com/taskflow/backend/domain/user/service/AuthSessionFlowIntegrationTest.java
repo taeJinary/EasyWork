@@ -1,5 +1,6 @@
 package com.taskflow.backend.domain.user.service;
 
+import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import com.jayway.jsonpath.JsonPath;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import jakarta.servlet.http.Cookie;
@@ -44,7 +45,7 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                                 """.formatted(email, password)))
                 .andExpect(status().isCreated());
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+        MvcResult loginResult = mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -53,12 +54,17 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                                 }
                                 """.formatted(email, password)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(jsonPath("$.data.accessToken").isString())
                 .andReturn();
 
         String firstAccessToken = JsonPath.read(loginResult.getResponse().getContentAsString(), "$.data.accessToken");
-        String firstRefreshToken = extractCookieValue(loginResult.getResponse().getHeader("Set-Cookie"), "refresh_token");
+        String firstRefreshToken = extractCookieValue(
+                loginResult.getResponse().getHeader("Set-Cookie"),
+                AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME
+        );
         assertThat(firstRefreshToken).isNotBlank();
 
         mockMvc.perform(get("/users/me")
@@ -66,31 +72,38 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.email").value(email));
 
-        MvcResult reissueResult = mockMvc.perform(post("/auth/token/reissue")
-                        .cookie(new Cookie("refresh_token", firstRefreshToken)))
+        MvcResult reissueResult = mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.TOKEN_REISSUE_PATH)
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, firstRefreshToken)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(jsonPath("$.data.accessToken").isString())
                 .andReturn();
 
         String secondAccessToken = JsonPath.read(reissueResult.getResponse().getContentAsString(), "$.data.accessToken");
-        String secondRefreshToken = extractCookieValue(reissueResult.getResponse().getHeader("Set-Cookie"), "refresh_token");
+        String secondRefreshToken = extractCookieValue(
+                reissueResult.getResponse().getHeader("Set-Cookie"),
+                AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME
+        );
         assertThat(secondRefreshToken).isNotBlank();
         assertThat(secondRefreshToken).isNotEqualTo(firstRefreshToken);
 
-        mockMvc.perform(post("/auth/token/reissue")
-                        .cookie(new Cookie("refresh_token", firstRefreshToken)))
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.TOKEN_REISSUE_PATH)
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, firstRefreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("TOKEN_INVALID"));
 
-        mockMvc.perform(post("/auth/logout")
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGOUT_PATH)
                         .header("Authorization", "Bearer " + secondAccessToken)
-                        .cookie(new Cookie("refresh_token", secondRefreshToken)))
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, secondRefreshToken)))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
+                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
 
-        mockMvc.perform(post("/auth/token/reissue")
-                        .cookie(new Cookie("refresh_token", secondRefreshToken)))
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.TOKEN_REISSUE_PATH)
+                        .cookie(new Cookie(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME, secondRefreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("TOKEN_INVALID"));
 

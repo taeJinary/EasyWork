@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping(AuthHttpContract.AUTH_BASE_PATH)
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -40,22 +40,22 @@ public class AuthController {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final long ONE_SECOND_IN_MILLIS = 1000L;
 
-    @Value("${app.cookie.refresh-token-name:refresh_token}")
+    @Value("${app.cookie.refresh-token-name:" + AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "}")
     private String refreshTokenCookieName;
 
-    @Value("${app.cookie.refresh-token-path:/api/v1/auth}")
+    @Value("${app.cookie.refresh-token-path:" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH + "}")
     private String refreshTokenCookiePath;
 
     @Value("${app.cookie.secure:false}")
     private boolean refreshTokenCookieSecure;
 
-    @Value("${app.cookie.same-site:Lax}")
+    @Value("${app.cookie.same-site:" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE + "}")
     private String refreshTokenCookieSameSite;
 
     private final AuthService authService;
     private final ApiRateLimitService apiRateLimitService;
 
-    @PostMapping("/signup")
+    @PostMapping(AuthHttpContract.SIGNUP_PATH)
     public ResponseEntity<ApiResponse<SignupResponse>> signup(
             @Valid @RequestBody SignupRequest request
     ) {
@@ -64,7 +64,7 @@ public class AuthController {
                 .body(ApiResponse.success(response, "회원가입이 완료되었습니다."));
     }
 
-    @PostMapping("/login")
+    @PostMapping(AuthHttpContract.LOGIN_PATH)
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpServletRequest,
@@ -82,7 +82,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(loginResponse));
     }
 
-    @PostMapping("/oauth/login")
+    @PostMapping(AuthHttpContract.OAUTH_LOGIN_PATH)
     public ResponseEntity<ApiResponse<LoginResponse>> oauthLogin(
             @Valid @RequestBody OAuthLoginRequest request,
             HttpServletRequest httpServletRequest,
@@ -100,7 +100,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(loginResponse));
     }
 
-    @PostMapping("/oauth/code/login")
+    @PostMapping(AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
     public ResponseEntity<ApiResponse<LoginResponse>> oauthCodeLogin(
             @Valid @RequestBody OAuthCodeLoginRequest request,
             HttpServletRequest httpServletRequest,
@@ -118,7 +118,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(loginResponse));
     }
 
-    @PostMapping("/token/reissue")
+    @PostMapping(AuthHttpContract.TOKEN_REISSUE_PATH)
     public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
             HttpServletRequest request,
             HttpServletResponse response
@@ -139,7 +139,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(reissueResponse));
     }
 
-    @PostMapping("/logout")
+    @PostMapping(AuthHttpContract.LOGOUT_PATH)
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestHeader(name = AUTHORIZATION_HEADER, required = false) String authorizationHeader,
             HttpServletRequest request,
