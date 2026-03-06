@@ -84,7 +84,7 @@ class CommentControllerTest {
         );
         given(commentService.createComment(eq(1L), eq(100L), any(CreateCommentRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/tasks/100/comments")
+        mockMvc.perform(post(CommentHttpContract.taskCommentsPath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -106,7 +106,7 @@ class CommentControllerTest {
                 .when(apiRateLimitService)
                 .checkCommentCreate(any(), eq(1L));
 
-        mockMvc.perform(post("/tasks/100/comments")
+        mockMvc.perform(post(CommentHttpContract.taskCommentsPath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -125,7 +125,7 @@ class CommentControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/tasks/100/comments")
+        mockMvc.perform(post(CommentHttpContract.taskCommentsPath(100L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
@@ -151,7 +151,7 @@ class CommentControllerTest {
         );
         given(commentService.getComments(1L, 100L, 160L, 20)).willReturn(response);
 
-        mockMvc.perform(get("/tasks/100/comments")
+        mockMvc.perform(get(CommentHttpContract.taskCommentsPath(100L))
                         .principal(principalAuth())
                         .param("cursor", "160")
                         .param("size", "20"))
@@ -178,7 +178,7 @@ class CommentControllerTest {
         );
         given(commentService.updateComment(eq(1L), eq(150L), any(UpdateCommentRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/comments/150")
+        mockMvc.perform(patch(CommentHttpContract.commentPath(150L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -199,7 +199,7 @@ class CommentControllerTest {
                 }
                 """;
 
-        mockMvc.perform(patch("/comments/150")
+        mockMvc.perform(patch(CommentHttpContract.commentPath(150L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
@@ -210,7 +210,7 @@ class CommentControllerTest {
 
     @Test
     void deleteCommentReturnsResponse() throws Exception {
-        mockMvc.perform(delete("/comments/150")
+        mockMvc.perform(delete(CommentHttpContract.commentPath(150L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));

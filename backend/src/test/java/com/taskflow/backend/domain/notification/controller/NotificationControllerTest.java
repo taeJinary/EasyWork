@@ -67,7 +67,7 @@ class NotificationControllerTest {
 
         given(notificationService.getNotifications(1L, 0, 20, false)).willReturn(response);
 
-        mockMvc.perform(get("/notifications")
+        mockMvc.perform(get(NotificationHttpContract.BASE_PATH)
                         .principal(principalAuth())
                         .param("page", "0")
                         .param("size", "20")
@@ -86,7 +86,7 @@ class NotificationControllerTest {
         NotificationUnreadCountResponse response = new NotificationUnreadCountResponse(3L);
         given(notificationService.getUnreadCount(1L)).willReturn(response);
 
-        mockMvc.perform(get("/notifications/unread-count")
+        mockMvc.perform(get(NotificationHttpContract.unreadCountPath())
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -104,7 +104,7 @@ class NotificationControllerTest {
         );
         given(notificationService.readNotification(1L, 300L)).willReturn(response);
 
-        mockMvc.perform(patch("/notifications/300/read")
+        mockMvc.perform(patch(NotificationHttpContract.readPath(300L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -119,7 +119,7 @@ class NotificationControllerTest {
         NotificationReadAllResponse response = new NotificationReadAllResponse(5L);
         given(notificationService.readAllNotifications(1L)).willReturn(response);
 
-        mockMvc.perform(post("/notifications/read-all")
+        mockMvc.perform(post(NotificationHttpContract.readAllPath())
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))

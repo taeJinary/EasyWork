@@ -89,7 +89,7 @@ class InvitationControllerTest {
         given(invitationService.createInvitation(eq(1L), eq(10L), any(CreateInvitationRequest.class)))
                 .willReturn(response);
 
-        mockMvc.perform(post("/projects/10/invitations")
+        mockMvc.perform(post(InvitationHttpContract.projectInvitationsPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -109,7 +109,7 @@ class InvitationControllerTest {
                 .when(apiRateLimitService)
                 .checkInvitationCreate(any(), eq(1L));
 
-        mockMvc.perform(post("/projects/10/invitations")
+        mockMvc.perform(post(InvitationHttpContract.projectInvitationsPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -145,8 +145,11 @@ class InvitationControllerTest {
 
         given(invitationService.getMyInvitations(1L, InvitationStatus.PENDING, 0, 20)).willReturn(response);
 
-        mockMvc.perform(get("/invitations/me?status=PENDING&page=0&size=20")
-                        .principal(principalAuth()))
+        mockMvc.perform(get(InvitationHttpContract.MY_INVITATIONS_PATH)
+                        .principal(principalAuth())
+                        .param("status", "PENDING")
+                        .param("page", "0")
+                        .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].invitationId").value(10L))
@@ -165,7 +168,7 @@ class InvitationControllerTest {
         );
         given(invitationService.acceptInvitation(1L, 10L)).willReturn(response);
 
-        mockMvc.perform(post("/invitations/10/accept")
+        mockMvc.perform(post(InvitationHttpContract.acceptPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -186,7 +189,7 @@ class InvitationControllerTest {
         );
         given(invitationService.rejectInvitation(1L, 10L)).willReturn(response);
 
-        mockMvc.perform(post("/invitations/10/reject")
+        mockMvc.perform(post(InvitationHttpContract.rejectPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -207,7 +210,7 @@ class InvitationControllerTest {
         );
         given(invitationService.cancelInvitation(1L, 10L, 10L)).willReturn(response);
 
-        mockMvc.perform(post("/projects/10/invitations/10/cancel")
+        mockMvc.perform(post(InvitationHttpContract.cancelPath(10L, 10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))

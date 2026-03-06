@@ -34,7 +34,7 @@ public class CommentController {
     private final CommentService commentService;
     private final ApiRateLimitService apiRateLimitService;
 
-    @PostMapping("/tasks/{taskId}/comments")
+    @PostMapping(CommentHttpContract.TASK_COMMENTS_PATH)
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             HttpServletRequest httpServletRequest,
             Authentication authentication,
@@ -52,7 +52,7 @@ public class CommentController {
                 .body(ApiResponse.success(response, "댓글이 작성되었습니다."));
     }
 
-    @GetMapping("/tasks/{taskId}/comments")
+    @GetMapping(CommentHttpContract.TASK_COMMENTS_PATH)
     public ResponseEntity<ApiResponse<CommentListResponse>> getComments(
             Authentication authentication,
             @PathVariable Long taskId,
@@ -68,7 +68,7 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/comments/{commentId}")
+    @PatchMapping(CommentHttpContract.COMMENT_PATH)
     public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
             Authentication authentication,
             @PathVariable Long commentId,
@@ -82,7 +82,7 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.success(response, "댓글이 수정되었습니다."));
     }
 
-    @DeleteMapping("/comments/{commentId}")
+    @DeleteMapping(CommentHttpContract.COMMENT_PATH)
     public ResponseEntity<ApiResponse<Void>> deleteComment(
             Authentication authentication,
             @PathVariable Long commentId

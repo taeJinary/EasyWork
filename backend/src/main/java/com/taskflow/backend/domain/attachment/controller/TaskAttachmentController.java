@@ -32,7 +32,7 @@ public class TaskAttachmentController {
     private final ApiRateLimitService apiRateLimitService;
 
     @PostMapping(
-            value = "/tasks/{taskId}/attachments",
+            value = AttachmentHttpContract.TASK_ATTACHMENTS_PATH,
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<ApiResponse<TaskAttachmentResponse>> uploadAttachment(
@@ -52,7 +52,7 @@ public class TaskAttachmentController {
                 .body(ApiResponse.success(response, "첨부파일이 업로드되었습니다."));
     }
 
-    @GetMapping("/tasks/{taskId}/attachments")
+    @GetMapping(AttachmentHttpContract.TASK_ATTACHMENTS_PATH)
     public ResponseEntity<ApiResponse<List<TaskAttachmentResponse>>> getTaskAttachments(
             Authentication authentication,
             @PathVariable Long taskId
@@ -64,7 +64,7 @@ public class TaskAttachmentController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @DeleteMapping("/attachments/{attachmentId}")
+    @DeleteMapping(AttachmentHttpContract.ATTACHMENT_PATH)
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             Authentication authentication,
             @PathVariable Long attachmentId

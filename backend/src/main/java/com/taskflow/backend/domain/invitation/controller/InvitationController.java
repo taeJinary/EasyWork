@@ -33,7 +33,7 @@ public class InvitationController {
     private final InvitationService invitationService;
     private final ApiRateLimitService apiRateLimitService;
 
-    @PostMapping("/projects/{projectId}/invitations")
+    @PostMapping(InvitationHttpContract.PROJECT_INVITATIONS_PATH)
     public ResponseEntity<ApiResponse<InvitationSummaryResponse>> createInvitation(
             HttpServletRequest httpServletRequest,
             Authentication authentication,
@@ -51,7 +51,7 @@ public class InvitationController {
                 .body(ApiResponse.success(response, "초대가 생성되었습니다."));
     }
 
-    @GetMapping("/invitations/me")
+    @GetMapping(InvitationHttpContract.MY_INVITATIONS_PATH)
     public ResponseEntity<ApiResponse<InvitationListResponse>> getMyInvitations(
             Authentication authentication,
             @RequestParam(required = false) InvitationStatus status,
@@ -67,7 +67,7 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PostMapping("/invitations/{invitationId}/accept")
+    @PostMapping(InvitationHttpContract.ACCEPT_PATH)
     public ResponseEntity<ApiResponse<InvitationActionResponse>> acceptInvitation(
             Authentication authentication,
             @PathVariable Long invitationId
@@ -79,7 +79,7 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(response, "초대를 수락했습니다."));
     }
 
-    @PostMapping("/invitations/{invitationId}/reject")
+    @PostMapping(InvitationHttpContract.REJECT_PATH)
     public ResponseEntity<ApiResponse<InvitationActionResponse>> rejectInvitation(
             Authentication authentication,
             @PathVariable Long invitationId
@@ -91,7 +91,7 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(response, "초대를 거절했습니다."));
     }
 
-    @PostMapping("/projects/{projectId}/invitations/{invitationId}/cancel")
+    @PostMapping(InvitationHttpContract.CANCEL_PATH)
     public ResponseEntity<ApiResponse<InvitationActionResponse>> cancelInvitation(
             Authentication authentication,
             @PathVariable Long projectId,

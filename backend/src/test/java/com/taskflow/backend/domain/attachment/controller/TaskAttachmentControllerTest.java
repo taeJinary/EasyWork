@@ -59,7 +59,7 @@ class TaskAttachmentControllerTest {
 
         given(taskAttachmentService.uploadAttachment(eq(1L), eq(100L), any())).willReturn(response);
 
-        mockMvc.perform(multipart("/tasks/100/attachments")
+        mockMvc.perform(multipart(AttachmentHttpContract.taskAttachmentsPath(100L))
                         .file(file)
                         .principal(principalAuth()))
                 .andExpect(status().isCreated())
@@ -84,7 +84,7 @@ class TaskAttachmentControllerTest {
                 .when(apiRateLimitService)
                 .checkAttachmentUpload(any(), eq(1L));
 
-        mockMvc.perform(multipart("/tasks/100/attachments")
+        mockMvc.perform(multipart(AttachmentHttpContract.taskAttachmentsPath(100L))
                         .file(file)
                         .principal(principalAuth()))
                 .andExpect(status().isTooManyRequests())
@@ -101,7 +101,7 @@ class TaskAttachmentControllerTest {
                 attachmentResponse(2001L, 100L, "spec.docx")
         ));
 
-        mockMvc.perform(get("/tasks/100/attachments")
+        mockMvc.perform(get(AttachmentHttpContract.taskAttachmentsPath(100L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -113,7 +113,7 @@ class TaskAttachmentControllerTest {
 
     @Test
     void deleteAttachmentReturnsOkResponse() throws Exception {
-        mockMvc.perform(delete("/attachments/2000")
+        mockMvc.perform(delete(AttachmentHttpContract.attachmentPath(2000L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
@@ -123,7 +123,7 @@ class TaskAttachmentControllerTest {
 
     @Test
     void uploadAttachmentReturnsBadRequestWhenMissingFilePart() throws Exception {
-        mockMvc.perform(multipart("/tasks/100/attachments")
+        mockMvc.perform(multipart(AttachmentHttpContract.taskAttachmentsPath(100L))
                         .principal(principalAuth()))
                 .andExpect(status().isBadRequest());
     }
