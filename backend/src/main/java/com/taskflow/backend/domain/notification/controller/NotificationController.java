@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping(NotificationHttpContract.BASE_PATH)
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -44,7 +44,7 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/unread-count")
+    @GetMapping(NotificationHttpContract.UNREAD_COUNT_PATH)
     public ResponseEntity<ApiResponse<NotificationUnreadCountResponse>> getUnreadCount(
             Authentication authentication
     ) {
@@ -52,7 +52,7 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/{notificationId}/read")
+    @PatchMapping(NotificationHttpContract.READ_PATH)
     public ResponseEntity<ApiResponse<NotificationReadResponse>> readNotification(
             Authentication authentication,
             @PathVariable Long notificationId
@@ -64,7 +64,7 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PostMapping("/read-all")
+    @PostMapping(NotificationHttpContract.READ_ALL_PATH)
     public ResponseEntity<ApiResponse<NotificationReadAllResponse>> readAllNotifications(
             Authentication authentication
     ) {
