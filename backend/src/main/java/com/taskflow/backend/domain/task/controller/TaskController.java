@@ -37,7 +37,7 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    @PostMapping("/projects/{projectId}/tasks")
+    @PostMapping(TaskHttpContract.PROJECT_TASKS_PATH)
     public ResponseEntity<ApiResponse<TaskSummaryResponse>> createTask(
             Authentication authentication,
             @PathVariable Long projectId,
@@ -52,7 +52,7 @@ public class TaskController {
                 .body(ApiResponse.success(response, "태스크가 생성되었습니다."));
     }
 
-    @GetMapping("/projects/{projectId}/tasks/board")
+    @GetMapping(TaskHttpContract.PROJECT_TASK_BOARD_PATH)
     public ResponseEntity<ApiResponse<TaskBoardResponse>> getTaskBoard(
             Authentication authentication,
             @PathVariable Long projectId,
@@ -72,7 +72,7 @@ public class TaskController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/projects/{projectId}/tasks")
+    @GetMapping(TaskHttpContract.PROJECT_TASKS_PATH)
     public ResponseEntity<ApiResponse<TaskListResponse>> getTasks(
             Authentication authentication,
             @PathVariable Long projectId,
@@ -96,7 +96,7 @@ public class TaskController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/tasks/{taskId}")
+    @GetMapping(TaskHttpContract.TASK_DETAIL_PATH)
     public ResponseEntity<ApiResponse<TaskDetailResponse>> getTaskDetail(
             Authentication authentication,
             @PathVariable Long taskId
@@ -108,7 +108,7 @@ public class TaskController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/tasks/{taskId}")
+    @PatchMapping(TaskHttpContract.TASK_DETAIL_PATH)
     public ResponseEntity<ApiResponse<TaskDetailResponse>> updateTask(
             Authentication authentication,
             @PathVariable Long taskId,
@@ -122,7 +122,7 @@ public class TaskController {
         return ResponseEntity.ok(ApiResponse.success(response, "태스크가 수정되었습니다."));
     }
 
-    @PatchMapping("/tasks/{taskId}/move")
+    @PatchMapping(TaskHttpContract.TASK_MOVE_PATH)
     public ResponseEntity<ApiResponse<TaskMoveResponse>> moveTask(
             Authentication authentication,
             @PathVariable Long taskId,
@@ -136,7 +136,7 @@ public class TaskController {
         return ResponseEntity.ok(ApiResponse.success(response, "태스크 위치가 변경되었습니다."));
     }
 
-    @DeleteMapping("/tasks/{taskId}")
+    @DeleteMapping(TaskHttpContract.TASK_DETAIL_PATH)
     public ResponseEntity<ApiResponse<Void>> deleteTask(
             Authentication authentication,
             @PathVariable Long taskId

@@ -79,7 +79,7 @@ class ProjectControllerTest {
         );
         given(projectService.createProject(eq(1L), any(CreateProjectRequest.class))).willReturn(response);
 
-        mockMvc.perform(post("/projects")
+        mockMvc.perform(post(ProjectHttpContract.BASE_PATH)
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -114,8 +114,10 @@ class ProjectControllerTest {
         );
         given(projectService.getMyProjects(1L, 0, 20, null, null)).willReturn(response);
 
-        mockMvc.perform(get("/projects?page=0&size=20")
-                        .principal(principalAuth()))
+        mockMvc.perform(get(ProjectHttpContract.BASE_PATH)
+                        .principal(principalAuth())
+                        .param("page", "0")
+                        .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].projectId").value(10L))
@@ -139,8 +141,12 @@ class ProjectControllerTest {
         );
         given(projectService.getMyProjects(1L, 0, 20, "task", ProjectRole.OWNER)).willReturn(response);
 
-        mockMvc.perform(get("/projects?page=0&size=20&keyword=task&role=OWNER")
-                        .principal(principalAuth()))
+        mockMvc.perform(get(ProjectHttpContract.BASE_PATH)
+                        .principal(principalAuth())
+                        .param("page", "0")
+                        .param("size", "20")
+                        .param("keyword", "task")
+                        .param("role", "OWNER"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content").isArray());
@@ -171,7 +177,7 @@ class ProjectControllerTest {
 
         given(projectService.getProjectDetail(1L, 10L)).willReturn(response);
 
-        mockMvc.perform(get("/projects/10").principal(principalAuth()))
+        mockMvc.perform(get(ProjectHttpContract.detailPath(10L)).principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.projectId").value(10L))
@@ -190,7 +196,7 @@ class ProjectControllerTest {
         );
         given(projectService.updateProject(eq(1L), eq(10L), any(UpdateProjectRequest.class))).willReturn(response);
 
-        mockMvc.perform(patch("/projects/10")
+        mockMvc.perform(patch(ProjectHttpContract.detailPath(10L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -203,7 +209,7 @@ class ProjectControllerTest {
 
     @Test
     void deleteProjectReturnsOk() throws Exception {
-        mockMvc.perform(delete("/projects/10")
+        mockMvc.perform(delete(ProjectHttpContract.detailPath(10L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -232,7 +238,7 @@ class ProjectControllerTest {
         );
         given(projectService.getProjectMembers(1L, 10L)).willReturn(List.of(owner, member));
 
-        mockMvc.perform(get("/projects/10/members").principal(principalAuth()))
+        mockMvc.perform(get(ProjectHttpContract.membersPath(10L)).principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].memberId").value(100L))
@@ -255,7 +261,7 @@ class ProjectControllerTest {
         given(projectService.changeMemberRole(eq(1L), eq(10L), eq(101L), any(ChangeMemberRoleRequest.class)))
                 .willReturn(response);
 
-        mockMvc.perform(patch("/projects/10/members/101/role")
+        mockMvc.perform(patch(ProjectHttpContract.memberRolePath(10L, 101L))
                         .principal(principalAuth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -270,7 +276,7 @@ class ProjectControllerTest {
 
     @Test
     void removeMemberReturnsOk() throws Exception {
-        mockMvc.perform(delete("/projects/10/members/101")
+        mockMvc.perform(delete(ProjectHttpContract.memberPath(10L, 101L))
                         .principal(principalAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))

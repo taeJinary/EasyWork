@@ -28,13 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping(WorkspaceHttpContract.BASE_PATH)
 @RequiredArgsConstructor
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
 
-    @PostMapping("/workspaces")
+    @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceSummaryResponse>> createWorkspace(
             Authentication authentication,
             @Valid @RequestBody CreateWorkspaceRequest request
@@ -44,7 +44,7 @@ public class WorkspaceController {
                 .body(ApiResponse.success(response, "Workspace created."));
     }
 
-    @GetMapping("/workspaces")
+    @GetMapping
     public ResponseEntity<ApiResponse<WorkspaceListResponse>> getMyWorkspaces(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
@@ -54,7 +54,7 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/workspaces/{workspaceId}")
+    @GetMapping(WorkspaceHttpContract.DETAIL_PATH)
     public ResponseEntity<ApiResponse<WorkspaceDetailResponse>> getWorkspaceDetail(
             Authentication authentication,
             @PathVariable Long workspaceId
@@ -64,7 +64,7 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/workspaces/{workspaceId}/members")
+    @GetMapping(WorkspaceHttpContract.MEMBERS_PATH)
     public ResponseEntity<ApiResponse<List<WorkspaceMemberResponse>>> getWorkspaceMembers(
             Authentication authentication,
             @PathVariable Long workspaceId
@@ -74,7 +74,7 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PatchMapping("/workspaces/{workspaceId}")
+    @PatchMapping(WorkspaceHttpContract.DETAIL_PATH)
     public ResponseEntity<ApiResponse<WorkspaceSummaryResponse>> updateWorkspace(
             Authentication authentication,
             @PathVariable Long workspaceId,
@@ -85,7 +85,7 @@ public class WorkspaceController {
         return ResponseEntity.ok(ApiResponse.success(response, "Workspace updated."));
     }
 
-    @DeleteMapping("/workspaces/{workspaceId}")
+    @DeleteMapping(WorkspaceHttpContract.DETAIL_PATH)
     public ResponseEntity<ApiResponse<Void>> deleteWorkspace(
             Authentication authentication,
             @PathVariable Long workspaceId
