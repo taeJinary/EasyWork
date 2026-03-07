@@ -129,7 +129,7 @@ export default function ProfileSettingsPage() {
                 {profile.email}
               </div>
               <div className="text-[var(--text-xs)] text-[var(--color-text-muted)] mt-[2px]">
-                {profile.provider === 'local' ? '이메일 가입' : profile.provider}
+                {profile.provider.toUpperCase() === 'LOCAL' ? '이메일 가입' : profile.provider}
               </div>
             </div>
           </div>

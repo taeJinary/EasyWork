@@ -201,7 +201,7 @@ export default function AccountSettingsPage() {
       {/* ── Withdraw Confirmation Modal ── */}
       {showWithdrawModal && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => { setShowWithdrawModal(false); setWithdrawError(null); }} />
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => { setShowWithdrawModal(false); setWithdrawError(null); setWithdrawPassword(''); }} />
           <div className="
             fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
             w-[400px] max-w-[90vw] bg-[var(--color-surface)]
@@ -213,7 +213,7 @@ export default function AccountSettingsPage() {
                 정말 탈퇴하시겠습니까?
               </h3>
               <button
-                onClick={() => { setShowWithdrawModal(false); setWithdrawError(null); }}
+                onClick={() => { setShowWithdrawModal(false); setWithdrawError(null); setWithdrawPassword(''); }}
                 className="p-[var(--spacing-xs)] bg-transparent border-none cursor-pointer text-[var(--color-text-muted)]"
               >
                 <X size={16} />
