@@ -13,6 +13,7 @@ import InvitationsPage from '@/pages/InvitationsPage';
 import NotificationsPage from '@/pages/NotificationsPage';
 import ProfileSettingsPage from '@/pages/ProfileSettingsPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
+import ProjectSettingsPage from '@/pages/ProjectSettingsPage';
 
 export default function App() {
   return (
@@ -36,7 +37,7 @@ export default function App() {
         <Route path="/invitations" element={<InvitationsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         {/* Phase D — 설정 */}
-        <Route path="/projects/:projectId/settings" element={<div className="text-[var(--color-text-muted)]">프로젝트 설정 — 추후 구현 예정</div>} />
+        <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
         <Route path="/settings/profile" element={<ProfileSettingsPage />} />
         <Route path="/settings/account" element={<AccountSettingsPage />} />
       </Route>
