@@ -69,7 +69,9 @@ export default function InvitationsPage() {
       const res = await apiClient.post<ApiResponse<InvitationAction>>(`/invitations/${invitationId}/accept`);
       const newStatus = res.data.data.status;
       setInvitations((prev) =>
-        prev.map((inv) => inv.invitationId === invitationId ? { ...inv, status: newStatus } : inv)
+        prev
+          .map((inv) => inv.invitationId === invitationId ? { ...inv, status: newStatus } : inv)
+          .filter((inv) => !statusFilter || inv.status === statusFilter)
       );
     } catch (err) {
       setError('초대 수락에 실패했습니다.');
@@ -86,7 +88,9 @@ export default function InvitationsPage() {
       const res = await apiClient.post<ApiResponse<InvitationAction>>(`/invitations/${invitationId}/reject`);
       const newStatus = res.data.data.status;
       setInvitations((prev) =>
-        prev.map((inv) => inv.invitationId === invitationId ? { ...inv, status: newStatus } : inv)
+        prev
+          .map((inv) => inv.invitationId === invitationId ? { ...inv, status: newStatus } : inv)
+          .filter((inv) => !statusFilter || inv.status === statusFilter)
       );
     } catch (err) {
       setError('초대 거절에 실패했습니다.');

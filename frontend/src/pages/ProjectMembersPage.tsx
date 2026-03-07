@@ -68,7 +68,7 @@ export default function ProjectMembersPage() {
     try {
       setError(null);
       await apiClient.patch(`/projects/${projectId}/members/${memberId}/role`, { role: newRole });
-      setMembers(members.map((m) => m.memberId === memberId ? { ...m, role: newRole } : m));
+      setMembers((prev) => prev.map((m) => m.memberId === memberId ? { ...m, role: newRole } : m));
     } catch (err) {
       setError('역할 변경에 실패했습니다.');
       console.error('Failed to change role:', err);
@@ -80,7 +80,7 @@ export default function ProjectMembersPage() {
     try {
       setError(null);
       await apiClient.delete(`/projects/${projectId}/members/${memberId}`);
-      setMembers(members.filter((m) => m.memberId !== memberId));
+      setMembers((prev) => prev.filter((m) => m.memberId !== memberId));
     } catch (err) {
       setError('멤버 제거에 실패했습니다.');
       console.error('Failed to remove member:', err);

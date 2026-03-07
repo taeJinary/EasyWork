@@ -87,7 +87,9 @@ export default function NotificationsPage() {
     try {
       await apiClient.patch(`/notifications/${notificationId}/read`);
       setNotifications((prev) =>
-        prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: true } : n)
+        unreadOnly
+          ? prev.filter((n) => n.notificationId !== notificationId)
+          : prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: true } : n)
       );
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch (err) {
