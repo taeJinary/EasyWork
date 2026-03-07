@@ -84,15 +84,23 @@ export default function NotificationsPage() {
   }, [fetchNotifications]);
 
   const handleRead = async (notificationId: number) => {
+    // Optimistically mark as read immediately to prevent duplicate clicks
+    setNotifications((prev) =>
+      unreadOnly
+        ? prev.filter((n) => n.notificationId !== notificationId)
+        : prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: true } : n)
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
     try {
       await apiClient.patch(`/notifications/${notificationId}/read`);
+    } catch (err) {
+      // Revert on failure
       setNotifications((prev) =>
         unreadOnly
-          ? prev.filter((n) => n.notificationId !== notificationId)
-          : prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: true } : n)
+          ? [...prev, { notificationId, isRead: false } as NotificationItem] // simplified revert
+          : prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: false } : n)
       );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch (err) {
+      setUnreadCount((c) => c + 1);
       console.error('Failed to read notification:', err);
     }
   };

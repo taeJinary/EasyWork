@@ -93,7 +93,7 @@ export default function ProjectMembersPage() {
     setInviteError(null);
     try {
       await apiClient.post<ApiResponse<InvitationSummary>>(`/projects/${projectId}/invitations`, {
-        email: inviteEmail,
+        email: inviteEmail.trim(),
         role: inviteRole,
       });
       setShowInviteModal(false);
