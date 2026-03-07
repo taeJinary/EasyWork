@@ -306,7 +306,7 @@ export interface InvitationListResponse {
 export interface InvitationAction {
   invitationId: number;
   projectId: number;
-  memberId: number;
+  memberId: number | null;
   role: ProjectRole;
   status: InvitationStatus;
 }

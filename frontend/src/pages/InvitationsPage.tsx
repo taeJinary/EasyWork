@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Check, X, ChevronLeft, ChevronRight, AlertCircle, Clock, Shield } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
 import type { ApiResponse, InvitationListItem, InvitationListResponse, InvitationAction, InvitationStatus } from '@/types';
@@ -113,7 +112,7 @@ export default function InvitationsPage() {
       )}
 
       {/* Filter */}
-      <FilterBar searchPlaceholder="" searchValue="" onSearchChange={() => {}}>
+      <div className="flex items-center gap-[var(--spacing-md)] py-[var(--spacing-md)]">
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
@@ -129,7 +128,7 @@ export default function InvitationsPage() {
           <option value="ACCEPTED">ACCEPTED</option>
           <option value="REJECTED">REJECTED</option>
         </select>
-      </FilterBar>
+      </div>
 
       {/* Loading */}
       {loading && (
