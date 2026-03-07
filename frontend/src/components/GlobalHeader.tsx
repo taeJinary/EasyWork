@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
+import { Search, Plus, Bell, ChevronDown, LogOut, Settings, User, Menu } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useUiStore } from '@/stores/uiStore';
 
 export default function GlobalHeader() {
   const { user, logout } = useAuthStore();
+  const { toggleMobileSidebar } = useUiStore();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -30,6 +32,19 @@ export default function GlobalHeader() {
       flex items-center px-[var(--spacing-base)] gap-[var(--spacing-base)]
       fixed top-0 left-0 right-0 z-50
     ">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={toggleMobileSidebar}
+        className="
+          md:hidden flex items-center justify-center w-[32px] h-[32px]
+          text-[var(--color-text-secondary)] bg-transparent border-none cursor-pointer
+          hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-sm)] shrink-0
+        "
+        aria-label="Toggle Menu"
+      >
+        <Menu size={20} />
+      </button>
+
       {/* Logo */}
       <Link
         to="/workspaces"
@@ -49,8 +64,8 @@ export default function GlobalHeader() {
         <ChevronDown size={14} />
       </button>
 
-      {/* Global Search */}
-      <div className="relative flex-1 max-w-[480px]">
+      {/* Global Search - Hidden on mobile */}
+      <div className="relative hidden md:flex flex-1 max-w-[480px]">
         <Search
           size={16}
           className="absolute left-[var(--spacing-sm)] top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"

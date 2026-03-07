@@ -124,7 +124,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
 
       {/* Drawer — [Bug 3 fix] z-50 > Backdrop z-40 */}
       <div className="
-        fixed top-0 right-0 h-full w-[680px] max-w-full
+        fixed top-0 right-0 h-full w-full md:w-[680px]
         bg-[var(--color-surface)] border-l border-[var(--color-border)]
         z-50 overflow-y-auto
         shadow-[-4px_0_12px_rgba(0,0,0,0.05)]
@@ -193,9 +193,9 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
             <div className="h-32 bg-[var(--color-surface-muted)] rounded" />
           </div>
         ) : task ? (
-          <div className="flex">
+          <div className="flex flex-col md:flex-row">
             {/* Main content (left) */}
-            <div className="flex-1 p-[var(--spacing-lg)] border-r border-[var(--color-border)] min-w-0">
+            <div className="flex-1 p-[var(--spacing-lg)] md:border-r border-[var(--color-border)] min-w-0">
               {/* Title */}
               <h2 className="text-[var(--text-lg)] font-bold text-[var(--color-text-primary)] m-0 mb-[var(--spacing-xs)]">
                 {task.title}
@@ -298,7 +298,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
             </div>
 
             {/* Right sidebar meta panel */}
-            <div className="w-[220px] p-[var(--spacing-base)] shrink-0 space-y-[var(--spacing-base)]">
+            <div className="w-full md:w-[220px] p-[var(--spacing-base)] shrink-0 space-y-[var(--spacing-base)] border-t md:border-t-0 border-[var(--color-border)]">
               {/* Status */}
               <div>
                 <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">

@@ -14,7 +14,7 @@ export default function AppShell() {
     <div className="min-h-screen bg-[var(--color-bg)]">
       <GlobalHeader />
       <Sidebar />
-      <main className="ml-[256px] mt-[56px] p-[var(--spacing-lg)]">
+      <main className="md:ml-[256px] mt-[56px] p-[var(--spacing-md)] md:p-[var(--spacing-lg)] min-w-0">
         <Outlet />
       </main>
     </div>

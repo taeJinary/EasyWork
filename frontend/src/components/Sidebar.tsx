@@ -8,6 +8,7 @@ import {
   Settings,
   FolderOpen,
 } from 'lucide-react';
+import { useUiStore } from '@/stores/uiStore';
 
 const mainMenuItems = [
   { to: '/workspaces', label: 'Home', icon: Home },
@@ -26,12 +27,26 @@ const recentProjects = [
 ];
 
 export default function Sidebar() {
+  const { isMobileSidebarOpen, setMobileSidebarOpen } = useUiStore();
+
   return (
-    <aside className="
-      w-[256px] h-[calc(100vh-56px)] fixed top-[56px] left-0
-      bg-[var(--color-surface)] border-r border-[var(--color-border)]
-      flex flex-col overflow-y-auto z-40
-    ">
+    <>
+      {/* Mobile Backdrop */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside className={`
+        w-[256px] h-[calc(100vh-56px)] fixed top-[56px] left-0
+        bg-[var(--color-surface)] border-r border-[var(--color-border)]
+        flex flex-col overflow-y-auto z-50
+        transition-transform duration-200 ease-in-out
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0
+      `}>
       {/* Main navigation */}
       <nav className="flex-1 py-[var(--spacing-sm)]">
         <ul className="list-none m-0 p-0">
@@ -39,6 +54,7 @@ export default function Sidebar() {
             <li key={item.label}>
               <NavLink
                 to={item.to}
+                onClick={() => setMobileSidebarOpen(false)}
                 className={({ isActive }) => `
                   flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-base)] py-[7px]
                   text-[var(--text-sm)] no-underline transition-colors
@@ -66,6 +82,7 @@ export default function Sidebar() {
             <li key={project.id}>
               <NavLink
                 to={`/projects/${project.id}/board`}
+                onClick={() => setMobileSidebarOpen(false)}
                 className={({ isActive }) => `
                   flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-base)] py-[6px]
                   text-[var(--text-sm)] no-underline
@@ -82,6 +99,7 @@ export default function Sidebar() {
           ))}
         </ul>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
