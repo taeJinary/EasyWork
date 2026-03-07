@@ -1,0 +1,335 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/dce23/EasyWork/frontend[39m
+
+ [32m??[39m src/test/types.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+node.exe : [90mstderr
+[2m | src/pages/__tes
+ts__/NotificationsPage
+.test.tsx[2m > [22m
+[2mNotificationsPage[
+2m > [22m[2mshows er
+ror when fetch fails
+위치 줄:1 문자:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\P
+rogram Files\nodejs/no
+de_mo ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: ([90mstder   
+ r[2m...hen fetch    
+ fails:String) []    ,
+ RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+[22m[39mFailed to fe
+tch notifications: Err
+or: Network Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Notifi
+cationsPage.test.tsx:1
+45:31
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/NotificationsPage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 524[2mms[22m[39m
+[90mstderr[2m | src/
+pages/__tests__/Invita
+tionsPage.test.tsx[2m
+ > [22m[2mInvitation
+sPage[2m > [22m[2ms
+hows error banner on A
+PI failure
+[22m[39mFailed to ac
+cept: Error: Network E
+rror
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Invita
+tionsPage.test.tsx:168
+:32
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/InvitationsPage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 685[2mms[22m[39m
+[90mstderr[2m | src/
+pages/__tests__/Profil
+eSettingsPage.test.tsx
+[2m > [22m[2mProfil
+eSettingsPage[2m > [
+22m[2mshows error ban
+ner on API failure
+[22m[39mFailed to fe
+tch profile: Error: Ne
+twork Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Profil
+eSettingsPage.test.tsx
+:155:31
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/ProfileSettingsPage.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1427[2mms[22m[39m
+     [33m[2m??[22m[39m saves nickname and shows success message [33m 458[2mms[22m[39m
+     [33m[2m??[22m[39m shows error when nickname exceeds 20 chars [33m 452[2mms[22m[39m
+[90mstderr[2m | src/
+pages/__tests__/Accoun
+tSettingsPage.test.tsx
+[2m > [22m[2mAccoun
+tSettingsPage[2m > [
+22m[2mshows error on 
+password change failur
+e
+[22m[39mFailed to ch
+ange password: { respo
+nse: { data: { message
+: [32m'?꾩옱 鍮꾨?踰덊샇媛 ?
+?몄뒿?덈떎.'[39m } } }
+
+[90mstderr[2m | src/
+pages/__tests__/Accoun
+tSettingsPage.test.tsx
+[2m > [22m[2mAccoun
+tSettingsPage[2m > [
+22m[2mshows error on 
+withdraw failure
+[22m[39mFailed to wi
+thdraw: Error: Network
+ Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Accoun
+tSettingsPage.test.tsx
+:171:34
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/AccountSettingsPage.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 3268[2mms[22m[39m
+     [33m[2m??[22m[39m shows error when new password has no special character [33m 503[2mms[22m[39m
+     [33m[2m??[22m[39m shows error when new password is less than 8 chars [33m 346[2mms[22m[39m
+     [33m[2m??[22m[39m successfully changes password with valid input [33m 469[2mms[22m[39m
+     [33m[2m??[22m[39m shows error on password change failure [33m 519[2mms[22m[39m
+     [33m[2m??[22m[39m successfully withdraws, logs out, and redirects to login [33m 444[2mms[22m[39m
+     [33m[2m??[22m[39m shows error on withdraw failure [33m 368[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 14:30:07
+[2m   Duration [22m 6.06s[2m (transform 625ms, setup 2.15s, import 1.98s, tests 5.91s, environment 8.00s)[22m
+

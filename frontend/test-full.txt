@@ -1,0 +1,2485 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/dce23/EasyWork/frontend[39m
+
+ [32m??[39m src/test/types.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+node.exe : [90mstderr
+[2m | src/pages/__tes
+ts__/NotificationsPage
+.test.tsx[2m > [22m
+[2mNotificationsPage[
+2m > [22m[2mshows er
+ror when fetch fails
+위치 줄:1 문자:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\P
+rogram Files\nodejs/no
+de_mo ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpecifi
+    ed: ([90mstderr[
+    2m...hen fetch fai
+    ls:String) [], Rem
+    oteException
+    + FullyQualifiedEr
+    rorId : NativeComm
+    andError
+ 
+[22m[39mFailed to fe
+tch notifications: Err
+or: Network Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Notifi
+cationsPage.test.tsx:1
+45:31
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/NotificationsPage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 438[2mms[22m[39m
+[90mstderr[2m | src/
+pages/__tests__/Invita
+tionsPage.test.tsx[2m
+ > [22m[2mInvitation
+sPage[2m > [22m[2ms
+hows error banner on A
+PI failure
+[22m[39mFailed to ac
+cept: Error: Network E
+rror
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Invita
+tionsPage.test.tsx:168
+:32
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/InvitationsPage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 666[2mms[22m[39m
+     [33m[2m??[22m[39m updates status to ACCEPTED on accept click (functional updater) [33m 311[2mms[22m[39m
+[90mstderr[2m | src/
+pages/__tests__/Profil
+eSettingsPage.test.tsx
+[2m > [22m[2mProfil
+eSettingsPage[2m > [
+22m[2mshows error ban
+ner on API failure
+[22m[39mFailed to fe
+tch profile: Error: Ne
+twork Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Profil
+eSettingsPage.test.tsx
+:155:31
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [32m??[39m src/pages/__tests__/ProfileSettingsPage.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1487[2mms[22m[39m
+     [33m[2m??[22m[39m saves nickname and shows success message [33m 523[2mms[22m[39m
+     [33m[2m??[22m[39m shows error when nickname exceeds 20 chars [33m 429[2mms[22m[39m
+[90mstderr[2m | src/
+pages/__tests__/Accoun
+tSettingsPage.test.tsx
+[2m > [22m[2mAccoun
+tSettingsPage[2m > [
+22m[2mshows error on 
+password change failur
+e
+[22m[39mFailed to ch
+ange password: { respo
+nse: { data: { message
+: [32m'?꾩옱 鍮꾨?踰덊샇媛 ?
+?몄뒿?덈떎.'[39m } } }
+
+[90mstderr[2m | src/
+pages/__tests__/Accoun
+tSettingsPage.test.tsx
+[2m > [22m[2mAccoun
+tSettingsPage[2m > [
+22m[2mshows error on 
+withdraw failure
+[22m[39mFailed to wi
+thdraw: Error: Network
+ Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Accoun
+tSettingsPage.test.tsx
+:170:34
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [31m??[39m src/pages/__tests__/AccountSettingsPage.test.tsx [2m([22m[2m10 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 5007[2mms[22m[39m
+     [32m??[39m renders password change form fields[32m 259[2mms[22m[39m
+     [32m??[39m disables change button when fields are empty[32m 46[2mms[22m[39m
+[31m     [31m횞[31m shows error when new password has no special character[39m[33m 1467[2mms[22m[39m
+     [33m[2m??[22m[39m shows error when new password is less than 8 chars [33m 307[2mms[22m[39m
+     [33m[2m??[22m[39m successfully changes password with valid input [33m 500[2mms[22m[39m
+[31m     [31m횞[31m shows error on password change failure[39m[33m 1446[2mms[22m[39m
+     [32m??[39m shows withdraw confirmation modal on button click[32m 93[2mms[22m[39m
+     [33m[2m??[22m[39m successfully withdraws, logs out, and redirects to login [33m 387[2mms[22m[39m
+     [33m[2m??[22m[39m shows error on withdraw failure [33m 339[2mms[22m[39m
+     [32m??[39m closes withdraw modal on cancel[32m 161[2mms[22m[39m
+
+[31m??렞??렞??렞??[39m[
+1m[41m Failed Tests 2
+ [49m[22m[31m??렞??렞
+??렞??[39m
+
+[41m[1m FAIL [22m[
+49m src/pages/__tests_
+_/AccountSettingsPage.
+test.tsx[2m > [22mAc
+countSettingsPage[2m 
+> [22mshows error whe
+n new password has no 
+special character
+[31m[1mTestingLibrar
+yElementError[22m[39
+m: Found multiple elem
+ents with the text: /?
+곷Ц.*?レ옄.*?뱀닔臾몄옄/
+
+Here are the matching 
+elements:
+
+Ignored nodes: comment
+s, script, style
+[36m<p[39m
+  [33mclass[39m=[32
+m"text-[var(--text-xs)
+] text-[var(--color-da
+nger)] mt-[var(--spaci
+ng-xs)] m-0"[39m
+[36m>[39m
+  [0m鍮꾨?踰덊샇???곷Ц, ?レ옄
+, ?뱀닔臾몄옄(@$!%*#?&)瑜?紐⑤
+몢 ?ы븿?댁빞 ?⑸땲??[0m
+[36m</p>[39m
+
+Ignored nodes: comment
+s, script, style
+[36m<p[39m
+  [33mclass[39m=[32
+m"text-[var(--text-xs)
+] text-[var(--color-te
+xt-muted)] mt-[var(--s
+pacing-xs)] m-0"[39m
+[36m>[39m
+  [0m8~20?? ?곷Ц + ?レ옄
+ + ?뱀닔臾몄옄 ?ы븿[0m
+[36m</p>[39m
+
+(If this is intentiona
+l, then use the `*AllB
+y*` variant of the que
+ry (like `queryAllByTe
+xt`, `getAllByText`, o
+r `findAllByText`)).
+
+Ignored nodes: comment
+s, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39
+m=[32m"flex items-sta
+rt justify-between pb-
+[var(--spacing-base)] 
+border-b border-[var(-
+-color-border)]"[39m
+      [36m>[39m
+        [36m<div>[39
+m
+          [36m<h1[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-xl)] font-bold 
+text-[var(--color-text
+-primary)] m-0"[39m
+          [36m>[39m
+            [0m怨꾩젙 ?ㅼ
+젙[0m
+          [36m</h1>[
+39m
+          [36m<p[39m
+            [33mclass
+[39m=[32m"text-[var(
+--text-sm)] text-[var(
+--color-text-secondary
+)] mt-[var(--spacing-x
+s)] m-0"[39m
+          [36m>[39m
+            [0m鍮꾨?踰덊샇
+ 蹂寃?諛?怨꾩젙 愿由?[0m
+          [36m</p>[3
+9m
+        [36m</div>[3
+9m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39
+m=[32m"mt-[var(--spac
+ing-lg)] max-w-[480px]
+ space-y-[var(--spacin
+g-xl)]"[39m
+      [36m>[39m
+        [36m<section>
+[39m
+          [36m<h2[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-base)] font-bol
+d text-[var(--color-te
+xt-primary)] m-0 mb-[v
+ar(--spacing-base)] fl
+ex items-center gap-[v
+ar(--spacing-sm)]"[39
+m
+          [36m>[39m
+            [36m<svg
+[39m
+              [33mari
+a-hidden[39m=[32m"tr
+ue"[39m
+              [33mcla
+ss[39m=[32m"lucide l
+ucide-lock"[39m
+              [33mfil
+l[39m=[32m"none"[39
+m
+              [33mhei
+ght[39m=[32m"16"[39
+m
+              [33mstr
+oke[39m=[32m"current
+Color"[39m
+              [33mstr
+oke-linecap[39m=[32m
+"round"[39m
+              [33mstr
+oke-linejoin[39m=[32
+m"round"[39m
+              [33mstr
+oke-width[39m=[32m"2
+"[39m
+              [33mvie
+wBox[39m=[32m"0 0 24
+ 24"[39m
+              [33mwid
+th[39m=[32m"16"[39m
+              [33mxml
+ns[39m=[32m"http://w
+ww.w3.org/2000/svg"[3
+9m
+            [36m>[39
+m
+              [36m<re
+ct[39m
+                [33mh
+eight[39m=[32m"11"[
+39m
+                [33mr
+x[39m=[32m"2"[39m
+                [33mr
+y[39m=[32m"2"[39m
+                [33mw
+idth[39m=[32m"18"[3
+9m
+                [33mx
+[39m=[32m"3"[39m
+                [33my
+[39m=[32m"11"[39m
+              [36m/>
+[39m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"M7 11V7a5 
+5 0 0 1 10 0v4"[39m
+              [36m/>
+[39m
+            [36m</svg
+>[39m
+            [0m鍮꾨?踰덊샇
+ 蹂寃?[0m
+          [36m</h2>[
+39m
+          [36m<div[3
+9m
+            [33mclass
+[39m=[32m"space-y-[v
+ar(--spacing-md)]"[39
+m
+          [36m>[39m
+            [36m<div>
+[39m
+              [36m<la
+bel[39m
+                [33mc
+lass[39m=[32m"block 
+text-[var(--text-sm)] 
+font-medium text-[var(
+--color-text-primary)]
+ mb-[var(--spacing-xs)
+]"[39m
+                [33mf
+or[39m=[32m"currentP
+assword"[39m
+              [36m>[
+39m
+                [0m?꾩
+옱 鍮꾨?踰덊샇[0m
+              [36m</l
+abel>[39m
+              [36m<in
+put[39m
+                [33mc
+lass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er border-[var(--color
+-border)] rounded-[var
+(--radius-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:b
+order-[var(--color-pri
+mary)] focus:ring-1 fo
+cus:ring-[var(--color-
+primary)]
+                "[39m
+                [33mi
+d[39m=[32m"currentPa
+ssword"[39m
+                [33mt
+ype[39m=[32m"passwor
+d"[39m
+                [33mv
+alue[39m=[32m"OldPas
+s1!"[39m
+              [36m/>
+[39m
+            [36m</div
+>[39m
+            [36m<div>
+[39m
+              [36m<la
+bel[39m
+                [33mc
+lass[39m=[32m"block 
+text-[var(--text-sm)] 
+font-medium text-[var(
+--color-text-primary)]
+ mb-[var(--spacing-xs)
+]"[39m
+                [33mf
+or[39m=[32m"newPassw
+ord"[39m
+              [36m>[
+39m
+                [0m??
+鍮꾨?踰덊샇[0m
+              [36m</l
+abel>[39m
+              [36m<in
+put[39m
+                [33mc
+lass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er rounded-[var(--radi
+us-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:r
+ing-1
+                  bord
+er-[var(--color-danger
+)] focus:border-[var(-
+-color-danger)] focus:
+ring-[var(--color-dang
+er)]
+                "[39m
+                [33mi
+d[39m=[32m"newPasswo
+rd"[39m
+                [33mt
+ype[39m=[32m"passwor
+d"[39m
+                [33mv
+alue[39m=[32m"NewPas
+s123"[39m
+              [36m/>
+[39m
+              [36m<p
+[39m
+                [33mc
+lass[39m=[32m"text-[
+var(--text-xs)] text-[
+var(--color-danger)] m
+t-[var(--spacing-xs)] 
+m-0"[39m
+              [36m>[
+39m
+                [0m鍮꾨
+?踰덊샇???곷Ц, ?レ옄, ?뱀닔臾몄옄
+(@$!%*#?&)瑜?紐⑤몢 ?ы븿?댁빞
+ ?⑸땲??[0m
+              [36m</p
+>[39m
+              [36m<p
+[39m
+                [33mc
+lass[39m=[32m"text-[
+var(--text-xs)] text-[
+var(--color-text-muted
+)] mt-[var(--spacing-x
+s)] m-0"[39m
+              [36m>[
+39m
+                [0m8~
+20?? ?곷Ц + ?レ옄 + ?뱀닔臾몄
+옄 ?ы븿[0m
+              [36m</p
+>[39m
+            [36m</div
+>[39m
+            [36m<butt
+on[39m
+              [33mcla
+ss[39m=[32m"
+                h-[36p
+x] px-[var(--spacing-l
+g)]
+                bg-[va
+r(--color-primary)] te
+xt-white rounded-[var(
+--radius-sm)]
+                text-[
+var(--text-sm)] font-m
+edium border-none curs
+or-pointer
+                hover:
+bg-[var(--color-primar
+y-hover)]
+                disabl
+ed:opacity-50 disabled
+:cursor-not-allowed
+              "[39m
+              [33mdis
+abled[39m=[32m""[39
+m
+            [36m>[39
+m
+              [0m鍮꾨?踰
+덊샇 蹂寃?[0m
+            [36m</but
+ton>[39m
+          [36m</div>
+[39m
+        [36m</section
+>[39m
+        [36m<section
+[39m
+          [33mclass[
+39m=[32m"border-t bor
+der-[var(--color-borde
+r)] pt-[var(--spacing-
+lg)]"[39m
+        [36m>[39m
+          [36m<h2[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-base)] font-bol
+d text-[var(--color-da
+nger)] m-0 mb-[var(--s
+pacing-sm)] flex items
+-center gap-[var(--spa
+cing-sm)]"[39m
+          [36m>[39m
+            [36m<svg
+[39m
+              [33mari
+a-hidden[39m=[32m"tr
+ue"[39m
+              [33mcla
+ss[39m=[32m"lucide l
+ucide-triangle-alert"
+[39m
+              [33mfil
+l[39m=[32m"none"[39
+m
+              [33mhei
+ght[39m=[32m"16"[39
+m
+              [33mstr
+oke[39m=[32m"current
+Color"[39m
+              [33mstr
+oke-linecap[39m=[32m
+"round"[39m
+              [33mstr
+oke-linejoin[39m=[32
+m"round"[39m
+              [33mstr
+oke-width[39m=[32m"2
+"[39m
+              [33mvie
+wBox[39m=[32m"0 0 24
+ 24"[39m
+              [33mwid
+th[39m=[32m"16"[39m
+              [33mxml
+ns[39m=[32m"http://w
+ww.w3.org/2000/svg"[3
+9m
+            [36m>[39
+m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"m21.73 18-
+8-14a2 2 0 0 0-3.48 0l
+-8 14A2 2 0 0 0 4 21h1
+6a2 2 0 0 0 1.73-3"[3
+9m
+              [36m/>
+[39m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"M12 9v4"[
+39m
+              [36m/>
+[39m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"M12 17h.01
+"[39m
+              [36m/>
+[39m
+            [36m</svg
+>[39m
+            [0m?꾪뿕 ?곸
+뿭[0m
+          [36m</h2>[
+39m
+          [36m<p[39m
+            [33mclass
+[39m=[32m"text-[var(
+--text-sm)] text-[var(
+--color-text-secondary
+)] mb-[var(--spacing-b
+ase)] m-0"[39m
+          [36m>[39m
+            [0m怨꾩젙???
+?젣?섎㈃ 紐⑤뱺 ?곗씠?곌? ?곴뎄?곸
+쑝濡???젣?⑸땲?? ???묒뾽? ?섎
+룎由????놁뒿?덈떎.[0m
+          [36m</p>[3
+9m
+          [36m<button
+[39m
+            [33mclass
+[39m=[32m"
+              h-[36px]
+ px-[var(--spacing-lg)
+]
+              bg-trans
+parent border border-[
+var(--color-danger)] t
+ext-[var(--color-dange
+r)]
+              rounded-
+[var(--radius-sm)] tex
+t-[var(--text-sm)] fon
+t-medium cursor-pointe
+r
+              hover:bg
+-[var(--color-accent-r
+ed)]
+            "[39m
+          [36m>[39m
+            [0m?뚯썝 ?덊
+눜[0m
+          [36m</butto
+n>[39m
+        [36m</section
+>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comment
+s, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"flex items-s
+tart justify-between p
+b-[var(--spacing-base)
+] border-b border-[var
+(--color-border)]"[39
+m
+        [36m>[39m
+          [36m<div>[
+39m
+            [36m<h1[
+39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-xl)] font-bol
+d text-[var(--color-te
+xt-primary)] m-0"[39m
+            [36m>[39
+m
+              [0m怨꾩젙 
+?ㅼ젙[0m
+            [36m</h1>
+[39m
+            [36m<p[3
+9m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-sm)] text-[va
+r(--color-text-seconda
+ry)] mt-[var(--spacing
+-xs)] m-0"[39m
+            [36m>[39
+m
+              [0m鍮꾨?踰
+덊샇 蹂寃?諛?怨꾩젙 愿由?[0m
+            [36m</p>
+[39m
+          [36m</div>
+[39m
+        [36m</div>[3
+9m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"mt-[var(--sp
+acing-lg)] max-w-[480p
+x] space-y-[var(--spac
+ing-xl)]"[39m
+        [36m>[39m
+          [36m<sectio
+n>[39m
+            [36m<h2[
+39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-base)] font-b
+old text-[var(--color-
+text-primary)] m-0 mb-
+[var(--spacing-base)] 
+flex items-center gap-
+[var(--spacing-sm)]"[
+39m
+            [36m>[39
+m
+              [36m<sv
+g[39m
+                [33ma
+ria-hidden[39m=[32m"
+true"[39m
+                [33mc
+lass[39m=[32m"lucide
+ lucide-lock"[39m
+                [33mf
+ill[39m=[32m"none"[
+39m
+                [33mh
+eight[39m=[32m"16"[
+39m
+                [33ms
+troke[39m=[32m"curre
+ntColor"[39m
+                [33ms
+troke-linecap[39m=[3
+2m"round"[39m
+                [33ms
+troke-linejoin[39m=[
+32m"round"[39m
+                [33ms
+troke-width[39m=[32m
+"2"[39m
+                [33mv
+iewBox[39m=[32m"0 0 
+24 24"[39m
+                [33mw
+idth[39m=[32m"16"[3
+9m
+                [33mx
+mlns[39m=[32m"http:/
+/www.w3.org/2000/svg"
+[39m
+              [36m>[
+39m
+                [36m<
+rect[39m
+                  [33
+mheight[39m=[32m"11"
+[39m
+                  [33
+mrx[39m=[32m"2"[39m
+                  [33
+mry[39m=[32m"2"[39m
+                  [33
+mwidth[39m=[32m"18"
+[39m
+                  [33
+mx[39m=[32m"3"[39m
+                  [33
+my[39m=[32m"11"[39m
+                [36m/
+>[39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"M7 11V7a
+5 5 0 0 1 10 0v4"[39m
+                [36m/
+>[39m
+              [36m</s
+vg>[39m
+              [0m鍮꾨?踰
+덊샇 蹂寃?[0m
+            [36m</h2>
+[39m
+            [36m<div
+[39m
+              [33mcla
+ss[39m=[32m"space-y-
+[var(--spacing-md)]"[
+39m
+            [36m>[39
+m
+              [36m<di
+v>[39m
+                [36m<
+label[39m
+                  [33
+mclass[39m=[32m"bloc
+k text-[var(--text-sm)
+] font-medium text-[va
+r(--color-text-primary
+)] mb-[var(--spacing-x
+s)]"[39m
+                  [33
+mfor[39m=[32m"curren
+tPassword"[39m
+                [36m>
+[39m
+                  [0m
+?꾩옱 鍮꾨?踰덊샇[0m
+                [36m<
+/label>[39m
+                [36m<
+input[39m
+                  [33
+mclass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er border-[var(--color
+-border)] rounded-[var
+(--radius-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:b
+order-[var(--color-pri
+mary)] focus:ring-1 fo
+cus:ring-[var(--color-
+primary)]
+                "[39m
+                  [33
+mid[39m=[32m"current
+Password"[39m
+                  [33
+mtype[39m=[32m"passw
+ord"[39m
+                  [33
+mvalue[39m=[32m"OldP
+ass1!"[39m
+                [36m/
+>[39m
+              [36m</d
+iv>[39m
+              [36m<di
+v>[39m
+                [36m<
+label[39m
+                  [33
+mclass[39m=[32m"bloc
+k text-[var(--text-sm)
+] font-medium text-[va
+r(--color-text-primary
+)] mb-[var(--spacing-x
+s)]"[39m
+                  [33
+mfor[39m=[32m"newPas
+sword"[39m
+                [36m>
+[39m
+                  [0m
+??鍮꾨?踰덊샇[0m
+                [36m<
+/label>[39m
+                [36m<
+input[39m
+                  [33
+mclass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er rounded-[var(--radi
+us-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:r
+ing-1
+                  bord
+er-[var(--color-danger
+)] focus:border-[var(-
+-color-danger)] focus:
+ring-[var(--color-dang
+er)]
+                "[39m
+                  [33
+mid[39m=[32m"newPass
+word"[39m
+                  [33
+mtype[39m=[32m"passw
+ord"[39m
+                  [33
+mvalue[39m=[32m"NewP
+ass123"[39m
+                [36m/
+>[39m
+                [36m<
+p[39m
+                  [33
+mclass[39m=[32m"text
+-[var(--text-xs)] text
+-[var(--color-danger)]
+ mt-[var(--spacing-xs)
+] m-0"[39m
+                [36m>
+[39m
+                  [0m
+鍮꾨?踰덊샇???곷Ц, ?レ옄, ?뱀닔臾
+몄옄(@$!%*#?&)瑜?紐⑤몢 ?ы븿?
+댁빞 ?⑸땲??[0m
+                [36m<
+/p>[39m
+                [36m<
+p[39m
+                  [33
+mclass[39m=[32m"text
+-[var(--text-xs)] text
+-[var(--color-text-mut
+ed)] mt-[var(--spacing
+-xs)] m-0"[39m
+                [36m>
+[39m
+                  [0m
+8~20?? ?곷Ц + ?レ옄 + ?뱀닔
+臾몄옄 ?ы븿[0m
+                [36m<
+/p>[39m
+              [36m</d
+iv>[39m
+              [36m<bu
+tton[39m
+                [33mc
+lass[39m=[32m"
+                h-[36p
+x] px-[var(--spacing-l
+g)]
+                bg-[va
+r(--color-primary)] te
+xt-white rounded-[var(
+--radius-sm)]
+                text-[
+var(--text-sm)] font-m
+edium border-none curs
+or-pointer
+                hover:
+bg-[var(--color-primar
+y-hover)]
+                disabl
+ed:opacity-50 disabled
+:cursor-not-allowed
+              "[39m
+                [33md
+isabled[39m=[32m""[
+39m
+              [36m>[
+39m
+                [0m鍮꾨
+?踰덊샇 蹂寃?[0m
+              [36m</b
+utton>[39m
+            [36m</div
+>[39m
+          [36m</secti
+on>[39m
+          [36m<sectio
+n[39m
+            [33mclass
+[39m=[32m"border-t b
+order-[var(--color-bor
+der)] pt-[var(--spacin
+g-lg)]"[39m
+          [36m>[39m
+            [36m<h2[
+39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-base)] font-b
+old text-[var(--color-
+danger)] m-0 mb-[var(-
+-spacing-sm)] flex ite
+ms-center gap-[var(--s
+pacing-sm)]"[39m
+            [36m>[39
+m
+              [36m<sv
+g[39m
+                [33ma
+ria-hidden[39m=[32m"
+true"[39m
+                [33mc
+lass[39m=[32m"lucide
+ lucide-triangle-alert
+"[39m
+                [33mf
+ill[39m=[32m"none"[
+39m
+                [33mh
+eight[39m=[32m"16"[
+39m
+                [33ms
+troke[39m=[32m"curre
+ntColor"[39m
+                [33ms
+troke-linecap[39m=[3
+2m"round"[39m
+                [33ms
+troke-linejoin[39m=[
+32m"round"[39m
+                [33ms
+troke-width[39m=[32m
+"2"[39m
+                [33mv
+iewBox[39m=[32m"0 0 
+24 24"[39m
+                [33mw
+idth[39m=[32m"16"[3
+9m
+                [33mx
+mlns[39m=[32m"http:/
+/www.w3.org/2000/svg"
+[39m
+              [36m>[
+39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"m21.73 1
+8-8-14a2 2 0 0 0-3.48 
+0l-8 14A2 2 0 0 0 4 21
+h16a2 2 0 0 0 1.73-3"
+[39m
+                [36m/
+>[39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"M12 9v4"
+[39m
+                [36m/
+>[39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"M12 17h.
+01"[39m
+                [36m/
+>[39m
+              [36m</s
+vg>[39m
+              [0m?꾪뿕 
+?곸뿭[0m
+            [36m</h2>
+[39m
+            [36m<p[3
+9m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-sm)] text-[va
+r(--color-text-seconda
+ry)] mb-[var(--spacing
+-base)] m-0"[39m
+            [36m>[39
+m
+              [0m怨꾩젙?
+???젣?섎㈃ 紐⑤뱺 ?곗씠?곌? ?곴뎄
+?곸쑝濡???젣?⑸땲?? ???묒뾽? 
+?섎룎由????놁뒿?덈떎.[0m
+            [36m</p>
+[39m
+            [36m<butt
+on[39m
+              [33mcla
+ss[39m=[32m"
+              h-[36px]
+ px-[var(--spacing-lg)
+]
+              bg-trans
+parent border border-[
+var(--color-danger)] t
+ext-[var(--color-dange
+r)]
+              rounded-
+[var(--radius-sm)] tex
+t-[var(--text-sm)] fon
+t-medium cursor-pointe
+r
+              hover:bg
+-[var(--color-accent-r
+ed)]
+            "[39m
+            [36m>[39
+m
+              [0m?뚯썝 
+?덊눜[0m
+            [36m</but
+ton>[39m
+          [36m</secti
+on>[39m
+        [36m</div>[3
+9m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+[90m [2m??[22m Proxy
+.waitForWrapper node_m
+odules/@testing-librar
+y/dom/dist/wait-for.js
+:[2m163:27[22m[39m
+[36m [2m??[22m src/p
+ages/__tests__/Account
+SettingsPage.test.tsx:
+[2m75:11[22m[39m
+    [90m 73| [39m   
+ [35mawait[39m user
+[33m.[39m[34mtype[3
+9m(screen[33m.[39m[
+34mgetByLabelText[39m
+([32m'??鍮꾨?踰덊샇'[39m)
+[33m,[39m [32m'NewP
+ass123'[39m)[33m;[3
+9m
+    [90m 74| [39m
+    [90m 75| [39m   
+ [35mawait[39m [34m
+waitFor[39m(() [33m=
+>[39m {
+    [90m   | [39m   
+       [31m^[39m
+    [90m 76| [39m   
+   [34mexpect[39m(sc
+reen[33m.[39m[34mge
+tByText[39m([36m/?곷Ц
+.*?レ옄.*?뱀닔臾몄옄/[39m))
+[33m.[39m[34mtoBeInT
+heDocument[39m()[33m
+;[39m
+    [90m 77| [39m   
+ })[33m;[39m
+
+[31m[2m??렞??렞??렞??렞?
+?렞??렞??렞??렞??렞??렞??렞??
+렞[1/2]??[22m[39m
+
+[41m[1m FAIL [22m[
+49m src/pages/__tests_
+_/AccountSettingsPage.
+test.tsx[2m > [22mAc
+countSettingsPage[2m 
+> [22mshows error on 
+password change failur
+e
+[31m[1mTestingLibrar
+yElementError[22m[39
+m: Unable to find an e
+lement with the text: 
+/鍮꾨?踰덊샇 蹂寃쎌뿉 ?ㅽ뙣/. Th
+is could be because th
+e text is broken up by
+ multiple elements. In
+ this case, you can pr
+ovide a function for y
+our text matcher to ma
+ke your matcher more f
+lexible.
+
+Ignored nodes: comment
+s, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39
+m=[32m"flex items-sta
+rt justify-between pb-
+[var(--spacing-base)] 
+border-b border-[var(-
+-color-border)]"[39m
+      [36m>[39m
+        [36m<div>[39
+m
+          [36m<h1[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-xl)] font-bold 
+text-[var(--color-text
+-primary)] m-0"[39m
+          [36m>[39m
+            [0m怨꾩젙 ?ㅼ
+젙[0m
+          [36m</h1>[
+39m
+          [36m<p[39m
+            [33mclass
+[39m=[32m"text-[var(
+--text-sm)] text-[var(
+--color-text-secondary
+)] mt-[var(--spacing-x
+s)] m-0"[39m
+          [36m>[39m
+            [0m鍮꾨?踰덊샇
+ 蹂寃?諛?怨꾩젙 愿由?[0m
+          [36m</p>[3
+9m
+        [36m</div>[3
+9m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39
+m=[32m"mt-[var(--spac
+ing-lg)] max-w-[480px]
+ space-y-[var(--spacin
+g-xl)]"[39m
+      [36m>[39m
+        [36m<section>
+[39m
+          [36m<h2[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-base)] font-bol
+d text-[var(--color-te
+xt-primary)] m-0 mb-[v
+ar(--spacing-base)] fl
+ex items-center gap-[v
+ar(--spacing-sm)]"[39
+m
+          [36m>[39m
+            [36m<svg
+[39m
+              [33mari
+a-hidden[39m=[32m"tr
+ue"[39m
+              [33mcla
+ss[39m=[32m"lucide l
+ucide-lock"[39m
+              [33mfil
+l[39m=[32m"none"[39
+m
+              [33mhei
+ght[39m=[32m"16"[39
+m
+              [33mstr
+oke[39m=[32m"current
+Color"[39m
+              [33mstr
+oke-linecap[39m=[32m
+"round"[39m
+              [33mstr
+oke-linejoin[39m=[32
+m"round"[39m
+              [33mstr
+oke-width[39m=[32m"2
+"[39m
+              [33mvie
+wBox[39m=[32m"0 0 24
+ 24"[39m
+              [33mwid
+th[39m=[32m"16"[39m
+              [33mxml
+ns[39m=[32m"http://w
+ww.w3.org/2000/svg"[3
+9m
+            [36m>[39
+m
+              [36m<re
+ct[39m
+                [33mh
+eight[39m=[32m"11"[
+39m
+                [33mr
+x[39m=[32m"2"[39m
+                [33mr
+y[39m=[32m"2"[39m
+                [33mw
+idth[39m=[32m"18"[3
+9m
+                [33mx
+[39m=[32m"3"[39m
+                [33my
+[39m=[32m"11"[39m
+              [36m/>
+[39m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"M7 11V7a5 
+5 0 0 1 10 0v4"[39m
+              [36m/>
+[39m
+            [36m</svg
+>[39m
+            [0m鍮꾨?踰덊샇
+ 蹂寃?[0m
+          [36m</h2>[
+39m
+          [36m<div[3
+9m
+            [33mclass
+[39m=[32m"flex items
+-center gap-[var(--spa
+cing-sm)] p-[var(--spa
+cing-sm)] mb-[var(--sp
+acing-sm)] bg-[var(--c
+olor-accent-red)] bord
+er border-[var(--color
+-danger)] rounded-[var
+(--radius-sm)] text-[v
+ar(--text-sm)] text-[v
+ar(--color-danger)]"[
+39m
+          [36m>[39m
+            [36m<svg
+[39m
+              [33mari
+a-hidden[39m=[32m"tr
+ue"[39m
+              [33mcla
+ss[39m=[32m"lucide l
+ucide-circle-alert shr
+ink-0"[39m
+              [33mfil
+l[39m=[32m"none"[39
+m
+              [33mhei
+ght[39m=[32m"14"[39
+m
+              [33mstr
+oke[39m=[32m"current
+Color"[39m
+              [33mstr
+oke-linecap[39m=[32m
+"round"[39m
+              [33mstr
+oke-linejoin[39m=[32
+m"round"[39m
+              [33mstr
+oke-width[39m=[32m"2
+"[39m
+              [33mvie
+wBox[39m=[32m"0 0 24
+ 24"[39m
+              [33mwid
+th[39m=[32m"14"[39m
+              [33mxml
+ns[39m=[32m"http://w
+ww.w3.org/2000/svg"[3
+9m
+            [36m>[39
+m
+              [36m<ci
+rcle[39m
+                [33mc
+x[39m=[32m"12"[39m
+                [33mc
+y[39m=[32m"12"[39m
+                [33mr
+[39m=[32m"10"[39m
+              [36m/>
+[39m
+              [36m<li
+ne[39m
+                [33mx
+1[39m=[32m"12"[39m
+                [33mx
+2[39m=[32m"12"[39m
+                [33my
+1[39m=[32m"8"[39m
+                [33my
+2[39m=[32m"12"[39m
+              [36m/>
+[39m
+              [36m<li
+ne[39m
+                [33mx
+1[39m=[32m"12"[39m
+                [33mx
+2[39m=[32m"12.01"[3
+9m
+                [33my
+1[39m=[32m"16"[39m
+                [33my
+2[39m=[32m"16"[39m
+              [36m/>
+[39m
+            [36m</svg
+>[39m
+            [0m?꾩옱 鍮꾨
+?踰덊샇媛 ??몄뒿?덈떎.[0m
+          [36m</div>
+[39m
+          [36m<div[3
+9m
+            [33mclass
+[39m=[32m"space-y-[v
+ar(--spacing-md)]"[39
+m
+          [36m>[39m
+            [36m<div>
+[39m
+              [36m<la
+bel[39m
+                [33mc
+lass[39m=[32m"block 
+text-[var(--text-sm)] 
+font-medium text-[var(
+--color-text-primary)]
+ mb-[var(--spacing-xs)
+]"[39m
+                [33mf
+or[39m=[32m"currentP
+assword"[39m
+              [36m>[
+39m
+                [0m?꾩
+옱 鍮꾨?踰덊샇[0m
+              [36m</l
+abel>[39m
+              [36m<in
+put[39m
+                [33mc
+lass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er border-[var(--color
+-border)] rounded-[var
+(--radius-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:b
+order-[var(--color-pri
+mary)] focus:ring-1 fo
+cus:ring-[var(--color-
+primary)]
+                "[39m
+                [33mi
+d[39m=[32m"currentPa
+ssword"[39m
+                [33mt
+ype[39m=[32m"passwor
+d"[39m
+                [33mv
+alue[39m=[32m"WrongP
+ass1!"[39m
+              [36m/>
+[39m
+            [36m</div
+>[39m
+            [36m<div>
+[39m
+              [36m<la
+bel[39m
+                [33mc
+lass[39m=[32m"block 
+text-[var(--text-sm)] 
+font-medium text-[var(
+--color-text-primary)]
+ mb-[var(--spacing-xs)
+]"[39m
+                [33mf
+or[39m=[32m"newPassw
+ord"[39m
+              [36m>[
+39m
+                [0m??
+鍮꾨?踰덊샇[0m
+              [36m</l
+abel>[39m
+              [36m<in
+put[39m
+                [33mc
+lass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er rounded-[var(--radi
+us-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:r
+ing-1
+                  bord
+er-[var(--color-border
+)] focus:border-[var(-
+-color-primary)] focus
+:ring-[var(--color-pri
+mary)]
+                "[39m
+                [33mi
+d[39m=[32m"newPasswo
+rd"[39m
+                [33mt
+ype[39m=[32m"passwor
+d"[39m
+                [33mv
+alue[39m=[32m"NewPas
+s1!"[39m
+              [36m/>
+[39m
+              [36m<p
+[39m
+                [33mc
+lass[39m=[32m"text-[
+var(--text-xs)] text-[
+var(--color-text-muted
+)] mt-[var(--spacing-x
+s)] m-0"[39m
+              [36m>[
+39m
+                [0m8~
+20?? ?곷Ц + ?レ옄 + ?뱀닔臾몄
+옄 ?ы븿[0m
+              [36m</p
+>[39m
+            [36m</div
+>[39m
+            [36m<butt
+on[39m
+              [33mcla
+ss[39m=[32m"
+                h-[36p
+x] px-[var(--spacing-l
+g)]
+                bg-[va
+r(--color-primary)] te
+xt-white rounded-[var(
+--radius-sm)]
+                text-[
+var(--text-sm)] font-m
+edium border-none curs
+or-pointer
+                hover:
+bg-[var(--color-primar
+y-hover)]
+                disabl
+ed:opacity-50 disabled
+:cursor-not-allowed
+              "[39m
+            [36m>[39
+m
+              [0m鍮꾨?踰
+덊샇 蹂寃?[0m
+            [36m</but
+ton>[39m
+          [36m</div>
+[39m
+        [36m</section
+>[39m
+        [36m<section
+[39m
+          [33mclass[
+39m=[32m"border-t bor
+der-[var(--color-borde
+r)] pt-[var(--spacing-
+lg)]"[39m
+        [36m>[39m
+          [36m<h2[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-base)] font-bol
+d text-[var(--color-da
+nger)] m-0 mb-[var(--s
+pacing-sm)] flex items
+-center gap-[var(--spa
+cing-sm)]"[39m
+          [36m>[39m
+            [36m<svg
+[39m
+              [33mari
+a-hidden[39m=[32m"tr
+ue"[39m
+              [33mcla
+ss[39m=[32m"lucide l
+ucide-triangle-alert"
+[39m
+              [33mfil
+l[39m=[32m"none"[39
+m
+              [33mhei
+ght[39m=[32m"16"[39
+m
+              [33mstr
+oke[39m=[32m"current
+Color"[39m
+              [33mstr
+oke-linecap[39m=[32m
+"round"[39m
+              [33mstr
+oke-linejoin[39m=[32
+m"round"[39m
+              [33mstr
+oke-width[39m=[32m"2
+"[39m
+              [33mvie
+wBox[39m=[32m"0 0 24
+ 24"[39m
+              [33mwid
+th[39m=[32m"16"[39m
+              [33mxml
+ns[39m=[32m"http://w
+ww.w3.org/2000/svg"[3
+9m
+            [36m>[39
+m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"m21.73 18-
+8-14a2 2 0 0 0-3.48 0l
+-8 14A2 2 0 0 0 4 21h1
+6a2 2 0 0 0 1.73-3"[3
+9m
+              [36m/>
+[39m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"M12 9v4"[
+39m
+              [36m/>
+[39m
+              [36m<pa
+th[39m
+                [33md
+[39m=[32m"M12 17h.01
+"[39m
+              [36m/>
+[39m
+            [36m</svg
+>[39m
+            [0m?꾪뿕 ?곸
+뿭[0m
+          [36m</h2>[
+39m
+          [36m<p[39m
+            [33mclass
+[39m=[32m"text-[var(
+--text-sm)] text-[var(
+--color-text-secondary
+)] mb-[var(--spacing-b
+ase)] m-0"[39m
+          [36m>[39m
+            [0m怨꾩젙???
+?젣?섎㈃ 紐⑤뱺 ?곗씠?곌? ?곴뎄?곸
+쑝濡???젣?⑸땲?? ???묒뾽? ?섎
+룎由????놁뒿?덈떎.[0m
+          [36m</p>[3
+9m
+          [36m<button
+[39m
+            [33mclass
+[39m=[32m"
+              h-[36px]
+ px-[var(--spacing-lg)
+]
+              bg-trans
+parent border border-[
+var(--color-danger)] t
+ext-[var(--color-dange
+r)]
+              rounded-
+[var(--radius-sm)] tex
+t-[var(--text-sm)] fon
+t-medium cursor-pointe
+r
+              hover:bg
+-[var(--color-accent-r
+ed)]
+            "[39m
+          [36m>[39m
+            [0m?뚯썝 ?덊
+눜[0m
+          [36m</butto
+n>[39m
+        [36m</section
+>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comment
+s, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"flex items-s
+tart justify-between p
+b-[var(--spacing-base)
+] border-b border-[var
+(--color-border)]"[39
+m
+        [36m>[39m
+          [36m<div>[
+39m
+            [36m<h1[
+39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-xl)] font-bol
+d text-[var(--color-te
+xt-primary)] m-0"[39m
+            [36m>[39
+m
+              [0m怨꾩젙 
+?ㅼ젙[0m
+            [36m</h1>
+[39m
+            [36m<p[3
+9m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-sm)] text-[va
+r(--color-text-seconda
+ry)] mt-[var(--spacing
+-xs)] m-0"[39m
+            [36m>[39
+m
+              [0m鍮꾨?踰
+덊샇 蹂寃?諛?怨꾩젙 愿由?[0m
+            [36m</p>
+[39m
+          [36m</div>
+[39m
+        [36m</div>[3
+9m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"mt-[var(--sp
+acing-lg)] max-w-[480p
+x] space-y-[var(--spac
+ing-xl)]"[39m
+        [36m>[39m
+          [36m<sectio
+n>[39m
+            [36m<h2[
+39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-base)] font-b
+old text-[var(--color-
+text-primary)] m-0 mb-
+[var(--spacing-base)] 
+flex items-center gap-
+[var(--spacing-sm)]"[
+39m
+            [36m>[39
+m
+              [36m<sv
+g[39m
+                [33ma
+ria-hidden[39m=[32m"
+true"[39m
+                [33mc
+lass[39m=[32m"lucide
+ lucide-lock"[39m
+                [33mf
+ill[39m=[32m"none"[
+39m
+                [33mh
+eight[39m=[32m"16"[
+39m
+                [33ms
+troke[39m=[32m"curre
+ntColor"[39m
+                [33ms
+troke-linecap[39m=[3
+2m"round"[39m
+                [33ms
+troke-linejoin[39m=[
+32m"round"[39m
+                [33ms
+troke-width[39m=[32m
+"2"[39m
+                [33mv
+iewBox[39m=[32m"0 0 
+24 24"[39m
+                [33mw
+idth[39m=[32m"16"[3
+9m
+                [33mx
+mlns[39m=[32m"http:/
+/www.w3.org/2000/svg"
+[39m
+              [36m>[
+39m
+                [36m<
+rect[39m
+                  [33
+mheight[39m=[32m"11"
+[39m
+                  [33
+mrx[39m=[32m"2"[39m
+                  [33
+mry[39m=[32m"2"[39m
+                  [33
+mwidth[39m=[32m"18"
+[39m
+                  [33
+mx[39m=[32m"3"[39m
+                  [33
+my[39m=[32m"11"[39m
+                [36m/
+>[39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"M7 11V7a
+5 5 0 0 1 10 0v4"[39m
+                [36m/
+>[39m
+              [36m</s
+vg>[39m
+              [0m鍮꾨?踰
+덊샇 蹂寃?[0m
+            [36m</h2>
+[39m
+            [36m<div
+[39m
+              [33mcla
+ss[39m=[32m"flex ite
+ms-center gap-[var(--s
+pacing-sm)] p-[var(--s
+pacing-sm)] mb-[var(--
+spacing-sm)] bg-[var(-
+-color-accent-red)] bo
+rder border-[var(--col
+or-danger)] rounded-[v
+ar(--radius-sm)] text-
+[var(--text-sm)] text-
+[var(--color-danger)]"
+[39m
+            [36m>[39
+m
+              [36m<sv
+g[39m
+                [33ma
+ria-hidden[39m=[32m"
+true"[39m
+                [33mc
+lass[39m=[32m"lucide
+ lucide-circle-alert s
+hrink-0"[39m
+                [33mf
+ill[39m=[32m"none"[
+39m
+                [33mh
+eight[39m=[32m"14"[
+39m
+                [33ms
+troke[39m=[32m"curre
+ntColor"[39m
+                [33ms
+troke-linecap[39m=[3
+2m"round"[39m
+                [33ms
+troke-linejoin[39m=[
+32m"round"[39m
+                [33ms
+troke-width[39m=[32m
+"2"[39m
+                [33mv
+iewBox[39m=[32m"0 0 
+24 24"[39m
+                [33mw
+idth[39m=[32m"14"[3
+9m
+                [33mx
+mlns[39m=[32m"http:/
+/www.w3.org/2000/svg"
+[39m
+              [36m>[
+39m
+                [36m<
+circle[39m
+                  [33
+mcx[39m=[32m"12"[39
+m
+                  [33
+mcy[39m=[32m"12"[39
+m
+                  [33
+mr[39m=[32m"10"[39m
+                [36m/
+>[39m
+                [36m<
+line[39m
+                  [33
+mx1[39m=[32m"12"[39
+m
+                  [33
+mx2[39m=[32m"12"[39
+m
+                  [33
+my1[39m=[32m"8"[39m
+                  [33
+my2[39m=[32m"12"[39
+m
+                [36m/
+>[39m
+                [36m<
+line[39m
+                  [33
+mx1[39m=[32m"12"[39
+m
+                  [33
+mx2[39m=[32m"12.01"
+[39m
+                  [33
+my1[39m=[32m"16"[39
+m
+                  [33
+my2[39m=[32m"16"[39
+m
+                [36m/
+>[39m
+              [36m</s
+vg>[39m
+              [0m?꾩옱 
+鍮꾨?踰덊샇媛 ??몄뒿?덈떎.[0m
+            [36m</div
+>[39m
+            [36m<div
+[39m
+              [33mcla
+ss[39m=[32m"space-y-
+[var(--spacing-md)]"[
+39m
+            [36m>[39
+m
+              [36m<di
+v>[39m
+                [36m<
+label[39m
+                  [33
+mclass[39m=[32m"bloc
+k text-[var(--text-sm)
+] font-medium text-[va
+r(--color-text-primary
+)] mb-[var(--spacing-x
+s)]"[39m
+                  [33
+mfor[39m=[32m"curren
+tPassword"[39m
+                [36m>
+[39m
+                  [0m
+?꾩옱 鍮꾨?踰덊샇[0m
+                [36m<
+/label>[39m
+                [36m<
+input[39m
+                  [33
+mclass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er border-[var(--color
+-border)] rounded-[var
+(--radius-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:b
+order-[var(--color-pri
+mary)] focus:ring-1 fo
+cus:ring-[var(--color-
+primary)]
+                "[39m
+                  [33
+mid[39m=[32m"current
+Password"[39m
+                  [33
+mtype[39m=[32m"passw
+ord"[39m
+                  [33
+mvalue[39m=[32m"Wron
+gPass1!"[39m
+                [36m/
+>[39m
+              [36m</d
+iv>[39m
+              [36m<di
+v>[39m
+                [36m<
+label[39m
+
+                  [33
+mclass[39m=[32m"bloc
+k text-[var(--text-sm)
+] font-medium text-[va
+r(--color-text-primary
+)] mb-[var(--spacing-x
+s)]"[39m
+                  [33
+mfor[39m=[32m"newPas
+sword"[39m
+                [36m>
+[39m
+                  [0m
+??鍮꾨?踰덊샇[0m
+                [36m<
+/label>[39m
+                [36m<
+input[39m
+                  [33
+mclass[39m=[32m"
+                  w-fu
+ll h-[36px] px-[var(--
+spacing-sm)]
+                  bord
+er rounded-[var(--radi
+us-sm)]
+                  bg-[
+var(--color-surface)] 
+text-[var(--text-sm)]
+                  focu
+s:outline-none focus:r
+ing-1
+                  bord
+er-[var(--color-border
+)] focus:border-[var(-
+-color-primary)] focus
+:ring-[var(--color-pri
+mary)]
+                "[39m
+                  [33
+mid[39m=[32m"newPass
+word"[39m
+                  [33
+mtype[39m=[32m"passw
+ord"[39m
+                  [33
+mvalue[39m=[32m"NewP
+ass1!"[39m
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m31 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 14:23:42
+[2m   Duration [22m 7.76s[2m (transform 731ms, setup 1.94s, import 1.95s, tests 7.60s, environment 8.03s)[22m
+
+                [36m/
+>[39m
+                [36m<
+p[39m
+                  [33
+mclass[39m=[32m"text
+-[var(--text-xs)] text
+-[var(--color-text-mut
+ed)] mt-[var(--spacing
+-xs)] m-0"[39m
+                [36m>
+[39m
+                  [0m
+8~20?? ?곷Ц + ?レ옄 + ?뱀닔
+臾몄옄 ?ы븿[0m
+                [36m<
+/p>[39m
+              [36m</d
+iv>[39m
+              [36m<bu
+tton[39m
+                [33mc
+lass[39m=[32m"
+                h-[36p
+x] px-[var(--spacing-l
+g)]
+                bg-[va
+r(--color-primary)] te
+xt-white rounded-[var(
+--radius-sm)]
+                text-[
+var(--text-sm)] font-m
+edium border-none curs
+or-pointer
+                hover:
+bg-[var(--color-primar
+y-hover)]
+                disabl
+ed:opacity-50 disabled
+:cursor-not-allowed
+              "[39m
+              [36m>[
+39m
+                [0m鍮꾨
+?踰덊샇 蹂寃?[0m
+              [36m</b
+utton>[39m
+            [36m</div
+>[39m
+          [36m</secti
+on>[39m
+          [36m<sectio
+n[39m
+            [33mclass
+[39m=[32m"border-t b
+order-[var(--color-bor
+der)] pt-[var(--spacin
+g-lg)]"[39m
+          [36m>[39m
+            [36m<h2[
+39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-base)] font-b
+old text-[var(--color-
+danger)] m-0 mb-[var(-
+-spacing-sm)] flex ite
+ms-center gap-[var(--s
+pacing-sm)]"[39m
+            [36m>[39
+m
+              [36m<sv
+g[39m
+                [33ma
+ria-hidden[39m=[32m"
+true"[39m
+                [33mc
+lass[39m=[32m"lucide
+ lucide-triangle-alert
+"[39m
+                [33mf
+ill[39m=[32m"none"[
+39m
+                [33mh
+eight[39m=[32m"16"[
+39m
+                [33ms
+troke[39m=[32m"curre
+ntColor"[39m
+                [33ms
+troke-linecap[39m=[3
+2m"round"[39m
+                [33ms
+troke-linejoin[39m=[
+32m"round"[39m
+                [33ms
+troke-width[39m=[32m
+"2"[39m
+                [33mv
+iewBox[39m=[32m"0 0 
+24 24"[39m
+                [33mw
+idth[39m=[32m"16"[3
+9m
+                [33mx
+mlns[39m=[32m"http:/
+/www.w3.org/2000/svg"
+[39m
+              [36m>[
+39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"m21.73 1
+8-8-14a2 2 0 0 0-3.48 
+0l-8 14A2 2 0 0 0 4 21
+h16a2 2 0 0 0 1.73-3"
+[39m
+                [36m/
+>[39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"M12 9v4"
+[39m
+                [36m/
+>[39m
+                [36m<
+path[39m
+                  [33
+md[39m=[32m"M12 17h.
+01"[39m
+                [36m/
+>[39m
+              [36m</s
+vg>[39m
+              [0m?꾪뿕 
+?곸뿭[0m
+            [36m</h2>
+[39m
+            [36m<p[3
+9m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-sm)] text-[va
+r(--color-text-seconda
+ry)] mb-[var(--spacing
+-base)] m-0"[39m
+            [36m>[39
+m
+              [0m怨꾩젙?
+???젣?섎㈃ 紐⑤뱺 ?곗씠?곌? ?곴뎄
+?곸쑝濡???젣?⑸땲?? ???묒뾽? 
+?섎룎由????놁뒿?덈떎.[0m
+            [36m</p>
+[39m
+            [36m<butt
+on[39m
+              [33mcla
+ss[39m=[32m"
+              h-[36px]
+ px-[var(--spacing-lg)
+]
+              bg-trans
+parent border border-[
+var(--color-danger)] t
+ext-[var(--color-dange
+r)]
+              rounded-
+[var(--radius-sm)] tex
+t-[var(--text-sm)] fon
+t-medium cursor-pointe
+r
+              hover:bg
+-[var(--color-accent-r
+ed)]
+            "[39m
+            [36m>[39
+m
+              [0m?뚯썝 
+?덊눜[0m
+            [36m</but
+ton>[39m
+          [36m</secti
+on>[39m
+        [36m</div>[3
+9m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+[90m [2m??[22m Proxy
+.waitForWrapper node_m
+odules/@testing-librar
+y/dom/dist/wait-for.js
+:[2m163:27[22m[39m
+[36m [2m??[22m src/p
+ages/__tests__/Account
+SettingsPage.test.tsx:
+[2m125:11[22m[39m
+    [90m123| [39m   
+ [35mawait[39m user
+[33m.[39m[34mclick[
+39m(screen[33m.[39m
+[34mgetByRole[39m([3
+2m'button'[39m[33m,
+[39m { name[33m:[39m
+ [32m'鍮꾨?踰덊샇 蹂寃?[39
+m }))[33m;[39m
+    [90m124| [39m
+    [90m125| [39m   
+ [35mawait[39m [34m
+waitFor[39m(() [33m=
+>[39m {
+    [90m   | [39m   
+       [31m^[39m
+    [90m126| [39m   
+   [34mexpect[39m(sc
+reen[33m.[39m[34mge
+tByText[39m([36m/鍮꾨?
+踰덊샇 蹂寃쎌뿉 ?ㅽ뙣/[39m))
+[33m.[39m[34mtoBeInT
+heDocument[39m()[33m
+;[39m
+    [90m127| [39m   
+ })[33m;[39m
+
+[31m[2m??렞??렞??렞??렞?
+?렞??렞??렞??렞??렞??렞??렞??
+렞[2/2]??[22m[39m
+

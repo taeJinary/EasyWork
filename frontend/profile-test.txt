@@ -1,0 +1,498 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/dce23/EasyWork/frontend[39m
+
+node.exe : [90mstderr
+[2m | src/pages/__tes
+ts__/ProfileSettingsPa
+ge.test.tsx[2m > [22
+m[2mProfileSettingsPa
+ge[2m > [22m[2mshow
+s error banner on API 
+failure
+위치 줄:1 문자:1
++ & "C:\Program Files\
+nodejs/node.exe" "C:\P
+rogram Files\nodejs/no
+de_mo ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: ([90mstder   
+ r[2m... on API f    
+ailure:String) []    ,
+ RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+[22m[39mFailed to fe
+tch profile: Error: Ne
+twork Error
+    at C:/Users/dce23/
+EasyWork/frontend/src/
+pages/__tests__/Profil
+eSettingsPage.test.tsx
+:154:31
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+45:11
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:9
+15:26
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+243:20
+    at new Promise (<a
+nonymous>)
+    at runWithTimeout 
+[90m(file:///C:/Users
+/dce23/EasyWork/fronte
+nd/[39mnode_modules/
+[4m@vitest/runner[24m
+/dist/index.js:1209:10
+[90m)[39m
+    at [90mfile:///C:
+/Users/dce23/EasyWork/
+frontend/[39mnode_mod
+ules/[4m@vitest/runne
+r[24m/dist/index.js:1
+653:37
+    at Traces.$ [90m(
+file:///C:/Users/dce23
+/EasyWork/frontend/[3
+9mnode_modules/[4mvit
+est[24m/dist/chunks/t
+races.CCmnQaNT.js:142:
+27[90m)[39m
+    at trace [90m(fil
+e:///C:/Users/dce23/Ea
+syWork/frontend/[39mn
+ode_modules/[4mvitest
+[24m/dist/chunks/test
+.B8ej_ZHS.js:239:21[9
+0m)[39m
+    at runTest [90m(f
+ile:///C:/Users/dce23/
+EasyWork/frontend/[39
+mnode_modules/[4m@vit
+est/runner[24m/dist/i
+ndex.js:1653:12[90m)
+[39m
+
+ [31m??[39m src/pages/__tests__/ProfileSettingsPage.test.tsx [2m([22m[2m8 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1379[2mms[22m[39m
+     [32m??[39m shows loading skeleton while fetching profile[32m 27[2mms[22m[39m
+[31m     [31m횞[31m renders profile data from API[39m[32m 26[2mms[22m[39m
+     [33m[2m??[22m[39m saves nickname and shows success message [33m 424[2mms[22m[39m
+     [32m??[39m disables save button when nickname is empty[32m 36[2mms[22m[39m
+     [32m??[39m shows error when nickname is less than 2 chars[32m 130[2mms[22m[39m
+     [33m[2m??[22m[39m shows error when nickname exceeds 20 chars [33m 418[2mms[22m[39m
+     [32m??[39m shows error banner on API failure[32m 17[2mms[22m[39m
+     [32m??[39m shows submitting state while saving[32m 300[2mms[22m[39m
+
+[31m??렞??렞??렞??[39m[
+1m[41m Failed Tests 1
+ [49m[22m[31m??렞??렞
+??렞??[39m
+
+[41m[1m FAIL [22m[
+49m src/pages/__tests_
+_/ProfileSettingsPage.
+test.tsx[2m > [22mPr
+ofileSettingsPage[2m 
+> [22mrenders profile
+ data from API
+[31m[1mTestingLibrar
+yElementError[22m[39
+m: Found multiple elem
+ents with the text: al
+ice@email.com
+
+Here are the matching 
+elements:
+
+Ignored nodes: comment
+s, script, style
+[36m<div[39m
+  [33mclass[39m=[32
+m"text-[var(--text-sm)
+] text-[var(--color-te
+xt-muted)]"[39m
+[36m>[39m
+  [0malice@email.com
+[0m
+[36m</div>[39m
+
+Ignored nodes: comment
+s, script, style
+[36m<div[39m
+  [33mclass[39m=[32
+m"
+              h-[36px]
+ px-[var(--spacing-sm)
+] flex items-center
+              border b
+order-[var(--color-bor
+der)] rounded-[var(--r
+adius-sm)]
+              bg-[var(
+--color-surface-muted)
+] text-[var(--text-sm)
+] text-[var(--color-te
+xt-muted)]
+            "[39m
+[36m>[39m
+  [0malice@email.com
+[0m
+[36m</div>[39m
+
+(If this is intentiona
+l, then use the `*AllB
+y*` variant of the que
+ry (like `queryAllByTe
+xt`, `getAllByText`, o
+r `findAllByText`)).
+
+Ignored nodes: comment
+s, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39
+m=[32m"flex items-sta
+rt justify-between pb-
+[var(--spacing-base)] 
+border-b border-[var(-
+-color-border)]"[39m
+      [36m>[39m
+        [36m<div>[39
+m
+          [36m<h1[39
+m
+            [33mclass
+[39m=[32m"text-[var(
+--text-xl)] font-bold 
+text-[var(--color-text
+-primary)] m-0"[39m
+          [36m>[39m
+            [0m?꾨줈???
+ㅼ젙[0m
+          [36m</h1>[
+39m
+          [36m<p[39m
+            [33mclass
+[39m=[32m"text-[var(
+--text-sm)] text-[var(
+--color-text-secondary
+)] mt-[var(--spacing-x
+s)] m-0"[39m
+          [36m>[39m
+            [0m媛쒖씤 ?꾨
+줈???뺣낫瑜?愿由ы빀?덈떎.[0m
+          [36m</p>[3
+9m
+        [36m</div>[3
+9m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39
+m=[32m"mt-[var(--spac
+ing-lg)] max-w-[480px]
+"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"flex items-c
+enter gap-[var(--spaci
+ng-base)] mb-[var(--sp
+acing-lg)]"[39m
+        [36m>[39m
+          [36m<div[3
+9m
+            [33mclass
+[39m=[32m"
+              w-[72px]
+ h-[72px] rounded-full
+ bg-[var(--color-prima
+ry)]
+              text-whi
+te text-[var(--text-xl
+)] font-bold
+              flex ite
+ms-center justify-cent
+er
+            "[39m
+          [36m>[39m
+            [0mA[0m
+          [36m</div>
+[39m
+          [36m<div>[
+39m
+            [36m<div
+[39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-base)] font-s
+emibold text-[var(--co
+lor-text-primary)]"[3
+9m
+            [36m>[39
+m
+              [0mAlic
+e[0m
+            [36m</div
+>[39m
+            [36m<div
+[39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-sm)] text-[va
+r(--color-text-muted)]
+"[39m
+            [36m>[39
+m
+              [0malic
+e@email.com[0m
+            [36m</div
+>[39m
+            [36m<div
+[39m
+              [33mcla
+ss[39m=[32m"text-[va
+r(--text-xs)] text-[va
+r(--color-text-muted)]
+ mt-[2px]"[39m
+            [36m>[39
+m
+              [0m?대찓?
+?媛??[0m
+            [36m</div
+>[39m
+          [36m</div>
+[39m
+        [36m</div>[3
+9m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"mb-[var(--sp
+acing-base)]"[39m
+        [36m>[39m
+          [36m<label
+[39m
+            [33mclass
+[39m=[32m"block text
+-[var(--text-sm)] font
+-medium text-[var(--co
+lor-text-primary)] mb-
+[var(--spacing-xs)]"[
+39m
+            [33mfor[
+39m=[32m"nickname"[3
+9m
+          [36m>[39m
+            [0m?됰꽕??[
+0m
+          [36m</label
+>[39m
+          [36m<input
+[39m
+            [33mclass
+[39m=[32m"
+                w-full
+ h-[36px] px-[var(--sp
+acing-sm)]
+                border
+ rounded-[var(--radius
+-sm)]
+                bg-[va
+r(--color-surface)] te
+xt-[var(--text-sm)]
+                focus:
+outline-none focus:rin
+g-1
+                border
+-[var(--color-border)]
+ focus:border-[var(--c
+olor-primary)] focus:r
+ing-[var(--color-prima
+ry)]
+              "[39m
+            [33mid[3
+9m=[32m"nickname"[39
+m
+            [33mmaxle
+ngth[39m=[32m"25"[3
+9m
+            [33mtype
+[39m=[32m"text"[39m
+            [33mvalue
+[39m=[32m"Alice"[39
+m
+          [36m/>[39m
+          [36m<p[39m
+            [33mclass
+[39m=[32m"text-[var(
+--text-xs)] text-[var(
+--color-text-muted)] m
+t-[var(--spacing-xs)] 
+m-0"[39m
+          [36m>[39m
+            [0m5[0m
+            [0m/20[0
+m
+          [36m</p>[3
+9m
+        [36m</div>[3
+9m
+        [36m<div[39m
+          [33mclass[
+39m=[32m"mb-[var(--sp
+acing-base)]"[39m
+        [36m>[39m
+          [36m<label
+[39m
+            [33mclass
+[39m=[32m"block text
+-[var(--text-sm)] font
+-medium text-[var(--co
+lor-text-primary)] mb-
+[var(--spacing-xs)]"[
+39m
+          [36m>[39m
+            [0m?대찓??[
+0m
+          [36m</label
+>[39m
+          [36m<div[3
+9m
+            [33mclass
+[39m=[32m"
+              h-[36px]
+ px-[var(--spacing-sm)
+] flex items-center
+              border b
+order-[var(--color-bor
+der)] rounded-[var(--r
+adius-sm)]
+              bg-[var(
+--color-surface-muted)
+] text-[var(--text-sm)
+] text-[var(--color-te
+xt-muted)]
+            "[39m
+          [36m>[39m
+            [0malice@
+email.com[0m
+          [36m</div>
+[39m
+        [36m</div>[3
+9m
+        [36m<button[
+39m
+          [33mclass[
+39m=[32m"
+              h-[36px]
+ px-[var(--spacing-lg)
+]
+              bg-[var(
+--color-primary)] text
+-white rounded-[var(--
+radius-sm)]
+              text-[va
+r(--text-sm)] font-med
+ium border-none cursor
+-pointer
+              hover:bg
+-[var(--color-primary-
+hover)]
+              disabled
+:opacity-50 disabled:c
+ursor-not-allowed
+            "[39m
+          [33mdisable
+d[39m=[32m""[39m
+        [36m>[39m
+          [0m???[0m
+        [36m</button>
+[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m??[22m Objec
+t.getElementError node
+_modules/@testing-libr
+ary/dom/dist/config.js
+:[2m37:19[22m[39m
+[90m [2m??[22m getEl
+ementError node_module
+s/@testing-library/dom
+/dist/query-helpers.js
+:[2m20:35[22m[39m
+[90m [2m??[22m getMu
+ltipleElementsFoundErr
+or node_modules/@testi
+ng-library/dom/dist/qu
+ery-helpers.js:[2m23:
+10[22m[39m
+[90m [2m??[22m node_
+modules/@testing-libra
+ry/dom/dist/query-help
+ers.js:[2m55:13[22m
+[39m
+[90m [2m??[22m node_
+modules/@testing-libra
+ry/dom/dist/query-help
+ers.js:[2m95:19[22m
+[39m
+[36m [2m??[22m src/p
+ages/__tests__/Profile
+SettingsPage.test.tsx:
+[2m72:19[22m[39m
+    [90m 70| [39m   
+   [34mexpect[39m(sc
+reen[33m.[39m[34mge
+tByDisplayValue[39m(
+[32m'Alice'[39m))[33
+m.[39m[34mtoBeInTheD
+ocument[39m()[33m;[
+39m
+    [90m 71| [39m   
+ })[33m;[39m
+    [90m 72| [39m   
+ [34mexpect[39m(scre
+en[33m.[39m[34mgetB
+yText[39m([32m'alice
+@email.com'[39m))[33
+m.[39m[34mtoBeInTheD
+ocument[39m()[33m;[
+39m
+    [90m   | [39m   
+               [31m^
+[39m
+    [90m 73| [39m  }
+)[33m;[39m
+    [90m 74| [39m
+
+[31m[2m??렞??렞??렞??렞?
+?렞??렞??렞??렞??렞??렞??렞??
+렞[1/1]??[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (8)[39m
+[2m   Start at [22m 14:20:58
+[2m   Duration [22m 3.78s[2m (transform 149ms, setup 327ms, import 378ms, tests 1.38s, environment 1.46s)[22m
+
