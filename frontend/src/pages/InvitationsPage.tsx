@@ -67,9 +67,10 @@ export default function InvitationsPage() {
     try {
       setError(null);
       const res = await apiClient.post<ApiResponse<InvitationAction>>(`/invitations/${invitationId}/accept`);
-      setInvitations(invitations.map((inv) =>
-        inv.invitationId === invitationId ? { ...inv, status: res.data.data.status } : inv
-      ));
+      const newStatus = res.data.data.status;
+      setInvitations((prev) =>
+        prev.map((inv) => inv.invitationId === invitationId ? { ...inv, status: newStatus } : inv)
+      );
     } catch (err) {
       setError('초대 수락에 실패했습니다.');
       console.error('Failed to accept:', err);
@@ -83,9 +84,10 @@ export default function InvitationsPage() {
     try {
       setError(null);
       const res = await apiClient.post<ApiResponse<InvitationAction>>(`/invitations/${invitationId}/reject`);
-      setInvitations(invitations.map((inv) =>
-        inv.invitationId === invitationId ? { ...inv, status: res.data.data.status } : inv
-      ));
+      const newStatus = res.data.data.status;
+      setInvitations((prev) =>
+        prev.map((inv) => inv.invitationId === invitationId ? { ...inv, status: newStatus } : inv)
+      );
     } catch (err) {
       setError('초대 거절에 실패했습니다.');
       console.error('Failed to reject:', err);

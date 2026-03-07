@@ -86,9 +86,9 @@ export default function NotificationsPage() {
   const handleRead = async (notificationId: number) => {
     try {
       await apiClient.patch(`/notifications/${notificationId}/read`);
-      setNotifications(notifications.map((n) =>
-        n.notificationId === notificationId ? { ...n, isRead: true } : n
-      ));
+      setNotifications((prev) =>
+        prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: true } : n)
+      );
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch (err) {
       console.error('Failed to read notification:', err);
@@ -99,8 +99,14 @@ export default function NotificationsPage() {
     try {
       setError(null);
       await apiClient.post('/notifications/read-all');
-      setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
+      // When unreadOnly filter is active, refetch to remove read items from the list.
+      // Otherwise just update local state for immediate UI feedback.
+      if (unreadOnly) {
+        fetchNotifications();
+      } else {
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      }
     } catch (err) {
       setError('모두 읽기에 실패했습니다.');
       console.error('Failed to read all:', err);

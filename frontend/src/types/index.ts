@@ -108,14 +108,7 @@ export interface ProjectDetail {
   updatedAt: string;
 }
 
-export interface ProjectMember {
-  id: number;
-  userId: number;
-  name: string;
-  email: string;
-  role: 'OWNER' | 'MEMBER';
-  joinedAt: string;
-}
+// ProjectMember is defined in the Phase C section below (matches backend ProjectMemberResponse)
 
 // ── Task ──
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
