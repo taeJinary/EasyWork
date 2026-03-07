@@ -26,6 +26,10 @@ export default function GlobalHeader() {
     navigate('/login');
   };
 
+  const handleCreateWorkspace = () => {
+    navigate('/workspaces?create=workspace');
+  };
+
   return (
     <header className="
       h-[56px] bg-[var(--color-surface)] border-b border-[var(--color-border)]
@@ -93,7 +97,9 @@ export default function GlobalHeader() {
           text-[var(--text-sm)] font-medium
           hover:bg-[var(--color-primary-hover)] cursor-pointer
           border-none
-        ">
+        "
+          onClick={handleCreateWorkspace}
+        >
           <Plus size={16} />
           <span>New</span>
         </button>

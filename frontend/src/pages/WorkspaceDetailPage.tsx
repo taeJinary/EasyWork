@@ -3,7 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, UserPlus, Settings, Users, FolderKanban } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
-import type { ApiResponse, WorkspaceDetail, WorkspaceMember } from '@/types';
+import type {
+  ApiResponse,
+  WorkspaceDetail,
+  WorkspaceDetailResponse,
+  WorkspaceMember,
+  WorkspaceMemberResponse,
+} from '@/types';
 
 type TabType = 'overview' | 'projects' | 'members' | 'settings';
 
@@ -15,6 +21,29 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function normalizeWorkspaceDetail(data: WorkspaceDetailResponse): WorkspaceDetail {
+  return {
+    id: data.workspaceId,
+    name: data.name,
+    description: data.description,
+    memberCount: data.memberCount,
+    updatedAt: data.updatedAt,
+    myRole: data.myRole,
+    projectCount: 0,
+  };
+}
+
+function normalizeWorkspaceMembers(data: WorkspaceMemberResponse[]): WorkspaceMember[] {
+  return data.map((member) => ({
+    id: member.memberId,
+    userId: member.userId,
+    name: member.nickname,
+    email: member.email,
+    role: member.role,
+    joinedAt: member.joinedAt,
+  }));
 }
 
 export default function WorkspaceDetailPage() {
@@ -30,11 +59,11 @@ export default function WorkspaceDetailPage() {
       try {
         setLoading(true);
         const [wsRes, membersRes] = await Promise.all([
-          apiClient.get<ApiResponse<WorkspaceDetail>>(`/workspaces/${workspaceId}`),
-          apiClient.get<ApiResponse<WorkspaceMember[]>>(`/workspaces/${workspaceId}/members`),
+          apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
+          apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
         ]);
-        setWorkspace(wsRes.data.data);
-        setMembers(membersRes.data.data);
+        setWorkspace(normalizeWorkspaceDetail(wsRes.data.data));
+        setMembers(normalizeWorkspaceMembers(membersRes.data.data));
       } catch {
         // Error handling
       } finally {

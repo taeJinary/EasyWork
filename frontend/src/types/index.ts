@@ -43,15 +43,15 @@ export interface LoginResponse {
 }
 
 export interface SignupRequest {
-  name: string;
+  nickname: string;
   email: string;
   password: string;
 }
 
 export interface SignupResponse {
-  id: number;
+  userId: number;
   email: string;
-  name: string;
+  nickname: string;
 }
 
 // ── Workspace ──
@@ -59,13 +59,52 @@ export interface WorkspaceSummary {
   id: number;
   name: string;
   description?: string;
-  createdAt: string;
+  updatedAt: string;
+  memberCount?: number;
+}
+
+export interface WorkspaceListItemResponse {
+  workspaceId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
   updatedAt: string;
 }
 
+export interface WorkspaceSummaryResponse {
+  workspaceId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+}
+
+export interface WorkspaceDetailResponse {
+  workspaceId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  updatedAt: string;
+}
+
+export interface WorkspaceMemberResponse {
+  memberId: number;
+  userId: number;
+  email: string;
+  nickname: string;
+  role: 'OWNER' | 'MEMBER';
+  joinedAt: string;
+}
+
 export interface WorkspaceListResponse {
-  workspaces: WorkspaceSummary[];
-  pageInfo: PageInfo;
+  content: WorkspaceListItemResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 }
 
 export interface WorkspaceDetail {
@@ -73,9 +112,10 @@ export interface WorkspaceDetail {
   name: string;
   description?: string;
   memberCount: number;
-  projectCount: number;
-  createdAt: string;
+  projectCount?: number;
+  createdAt?: string;
   updatedAt: string;
+  myRole?: 'OWNER' | 'MEMBER';
 }
 
 export interface WorkspaceMember {

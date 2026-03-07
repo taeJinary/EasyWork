@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Calendar, AlertCircle } from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
@@ -54,32 +54,53 @@ export default function TaskListPage() {
   // [Warn 4 fix] error state
   const [error, setError] = useState<string | null>(null);
 
-  const fetchList = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
-      if (statusFilter) params.status = statusFilter;
-      if (searchQuery) params.keyword = searchQuery;
-
-      const [projectRes, tasksRes] = await Promise.all([
-        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
-        apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
-      ]);
-      setProject(projectRes.data.data);
-      setTasks(tasksRes.data.data.content);
-      setTotalPages(tasksRes.data.data.totalPages);
-    } catch (err) {
-      setError('태스크 목록을 불러오는 데 실패했습니다.');
-      console.error('Failed to fetch task list:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, page, statusFilter, searchQuery, sortBy, direction, refetchTrigger]);
-
   useEffect(() => {
-    if (projectId) fetchList();
-  }, [projectId, fetchList]);
+    if (!projectId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchList() {
+      try {
+        setLoading(true);
+        setError(null);
+        const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
+        if (statusFilter) params.status = statusFilter;
+        if (searchQuery) params.keyword = searchQuery;
+
+        const [projectRes, tasksRes] = await Promise.all([
+          apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+          apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setProject(projectRes.data.data);
+        setTasks(tasksRes.data.data.content);
+        setTotalPages(tasksRes.data.data.totalPages);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        setError('?�스??목록??불러?�는 ???�패?�습?�다.');
+        console.error('Failed to fetch task list:', err);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchList();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, page, statusFilter, searchQuery, sortBy, direction, refetchTrigger]);
 
   // [Warn 2 fix] trigger refetch via state change instead of stale closure
   const refreshList = () => {
@@ -185,7 +206,7 @@ export default function TaskListPage() {
 
       {/* Filter bar */}
       <FilterBar
-        searchPlaceholder="태스크 검색..."
+        searchPlaceholder="?�스??검??.."
         searchValue={searchQuery}
         onSearchChange={(v) => { setSearchQuery(v); setPage(0); }}
       >
@@ -253,8 +274,8 @@ export default function TaskListPage() {
           text-[var(--color-text-muted)] text-[var(--text-sm)]
         ">
           {searchQuery || statusFilter
-            ? '검색 결과가 없습니다.'
-            : '아직 태스크가 없습니다. 첫 태스크를 생성하세요.'}
+            ? '검??결과가 ?�습?�다.'
+            : '?�직 ?�스?��? ?�습?�다. �??�스?��? ?�성?�세??'}
         </div>
       )}
 
@@ -368,7 +389,7 @@ export default function TaskListPage() {
         </div>
       )}
 
-      {/* Task Detail Drawer — [Warn 2 fix] refreshList triggers refetch via state */}
+      {/* Task Detail Drawer ??[Warn 2 fix] refreshList triggers refetch via state */}
       {selectedTaskId && (
         <TaskDetailDrawer
           taskId={selectedTaskId}
@@ -379,3 +400,4 @@ export default function TaskListPage() {
     </div>
   );
 }
+
