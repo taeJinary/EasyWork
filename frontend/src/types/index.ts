@@ -21,6 +21,16 @@ export interface User {
   createdAt: string;
 }
 
+// Matches backend UserProfileResponse exactly
+export interface UserProfile {
+  userId: number;
+  email: string;
+  nickname: string;
+  profileImg: string | null;
+  provider: string;
+  createdAt: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;

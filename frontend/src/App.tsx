@@ -11,6 +11,8 @@ import TaskListPage from '@/pages/TaskListPage';
 import ProjectMembersPage from '@/pages/ProjectMembersPage';
 import InvitationsPage from '@/pages/InvitationsPage';
 import NotificationsPage from '@/pages/NotificationsPage';
+import ProfileSettingsPage from '@/pages/ProfileSettingsPage';
+import AccountSettingsPage from '@/pages/AccountSettingsPage';
 
 export default function App() {
   return (
@@ -33,10 +35,10 @@ export default function App() {
         <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
         <Route path="/invitations" element={<InvitationsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
-        {/* Phase D placeholders */}
-        <Route path="/projects/:projectId/settings" element={<div className="text-[var(--color-text-muted)]">프로젝트 설정 — Phase D에서 구현 예정</div>} />
-        <Route path="/settings/profile" element={<div className="text-[var(--color-text-muted)]">프로필 설정 — Phase D에서 구현 예정</div>} />
-        <Route path="/settings/account" element={<div className="text-[var(--color-text-muted)]">계정 설정 — Phase D에서 구현 예정</div>} />
+        {/* Phase D — 설정 */}
+        <Route path="/projects/:projectId/settings" element={<div className="text-[var(--color-text-muted)]">프로젝트 설정 — 추후 구현 예정</div>} />
+        <Route path="/settings/profile" element={<ProfileSettingsPage />} />
+        <Route path="/settings/account" element={<AccountSettingsPage />} />
       </Route>
 
       {/* Fallback */}
