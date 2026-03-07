@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Trash2, AlertCircle, X, CheckCircle2 } from 'lucide-react';
 import apiClient from '@/api/client';
+import { AxiosError } from 'axios';
 import type { ApiResponse, ProjectDetail } from '@/types';
 import ErrorState from '@/components/ErrorState';
 import PageHeader from '@/components/PageHeader';
@@ -12,19 +13,39 @@ interface UpdateProjectRequest {
   description: string;
 }
 
+interface ProjectDraftState {
+  projectId: string;
+  name: string | null;
+  description: string | null;
+}
+
+interface DeleteDialogState {
+  projectId: string;
+  confirmName: string;
+  error: string | null;
+}
+
 export default function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const currentProjectId = projectId ?? '';
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [draft, setDraft] = useState<ProjectDraftState>({
+    projectId: currentProjectId,
+    name: null,
+    description: null,
+  });
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   
   // Danger Zone
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+    projectId: currentProjectId,
+    confirmName: '',
+    error: null,
+  });
 
   const { data: projectRes, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
@@ -38,12 +59,53 @@ export default function ProjectSettingsPage() {
 
   const project = projectRes;
 
-  useEffect(() => {
-    if (project) {
-      setName(project.name);
-      setDescription(project.description || '');
+  // Derive editable fields from server data (avoids setState-in-effect lint)
+  const serverName = project?.name ?? '';
+  const serverDesc = project?.description ?? '';
+  const isCurrentDraft = draft.projectId === currentProjectId;
+  const isCurrentDeleteDialog = deleteDialog.projectId === currentProjectId;
+  const editableName = isCurrentDraft ? draft.name ?? serverName : serverName;
+  const editableDesc = isCurrentDraft ? draft.description ?? serverDesc : serverDesc;
+  const deleteConfirmName = isCurrentDeleteDialog ? deleteDialog.confirmName : '';
+  const deleteError = isCurrentDeleteDialog ? deleteDialog.error : null;
+
+  const updateDraft = (
+    updater: (state: { name: string | null; description: string | null }) => {
+      name: string | null;
+      description: string | null;
     }
-  }, [project]);
+  ) => {
+    setDraft((prev) => {
+      const baseState =
+        prev.projectId === currentProjectId
+          ? { name: prev.name, description: prev.description }
+          : { name: null, description: null };
+
+      return {
+        projectId: currentProjectId,
+        ...updater(baseState),
+      };
+    });
+  };
+
+  const updateDeleteDialog = (
+    updater: (state: { confirmName: string; error: string | null }) => {
+      confirmName: string;
+      error: string | null;
+    }
+  ) => {
+    setDeleteDialog((prev) => {
+      const baseState =
+        prev.projectId === currentProjectId
+          ? { confirmName: prev.confirmName, error: prev.error }
+          : { confirmName: '', error: null };
+
+      return {
+        projectId: currentProjectId,
+        ...updater(baseState),
+      };
+    });
+  };
 
   // Update mutation
   const updateMutation = useMutation({
@@ -68,6 +130,13 @@ export default function ProjectSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       navigate('/projects');
     },
+    onError: () => {
+      updateDeleteDialog((state) => ({
+        ...state,
+        error:
+          '\uD504\uB85C\uC81D\uD2B8 \uC0AD\uC81C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uAC70\uB098 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.',
+      }));
+    },
   });
 
   if (isLoading) {
@@ -81,9 +150,9 @@ export default function ProjectSettingsPage() {
 
   // Handle Permission/Auth errors
   if (error) {
-    // Check if it's an axios error
-    const isForbidden = (error as any).response?.status === 403;
-    const isNotFound = (error as any).response?.status === 404;
+    const axiosErr = error as AxiosError;
+    const isForbidden = axiosErr.response?.status === 403;
+    const isNotFound = axiosErr.response?.status === 404;
     
     return (
       <ErrorState 
@@ -101,8 +170,8 @@ export default function ProjectSettingsPage() {
 
   if (!project) return null;
 
-  const isNameChanged = name !== project.name || description !== (project.description || '');
-  const isValid = name.trim().length >= 2 && name.trim().length <= 50 && description.length <= 500;
+  const isChanged = editableName !== serverName || editableDesc !== serverDesc;
+  const isValid = editableName.trim().length >= 2 && editableName.trim().length <= 50 && editableDesc.length <= 500;
   
   // NOTE: Assuming project role/ownership dictates capability to edit or delete.
   // In a real app, you'd check `project.myRole === 'OWNER'` or similar, but we'll 
@@ -111,7 +180,7 @@ export default function ProjectSettingsPage() {
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || updateMutation.isPending) return;
-    updateMutation.mutate({ name: name.trim(), description: description.trim() });
+    updateMutation.mutate({ name: editableName.trim(), description: editableDesc.trim() });
   };
 
   const handleDelete = () => {
@@ -167,8 +236,13 @@ export default function ProjectSettingsPage() {
               <input
                 id="projectName"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={editableName}
+                onChange={(e) =>
+                  updateDraft((state) => ({
+                    ...state,
+                    name: e.target.value,
+                  }))
+                }
                 maxLength={50}
                 required
                 className="
@@ -189,8 +263,13 @@ export default function ProjectSettingsPage() {
               </label>
               <textarea
                 id="projectDesc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                value={editableDesc}
+                onChange={(e) =>
+                  updateDraft((state) => ({
+                    ...state,
+                    description: e.target.value,
+                  }))
+                }
                 maxLength={500}
                 rows={4}
                 className="
@@ -206,7 +285,7 @@ export default function ProjectSettingsPage() {
                   프로젝트의 목적이나 내용을 간단히 설명해주세요.
                 </p>
                 <div className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                  {description.length}/500
+                  {editableDesc.length}/500
                 </div>
               </div>
             </div>
@@ -214,7 +293,7 @@ export default function ProjectSettingsPage() {
             <div className="pt-[var(--spacing-base)] border-t border-[var(--color-border)]">
               <button
                 type="submit"
-                disabled={!isNameChanged || !isValid || updateMutation.isPending}
+                disabled={!isChanged || !isValid || updateMutation.isPending}
                 className="
                   h-[32px] px-[var(--spacing-lg)]
                   bg-[var(--color-primary)] text-white rounded-[var(--radius-sm)] border-none
@@ -248,7 +327,10 @@ export default function ProjectSettingsPage() {
               </p>
             </div>
             <button
-              onClick={() => { setShowDeleteModal(true); setDeleteConfirmName(''); }}
+              onClick={() => {
+                setShowDeleteModal(true);
+                updateDeleteDialog(() => ({ confirmName: '', error: null }));
+              }}
               className="
                 h-[32px] px-[var(--spacing-md)] shrink-0
                 bg-[var(--color-surface)] text-[var(--color-danger)] border border-[var(--color-danger)]
@@ -289,6 +371,13 @@ export default function ProjectSettingsPage() {
             <p className="text-[var(--text-sm)] text-[var(--color-text-secondary)] leading-relaxed mb-[var(--spacing-base)] m-0">
               이 작업은 되돌릴 수 없습니다. 프로젝트의 모든 데이터가 즉시 삭제됩니다.
             </p>
+
+            {deleteError && (
+              <div className="mb-[var(--spacing-base)] p-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)] flex items-center gap-2">
+                <AlertCircle size={14} />
+                {deleteError}
+              </div>
+            )}
             
             <p className="text-[var(--text-sm)] text-[var(--color-text-primary)] mb-[var(--spacing-xs)] m-0">
               확인을 위해 프로젝트 이름 <span className="font-bold select-all bg-[var(--color-surface-muted)] px-1 rounded">{project.name}</span> 을(를) 입력해 주세요.
@@ -298,7 +387,12 @@ export default function ProjectSettingsPage() {
               <input
                 type="text"
                 value={deleteConfirmName}
-                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                onChange={(e) =>
+                  updateDeleteDialog((state) => ({
+                    ...state,
+                    confirmName: e.target.value,
+                  }))
+                }
                 className="
                   w-full h-[36px] px-[var(--spacing-sm)] mt-[var(--spacing-sm)]
                   border border-[var(--color-border)] rounded-[var(--radius-sm)]
