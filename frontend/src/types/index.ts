@@ -108,14 +108,7 @@ export interface ProjectDetail {
   updatedAt: string;
 }
 
-export interface ProjectMember {
-  id: number;
-  userId: number;
-  name: string;
-  email: string;
-  role: 'OWNER' | 'MEMBER';
-  joinedAt: string;
-}
+// ProjectMember is defined in the Phase C section below (matches backend ProjectMemberResponse)
 
 // ── Task ──
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
@@ -273,35 +266,95 @@ export interface Label {
   color: string;
 }
 
-// ── Invitation ──
+// ── Project Member (matches backend ProjectMemberResponse) ──
+export type ProjectRole = 'OWNER' | 'MEMBER';
+
+export interface ProjectMember {
+  memberId: number;
+  userId: number;
+  email: string;
+  nickname: string;
+  role: ProjectRole;
+  joinedAt: string;
+}
+
+// ── Invitation (matches backend InvitationListItemResponse / InvitationListResponse) ──
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELED' | 'EXPIRED';
 
-export interface Invitation {
-  id: number;
+export interface InvitationListItem {
+  invitationId: number;
   projectId: number;
   projectName: string;
-  inviterName: string;
-  inviterEmail: string;
+  inviterUserId: number;
+  inviterNickname: string;
+  role: ProjectRole;
   status: InvitationStatus;
   expiresAt: string;
   createdAt: string;
 }
 
-// ── Notification ──
+export interface InvitationListResponse {
+  content: InvitationListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface InvitationAction {
+  invitationId: number;
+  projectId: number;
+  memberId: number | null;
+  role: ProjectRole;
+  status: InvitationStatus;
+}
+
+export interface InvitationSummary {
+  invitationId: number;
+  projectId: number;
+  inviteeUserId: number;
+  inviteeEmail: string;
+  inviteeNickname: string;
+  role: ProjectRole;
+  status: InvitationStatus;
+  expiresAt: string;
+}
+
+// ── Notification (matches backend NotificationListItemResponse / NotificationListResponse) ──
 export type NotificationType =
   | 'PROJECT_INVITED'
   | 'INVITATION_ACCEPTED'
   | 'TASK_ASSIGNED'
-  | 'COMMENT_CREATED';
+  | 'COMMENT_CREATED'
+  | 'COMMENT_MENTIONED';
 
-export interface Notification {
-  id: number;
+export type NotificationReferenceType = 'PROJECT' | 'TASK' | 'INVITATION' | 'COMMENT';
+
+export interface NotificationItem {
+  notificationId: number;
   type: NotificationType;
   title: string;
-  body?: string;
+  content: string;
+  referenceType: NotificationReferenceType;
+  referenceId: number;
   isRead: boolean;
-  referenceId?: number;
   createdAt: string;
+}
+
+export interface NotificationListResponse {
+  content: NotificationItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface NotificationUnreadCount {
+  unreadCount: number;
 }
 
 // ── Attachment (matches backend TaskAttachmentResponse) ──

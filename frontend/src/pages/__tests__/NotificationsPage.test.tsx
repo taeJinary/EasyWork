@@ -1,0 +1,153 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import NotificationsPage from '@/pages/NotificationsPage';
+import { apiOk } from '@/test/helpers';
+import type { NotificationItem, NotificationListResponse } from '@/types';
+
+// Mock apiClient
+const mockGet = vi.fn();
+const mockPost = vi.fn();
+const mockPatch = vi.fn();
+
+vi.mock('@/api/client', () => ({
+  default: {
+    get: (...args: unknown[]) => mockGet(...args),
+    post: (...args: unknown[]) => mockPost(...args),
+    patch: (...args: unknown[]) => mockPatch(...args),
+    delete: vi.fn(),
+  },
+}));
+
+function makeNotification(overrides: Partial<NotificationItem> = {}): NotificationItem {
+  return {
+    notificationId: 1,
+    type: 'TASK_ASSIGNED',
+    title: 'Task assigned to you',
+    content: 'Bug fix task',
+    referenceType: 'TASK',
+    referenceId: 42,
+    isRead: false,
+    createdAt: new Date(Date.now() - 60000 * 5).toISOString(), // 5 mins ago
+    ...overrides,
+  };
+}
+
+function makeListResponse(items: NotificationItem[]): NotificationListResponse {
+  return {
+    content: items,
+    page: 0,
+    size: 20,
+    totalElements: items.length,
+    totalPages: 1,
+    first: true,
+    last: true,
+  };
+}
+
+function setupMocks(items: NotificationItem[], unreadCount?: number) {
+  mockGet.mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('unread-count')) {
+      return Promise.resolve(apiOk({ unreadCount: unreadCount ?? items.filter((n) => !n.isRead).length }));
+    }
+    return Promise.resolve(apiOk(makeListResponse(items)));
+  });
+}
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <NotificationsPage />
+    </MemoryRouter>
+  );
+}
+
+describe('NotificationsPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders notifications from API', async () => {
+    const n = makeNotification({ title: 'New comment on your task' });
+    setupMocks([n]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('New comment on your task')).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state when no notifications', async () => {
+    setupMocks([]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('알림이 없습니다.')).toBeInTheDocument();
+    });
+  });
+
+  it('marks single notification as read on click', async () => {
+    const n = makeNotification({ notificationId: 10, title: 'You have a task' });
+    setupMocks([n]);
+    mockPatch.mockResolvedValue(apiOk({ notificationId: 10, isRead: true, readAt: new Date().toISOString() }));
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('You have a task')).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText('You have a task'));
+
+    expect(mockPatch).toHaveBeenCalledWith('/notifications/10/read');
+  });
+
+  it('read-all calls API and updates unreadCount to 0', async () => {
+    const n1 = makeNotification({ notificationId: 1, title: 'Notif 1', isRead: false });
+    const n2 = makeNotification({ notificationId: 2, title: 'Notif 2', isRead: false });
+    setupMocks([n1, n2], 2);
+    mockPost.mockResolvedValue(apiOk({ updatedCount: 2 }));
+
+    renderPage();
+    const user = userEvent.setup();
+
+    // Wait for items to render
+    await waitFor(() => {
+      expect(screen.getByText('Notif 1')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument(); // unread count badge
+    });
+
+    // Click "모두 읽음"
+    await user.click(screen.getByText('모두 읽음'));
+
+    // API should be called
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/notifications/read-all');
+    });
+  });
+
+  it('displays unread badge count', async () => {
+    const n = makeNotification({ isRead: false });
+    setupMocks([n], 5);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error when fetch fails', async () => {
+    mockGet.mockRejectedValue(new Error('Network Error'));
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('알림을 불러오는 데 실패했습니다.')).toBeInTheDocument();
+    });
+  });
+});
