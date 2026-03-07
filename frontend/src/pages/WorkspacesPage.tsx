@@ -250,11 +250,16 @@ export default function WorkspacesPage() {
       )}
 
       {showCreateModal && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={closeCreateModal} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-[var(--spacing-base)]">
+        <div
+          data-testid="workspace-create-backdrop"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-[var(--spacing-base)]"
+          onClick={closeCreateModal}
+        >
             <form
+              role="dialog"
+              aria-modal="true"
               onSubmit={handleCreateWorkspace}
+              onClick={(event) => event.stopPropagation()}
               className="w-full max-w-[480px] bg-[var(--color-surface)] rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-[var(--spacing-lg)]"
             >
               <div className="flex items-start justify-between gap-[var(--spacing-base)] mb-[var(--spacing-base)]">
@@ -332,8 +337,7 @@ export default function WorkspacesPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

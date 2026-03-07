@@ -91,4 +91,22 @@ describe('WorkspacesPage', () => {
       });
     });
   });
+
+  it('closes create modal when clicking outside the form', async () => {
+    mockGet.mockResolvedValue(apiOk(makeWorkspaceListResponse()));
+
+    render(
+      <MemoryRouter initialEntries={['/workspaces?create=workspace']}>
+        <WorkspacesPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Create Workspace' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('workspace-create-backdrop'));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Create Workspace' })).not.toBeInTheDocument();
+    });
+  });
 });
