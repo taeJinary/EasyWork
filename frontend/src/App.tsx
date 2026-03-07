@@ -8,6 +8,9 @@ import WorkspaceDetailPage from '@/pages/WorkspaceDetailPage';
 import ProjectsPage from '@/pages/ProjectsPage';
 import ProjectBoardPage from '@/pages/ProjectBoardPage';
 import TaskListPage from '@/pages/TaskListPage';
+import ProjectMembersPage from '@/pages/ProjectMembersPage';
+import InvitationsPage from '@/pages/InvitationsPage';
+import NotificationsPage from '@/pages/NotificationsPage';
 
 export default function App() {
   return (
@@ -26,11 +29,12 @@ export default function App() {
         {/* Phase B — 핵심 생산성 화면 */}
         <Route path="/projects/:projectId/board" element={<ProjectBoardPage />} />
         <Route path="/projects/:projectId/tasks" element={<TaskListPage />} />
-        {/* Placeholder routes for Phase C/D */}
-        <Route path="/projects/:projectId/members" element={<div className="text-[var(--color-text-muted)]">멤버 관리 — Phase C에서 구현 예정</div>} />
+        {/* Phase C — 협업 화면 */}
+        <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
+        <Route path="/invitations" element={<InvitationsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        {/* Phase D placeholders */}
         <Route path="/projects/:projectId/settings" element={<div className="text-[var(--color-text-muted)]">프로젝트 설정 — Phase D에서 구현 예정</div>} />
-        <Route path="/invitations" element={<div className="text-[var(--color-text-muted)]">받은 초대 — Phase C에서 구현 예정</div>} />
-        <Route path="/notifications" element={<div className="text-[var(--color-text-muted)]">알림 — Phase C에서 구현 예정</div>} />
         <Route path="/settings/profile" element={<div className="text-[var(--color-text-muted)]">프로필 설정 — Phase D에서 구현 예정</div>} />
         <Route path="/settings/account" element={<div className="text-[var(--color-text-muted)]">계정 설정 — Phase D에서 구현 예정</div>} />
       </Route>
@@ -40,3 +44,4 @@ export default function App() {
     </Routes>
   );
 }
+

@@ -4,9 +4,11 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   actions?: ReactNode;
+  children?: ReactNode;
 }
 
-export default function PageHeader({ title, description, actions }: PageHeaderProps) {
+export default function PageHeader({ title, description, actions, children }: PageHeaderProps) {
+  const rightContent = children || actions;
   return (
     <div className="flex items-start justify-between pb-[var(--spacing-base)] border-b border-[var(--color-border)]">
       <div>
@@ -19,11 +21,12 @@ export default function PageHeader({ title, description, actions }: PageHeaderPr
           </p>
         )}
       </div>
-      {actions && (
+      {rightContent && (
         <div className="flex items-center gap-[var(--spacing-sm)]">
-          {actions}
+          {rightContent}
         </div>
       )}
     </div>
   );
 }
+
