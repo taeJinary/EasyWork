@@ -108,15 +108,6 @@ export interface ProjectDetail {
   updatedAt: string;
 }
 
-export interface ProjectMember {
-  id: number;
-  userId: number;
-  name: string;
-  email: string;
-  role: 'OWNER' | 'MEMBER';
-  joinedAt: string;
-}
-
 // ── Task ──
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
