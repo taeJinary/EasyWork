@@ -51,6 +51,27 @@ function stubTaskDetail() {
   };
 }
 
+function stubTaskDetailForProjectFour() {
+  return {
+    taskId: 8,
+    projectId: 4,
+    title: 'Review backend metrics',
+    description: 'Inspect dashboard metrics',
+    status: 'IN_PROGRESS' as const,
+    priority: 'MEDIUM' as const,
+    dueDate: '2026-03-11',
+    position: 1,
+    version: 7,
+    creator: { userId: 1, nickname: 'Owner' },
+    assignee: null,
+    labels: [],
+    commentCount: 0,
+    recentStatusHistories: [],
+    createdAt: '2026-03-08T11:00:00',
+    updatedAt: '2026-03-08T11:30:00',
+  };
+}
+
 function stubComments() {
   return {
     content: [],
@@ -74,6 +95,34 @@ function stubAttachments() {
   ];
 }
 
+function stubProjectMembers() {
+  return [
+    {
+      memberId: 11,
+      userId: 2,
+      email: 'worker@easywork.local',
+      nickname: 'Worker',
+      role: 'MEMBER' as const,
+      joinedAt: '2026-03-01T10:00:00',
+    },
+    {
+      memberId: 12,
+      userId: 3,
+      email: 'reviewer@easywork.local',
+      nickname: 'Reviewer',
+      role: 'MEMBER' as const,
+      joinedAt: '2026-03-02T10:00:00',
+    },
+  ];
+}
+
+function stubProjectLabels() {
+  return [
+    { labelId: 1, name: 'Release', colorHex: '#2563EB' },
+    { labelId: 2, name: 'Backend', colorHex: '#10B981' },
+  ];
+}
+
 describe('TaskDetailDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -83,12 +132,36 @@ describe('TaskDetailDrawer', () => {
         return Promise.resolve(apiOk(stubTaskDetail()));
       }
 
+      if (url === '/tasks/8') {
+        return Promise.resolve(apiOk(stubTaskDetailForProjectFour()));
+      }
+
       if (url === '/tasks/7/comments') {
+        return Promise.resolve(apiOk(stubComments()));
+      }
+
+      if (url === '/tasks/8/comments') {
         return Promise.resolve(apiOk(stubComments()));
       }
 
       if (url === '/tasks/7/attachments') {
         return Promise.resolve(apiOk(stubAttachments()));
+      }
+
+      if (url === '/tasks/8/attachments') {
+        return Promise.resolve(apiOk([]));
+      }
+
+      if (url === '/projects/3/members') {
+        return Promise.resolve(apiOk(stubProjectMembers()));
+      }
+
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(apiOk(stubProjectLabels()));
+      }
+
+      if (url === '/projects/4/members' || url === '/projects/4/labels') {
+        return Promise.reject(new Error(`Failed GET ${url}`));
       }
 
       return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -188,6 +261,8 @@ describe('TaskDetailDrawer', () => {
         ...stubTaskDetail(),
         title: 'Prepare final release',
         description: 'Ship the final release notes',
+        assignee: { userId: 3, nickname: 'Reviewer' },
+        labels: [{ labelId: 2, name: 'Backend', colorHex: '#10B981' }],
         version: 4,
       })
     );
@@ -203,21 +278,26 @@ describe('TaskDetailDrawer', () => {
     await user.type(screen.getByLabelText('Task Title'), 'Prepare final release');
     await user.clear(screen.getByLabelText('Task Description'));
     await user.type(screen.getByLabelText('Task Description'), 'Ship the final release notes');
+    await user.selectOptions(screen.getByLabelText('Task Assignee'), '3');
+    await user.click(screen.getByLabelText('Release'));
+    await user.click(screen.getByLabelText('Backend'));
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     await waitFor(() => {
       expect(apiMock.patch).toHaveBeenCalledWith('/tasks/7', {
         title: 'Prepare final release',
         description: 'Ship the final release notes',
-        assigneeUserId: 2,
+        assigneeUserId: 3,
         priority: 'HIGH',
         dueDate: '2026-03-10',
-        labelIds: [1],
+        labelIds: [2],
         version: 3,
       });
     });
 
     expect(await screen.findByText('Prepare final release')).toBeInTheDocument();
+    expect(screen.getByText('Reviewer')).toBeInTheDocument();
+    expect(screen.getByText('Backend')).toBeInTheDocument();
     expect(onTaskUpdated).toHaveBeenCalledTimes(1);
   });
 
@@ -242,5 +322,26 @@ describe('TaskDetailDrawer', () => {
 
     expect(onTaskDeleted).toHaveBeenCalledWith(7);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears stale assignee and label options when next project options fail to load', async () => {
+    const user = userEvent.setup();
+    const view = render(<TaskDetailDrawer taskId={7} onClose={vi.fn()} />);
+
+    await screen.findByText('Prepare release');
+    await user.click(screen.getByRole('button', { name: 'Edit task' }));
+
+    expect(await screen.findByRole('option', { name: 'Reviewer' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Backend')).toBeInTheDocument();
+
+    view.rerender(<TaskDetailDrawer taskId={8} onClose={vi.fn()} />);
+
+    await screen.findByText('Review backend metrics');
+    await user.click(screen.getByRole('button', { name: 'Edit task' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: 'Reviewer' })).not.toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText('Backend')).not.toBeInTheDocument();
   });
 });

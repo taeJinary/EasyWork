@@ -8,6 +8,8 @@ import type {
   Attachment,
   Comment,
   CommentListResponse,
+  ProjectLabelResponse,
+  ProjectMember,
   TaskDetail,
   TaskMoveResponse,
   TaskPriority,
@@ -64,6 +66,8 @@ export default function TaskDetailDrawer({
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+  const [projectLabels, setProjectLabels] = useState<ProjectLabelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -73,8 +77,10 @@ export default function TaskDetailDrawer({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editAssigneeUserId, setEditAssigneeUserId] = useState<string>('');
   const [editPriority, setEditPriority] = useState<TaskPriority>('MEDIUM');
   const [editDueDate, setEditDueDate] = useState('');
+  const [editLabelIds, setEditLabelIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,9 +111,53 @@ export default function TaskDetailDrawer({
     setIsEditing(false);
     setEditTitle('');
     setEditDescription('');
+    setEditAssigneeUserId('');
     setEditPriority('MEDIUM');
     setEditDueDate('');
+    setEditLabelIds([]);
   }, [taskId]);
+
+  useEffect(() => {
+    if (!task?.projectId) {
+      setProjectMembers([]);
+      setProjectLabels([]);
+      return;
+    }
+
+    const projectId = task.projectId;
+    let cancelled = false;
+
+    setProjectMembers([]);
+    setProjectLabels([]);
+
+    async function fetchEditOptions() {
+      try {
+        const [membersResponse, labelsResponse] = await Promise.all([
+          apiClient.get<ApiResponse<ProjectMember[]>>(`/projects/${projectId}/members`),
+          apiClient.get<ApiResponse<ProjectLabelResponse[]>>(`/projects/${projectId}/labels`),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setProjectMembers(membersResponse.data.data);
+        setProjectLabels(labelsResponse.data.data);
+      } catch (caughtError) {
+        if (!cancelled) {
+          setProjectMembers([]);
+          setProjectLabels([]);
+          console.error('Failed to load task edit options:', caughtError);
+        }
+      }
+    }
+
+    void fetchEditOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [task?.projectId]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!task) return;
@@ -143,8 +193,10 @@ export default function TaskDetailDrawer({
 
     setEditTitle(task.title);
     setEditDescription(task.description ?? '');
+    setEditAssigneeUserId(task.assignee?.userId ? String(task.assignee.userId) : '');
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate ?? '');
+    setEditLabelIds(task.labels.map((label) => label.labelId));
     setError(null);
     setIsEditing(true);
   };
@@ -160,10 +212,10 @@ export default function TaskDetailDrawer({
       const response = await apiClient.patch<ApiResponse<TaskDetail>>(`/tasks/${taskId}`, {
         title: editTitle.trim(),
         description: editDescription.trim(),
-        assigneeUserId: task.assignee?.userId ?? null,
+        assigneeUserId: editAssigneeUserId ? Number(editAssigneeUserId) : null,
         priority: editPriority,
         dueDate: editDueDate || null,
-        labelIds: task.labels.map((label) => label.labelId),
+        labelIds: editLabelIds,
         version: task.version,
       });
       setTask(response.data.data);
@@ -175,6 +227,12 @@ export default function TaskDetailDrawer({
     } finally {
       setSavingTask(false);
     }
+  };
+
+  const toggleEditLabel = (labelId: number) => {
+    setEditLabelIds((current) =>
+      current.includes(labelId) ? current.filter((id) => id !== labelId) : [...current, labelId]
+    );
   };
 
   const handleTaskDelete = async () => {
@@ -317,6 +375,24 @@ export default function TaskDetailDrawer({
               </div>
               <div>
                 <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
+                  Task Assignee
+                </label>
+                <select
+                  aria-label="Task Assignee"
+                  value={editAssigneeUserId}
+                  onChange={(event) => setEditAssigneeUserId(event.target.value)}
+                  className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                >
+                  <option value="">Unassigned</option>
+                  {projectMembers.map((member) => (
+                    <option key={member.memberId} value={String(member.userId)}>
+                      {member.nickname}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Priority
                 </label>
                 <select
@@ -343,6 +419,40 @@ export default function TaskDetailDrawer({
                   onChange={(event) => setEditDueDate(event.target.value)}
                   className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <div className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
+                  Labels
+                </div>
+                {projectLabels.length === 0 ? (
+                  <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                    No labels available.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-sm)]">
+                    {projectLabels.map((label) => {
+                      const checked = editLabelIds.includes(label.labelId);
+                      return (
+                        <label
+                          key={label.labelId}
+                          className="flex cursor-pointer items-center gap-[var(--spacing-xs)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-[var(--spacing-sm)] py-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                        >
+                          <input
+                            type="checkbox"
+                            aria-label={label.name}
+                            checked={checked}
+                            onChange={() => toggleEditLabel(label.labelId)}
+                          />
+                          <span
+                            className="inline-flex h-[10px] w-[10px] rounded-full"
+                            style={{ backgroundColor: label.colorHex }}
+                          />
+                          {label.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-[var(--spacing-sm)] flex justify-end">
