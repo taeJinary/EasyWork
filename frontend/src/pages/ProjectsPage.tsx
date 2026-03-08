@@ -54,7 +54,7 @@ export default function ProjectsPage() {
     <div>
       <PageHeader
         title="Projects"
-        description="참여 중이거나 소유한 프로젝트를 확인하세요."
+        description="Review projects you own or participate in."
         actions={
           <button
             type="button"
@@ -79,7 +79,7 @@ export default function ProjectsPage() {
       />
 
       <FilterBar
-        searchPlaceholder="프로젝트 검색..."
+        searchPlaceholder="Search projects..."
         searchValue={searchQuery}
         onSearchChange={(value) => {
           setSearchQuery(value);
@@ -138,7 +138,7 @@ export default function ProjectsPage() {
 
       {!loading && !error && projects.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          {searchQuery || roleFilter ? '검색 결과가 없습니다.' : '아직 프로젝트가 없습니다. 첫 프로젝트를 생성하세요.'}
+          {searchQuery || roleFilter ? 'No projects matched your filters.' : 'No projects yet. Create your first project.'}
         </div>
       )}
 

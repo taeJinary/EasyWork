@@ -243,7 +243,7 @@ export default function ProjectMembersPage() {
                     </Badge>
                   </div>
                   <div className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                    {member.email} ¡¤ joined {formatDate(member.joinedAt)}
+                    {member.email} - joined {formatDate(member.joinedAt)}
                   </div>
                 </div>
 
