@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+癤퓁mport { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
@@ -73,7 +73,7 @@ export default function DashboardPage() {
         }
       } catch {
         if (isMounted) {
-          setError('대시보드 데이터를 불러오지 못했습니다.');
+          setError('Failed to load dashboard data.');
         }
       } finally {
         if (isMounted) {
@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="참여 중인 프로젝트와 초대 상태를 한눈에 확인합니다." />
+      <PageHeader title="Dashboard" description="Track active projects and pending invitations in one place." />
 
       <div className="mt-[var(--spacing-base)] grid gap-[var(--spacing-base)] md:grid-cols-3">
         <StatCard label="Pending invitations" value={dashboard?.pendingInvitationCount ?? 0} />
@@ -121,7 +121,7 @@ export default function DashboardPage() {
 
       {!loading && !error && dashboard && dashboard.myProjects.length === 0 && (
         <div className="mt-[var(--spacing-base)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          아직 참여 중인 프로젝트가 없습니다.
+          No active projects yet.
         </div>
       )}
 
