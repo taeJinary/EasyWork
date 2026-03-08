@@ -301,6 +301,11 @@ export default function ProjectBoardPage() {
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
           onStatusChange={refreshBoard}
+          onTaskUpdated={refreshBoard}
+          onTaskDeleted={() => {
+            setSelectedTaskId(null);
+            void refreshBoard();
+          }}
         />
       )}
     </div>
