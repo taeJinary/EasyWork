@@ -31,6 +31,13 @@ interface LabelDraftState {
   colorHex: string;
 }
 
+interface LabelEditorState {
+  projectId: string;
+  editingLabelId: number | null;
+  draft: LabelDraftState;
+  error: string;
+}
+
 export default function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -52,12 +59,15 @@ export default function ProjectSettingsPage() {
     confirmName: '',
     error: null,
   });
-  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
-  const [labelDraft, setLabelDraft] = useState<LabelDraftState>({
-    name: '',
-    colorHex: '#2563EB',
+  const [labelEditor, setLabelEditor] = useState<LabelEditorState>({
+    projectId: currentProjectId,
+    editingLabelId: null,
+    draft: {
+      name: '',
+      colorHex: '#2563EB',
+    },
+    error: '',
   });
-  const [labelError, setLabelError] = useState('');
 
   const { data: projectRes, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
@@ -85,10 +95,19 @@ export default function ProjectSettingsPage() {
   const serverDesc = project?.description ?? '';
   const isCurrentDraft = draft.projectId === currentProjectId;
   const isCurrentDeleteDialog = deleteDialog.projectId === currentProjectId;
+  const isCurrentLabelEditor = labelEditor.projectId === currentProjectId;
   const editableName = isCurrentDraft ? draft.name ?? serverName : serverName;
   const editableDesc = isCurrentDraft ? draft.description ?? serverDesc : serverDesc;
   const deleteConfirmName = isCurrentDeleteDialog ? deleteDialog.confirmName : '';
   const deleteError = isCurrentDeleteDialog ? deleteDialog.error : null;
+  const editingLabelId = isCurrentLabelEditor ? labelEditor.editingLabelId : null;
+  const labelDraft = isCurrentLabelEditor
+    ? labelEditor.draft
+    : {
+        name: '',
+        colorHex: '#2563EB',
+      };
+  const labelError = isCurrentLabelEditor ? labelEditor.error : '';
 
   const updateDraft = (
     updater: (state: { name: string | null; description: string | null }) => {
@@ -161,12 +180,49 @@ export default function ProjectSettingsPage() {
   });
 
   const resetLabelDraft = () => {
-    setEditingLabelId(null);
-    setLabelDraft({
-      name: '',
-      colorHex: '#2563EB',
+    updateLabelEditor(() => ({
+      editingLabelId: null,
+      draft: {
+        name: '',
+        colorHex: '#2563EB',
+      },
+      error: '',
+    }));
+  };
+
+  const updateLabelEditor = (
+    updater: (state: {
+      editingLabelId: number | null;
+      draft: LabelDraftState;
+      error: string;
+    }) => {
+      editingLabelId: number | null;
+      draft: LabelDraftState;
+      error: string;
+    }
+  ) => {
+    setLabelEditor((prev) => {
+      const baseState =
+        prev.projectId === currentProjectId
+          ? {
+              editingLabelId: prev.editingLabelId,
+              draft: prev.draft,
+              error: prev.error,
+            }
+          : {
+              editingLabelId: null,
+              draft: {
+                name: '',
+                colorHex: '#2563EB',
+              },
+              error: '',
+            };
+
+      return {
+        projectId: currentProjectId,
+        ...updater(baseState),
+      };
     });
-    setLabelError('');
   };
 
   const createLabelMutation = useMutation({
@@ -178,7 +234,10 @@ export default function ProjectSettingsPage() {
       resetLabelDraft();
     },
     onError: () => {
-      setLabelError('라벨 생성에 실패했습니다.');
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 생성에 실패했습니다.',
+      }));
     },
   });
 
@@ -191,7 +250,10 @@ export default function ProjectSettingsPage() {
       resetLabelDraft();
     },
     onError: () => {
-      setLabelError('라벨 수정에 실패했습니다.');
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 수정에 실패했습니다.',
+      }));
     },
   });
 
@@ -203,7 +265,10 @@ export default function ProjectSettingsPage() {
       await queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
     },
     onError: () => {
-      setLabelError('라벨 삭제에 실패했습니다.');
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 삭제에 실패했습니다.',
+      }));
     },
   });
 
@@ -261,11 +326,17 @@ export default function ProjectSettingsPage() {
     const colorHex = labelDraft.colorHex.trim();
 
     if (!name || !/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
-      setLabelError('라벨 이름과 HEX 색상을 확인해주세요.');
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 이름과 HEX 색상을 확인해주세요.',
+      }));
       return;
     }
 
-    setLabelError('');
+    updateLabelEditor((state) => ({
+      ...state,
+      error: '',
+    }));
     if (editingLabelId) {
       updateLabelMutation.mutate({
         labelId: editingLabelId,
@@ -437,9 +508,11 @@ export default function ProjectSettingsPage() {
                         type="button"
                         aria-label={`Edit label ${label.name}`}
                         onClick={() => {
-                          setEditingLabelId(label.labelId);
-                          setLabelDraft({ name: label.name, colorHex: label.colorHex });
-                          setLabelError('');
+                          updateLabelEditor(() => ({
+                            editingLabelId: label.labelId,
+                            draft: { name: label.name, colorHex: label.colorHex },
+                            error: '',
+                          }));
                         }}
                         className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-xs)] text-[var(--color-text-secondary)]"
                       >
@@ -476,7 +549,15 @@ export default function ProjectSettingsPage() {
                     aria-label="Label Name"
                     type="text"
                     value={labelDraft.name}
-                    onChange={(event) => setLabelDraft((current) => ({ ...current, name: event.target.value }))}
+                    onChange={(event) =>
+                      updateLabelEditor((state) => ({
+                        ...state,
+                        draft: {
+                          ...state.draft,
+                          name: event.target.value,
+                        },
+                      }))
+                    }
                     maxLength={30}
                     className="w-full h-[36px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
                   />
@@ -490,7 +571,15 @@ export default function ProjectSettingsPage() {
                     aria-label="Color Hex"
                     type="text"
                     value={labelDraft.colorHex}
-                    onChange={(event) => setLabelDraft((current) => ({ ...current, colorHex: event.target.value }))}
+                    onChange={(event) =>
+                      updateLabelEditor((state) => ({
+                        ...state,
+                        draft: {
+                          ...state.draft,
+                          colorHex: event.target.value,
+                        },
+                      }))
+                    }
                     className="w-full h-[36px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
                   />
                 </div>

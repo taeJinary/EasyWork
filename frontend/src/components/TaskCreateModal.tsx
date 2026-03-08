@@ -31,7 +31,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
     setLabels([]);
     setSelectedLabelIds([]);
     setError(null);
-  }, [open]);
+  }, [open, projectId]);
 
   useEffect(() => {
     if (!open) {

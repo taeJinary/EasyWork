@@ -132,6 +132,16 @@ describe('ProjectSettingsPage', () => {
         return Promise.resolve(apiOk(created));
       }
 
+      if (url === '/projects/2/labels') {
+        const created = {
+          labelId: 3,
+          name: payload.name,
+          colorHex: payload.colorHex,
+        };
+        labelsByProject['2'] = [...labelsByProject['2'], created];
+        return Promise.resolve(apiOk(created));
+      }
+
       return Promise.reject(new Error(`Unexpected POST ${url}`));
     });
 
@@ -267,5 +277,40 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => {
       expect(screen.queryByText('Backend')).not.toBeInTheDocument();
     });
+  });
+
+  it('resets label editor state when projectId changes', async () => {
+    const view = renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Release')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit label Release' }));
+    await user.clear(screen.getByLabelText('Label Name'));
+    await user.type(screen.getByLabelText('Label Name'), 'Carry Over');
+
+    currentProjectId = '2';
+    view.rerender(createWrapper(view.queryClient));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Project Beta')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: 'Create Label' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update Label' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label Name')).toHaveValue('');
+    expect(screen.getByLabelText('Color Hex')).toHaveValue('#2563EB');
+
+    await user.type(screen.getByLabelText('Label Name'), 'Beta Label');
+    await user.click(screen.getByRole('button', { name: 'Create Label' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/projects/2/labels', {
+        name: 'Beta Label',
+        colorHex: '#2563EB',
+      });
+    });
+
+    expect(mockPatch).not.toHaveBeenCalledWith('/labels/1', expect.anything());
   });
 });
