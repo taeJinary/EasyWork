@@ -398,6 +398,11 @@ export default function TaskListPage() {
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
           onStatusChange={refreshList}
+          onTaskUpdated={refreshList}
+          onTaskDeleted={() => {
+            setSelectedTaskId(null);
+            refreshList();
+          }}
         />
       )}
     </div>

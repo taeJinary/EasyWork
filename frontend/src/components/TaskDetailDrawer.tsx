@@ -10,6 +10,7 @@ import type {
   CommentListResponse,
   TaskDetail,
   TaskMoveResponse,
+  TaskPriority,
   TaskStatus as TStatus,
 } from '@/types';
 
@@ -17,6 +18,8 @@ interface TaskDetailDrawerProps {
   taskId: number;
   onClose: () => void;
   onStatusChange?: (taskId: number, newStatus: string) => void;
+  onTaskUpdated?: () => void;
+  onTaskDeleted?: (taskId: number) => void;
 }
 
 const statusOptions: { value: TStatus; label: string }[] = [
@@ -31,6 +34,8 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   MEDIUM: 'primary',
   LOW: 'muted',
 };
+
+const priorityOptions: TaskPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
@@ -48,7 +53,13 @@ function formatTimeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: TaskDetailDrawerProps) {
+export default function TaskDetailDrawer({
+  taskId,
+  onClose,
+  onStatusChange,
+  onTaskUpdated,
+  onTaskDeleted,
+}: TaskDetailDrawerProps) {
   const { user } = useAuthStore();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -57,6 +68,13 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<number | null>(null);
+  const [savingTask, setSavingTask] = useState(false);
+  const [deletingTask, setDeletingTask] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPriority, setEditPriority] = useState<TaskPriority>('MEDIUM');
+  const [editDueDate, setEditDueDate] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,6 +101,14 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
     void fetchData();
   }, [taskId]);
 
+  useEffect(() => {
+    setIsEditing(false);
+    setEditTitle('');
+    setEditDescription('');
+    setEditPriority('MEDIUM');
+    setEditDueDate('');
+  }, [taskId]);
+
   const handleStatusChange = async (newStatus: string) => {
     if (!task) return;
 
@@ -107,6 +133,66 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
     } catch (caughtError) {
       setError('Failed to update task status.');
       console.error('Failed to move task:', caughtError);
+    }
+  };
+
+  const openEditModal = () => {
+    if (!task) {
+      return;
+    }
+
+    setEditTitle(task.title);
+    setEditDescription(task.description ?? '');
+    setEditPriority(task.priority);
+    setEditDueDate(task.dueDate ?? '');
+    setError(null);
+    setIsEditing(true);
+  };
+
+  const handleTaskSave = async () => {
+    if (!task || !editTitle.trim()) {
+      return;
+    }
+
+    try {
+      setSavingTask(true);
+      setError(null);
+      const response = await apiClient.patch<ApiResponse<TaskDetail>>(`/tasks/${taskId}`, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        assigneeUserId: task.assignee?.userId ?? null,
+        priority: editPriority,
+        dueDate: editDueDate || null,
+        labelIds: task.labels.map((label) => label.labelId),
+        version: task.version,
+      });
+      setTask(response.data.data);
+      setIsEditing(false);
+      onTaskUpdated?.();
+    } catch (caughtError) {
+      setError('Failed to update task.');
+      console.error('Failed to update task:', caughtError);
+    } finally {
+      setSavingTask(false);
+    }
+  };
+
+  const handleTaskDelete = async () => {
+    if (!task || !window.confirm('Delete this task?')) {
+      return;
+    }
+
+    try {
+      setDeletingTask(true);
+      setError(null);
+      await apiClient.delete(`/tasks/${taskId}`);
+      onTaskDeleted?.(taskId);
+      onClose();
+    } catch (caughtError) {
+      setError('Failed to delete task.');
+      console.error('Failed to delete task:', caughtError);
+    } finally {
+      setDeletingTask(false);
     }
   };
 
@@ -167,20 +253,24 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
           </div>
           <div className="flex items-center gap-[var(--spacing-sm)]">
             <button
-              disabled
-              title="Edit is not available yet"
-              className="cursor-not-allowed rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-muted)] opacity-50"
+              type="button"
+              aria-label="Edit task"
+              onClick={openEditModal}
+              className="rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-primary)]"
             >
               <Edit size={14} />
             </button>
             <button
-              disabled
-              title="Delete is not available yet"
-              className="cursor-not-allowed rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-muted)] opacity-50"
+              type="button"
+              aria-label="Delete task"
+              onClick={handleTaskDelete}
+              disabled={deletingTask}
+              className="rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-danger)] hover:bg-[var(--color-accent-red)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 size={14} />
             </button>
             <button
+              type="button"
               onClick={onClose}
               className="rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
             >
@@ -188,6 +278,85 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
             </button>
           </div>
         </div>
+
+        {isEditing && task && (
+          <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-[var(--spacing-lg)] py-[var(--spacing-base)]">
+            <div className="mb-[var(--spacing-sm)] flex items-center justify-between">
+              <h3 className="m-0 text-[var(--text-base)] font-semibold text-[var(--color-text-primary)]">Edit Task</h3>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-xs)] text-[var(--text-xs)] text-[var(--color-text-secondary)]"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="grid gap-[var(--spacing-sm)] md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
+                  Task Title
+                </label>
+                <input
+                  aria-label="Task Title"
+                  value={editTitle}
+                  onChange={(event) => setEditTitle(event.target.value)}
+                  className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
+                  Task Description
+                </label>
+                <textarea
+                  aria-label="Task Description"
+                  value={editDescription}
+                  onChange={(event) => setEditDescription(event.target.value)}
+                  rows={4}
+                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                />
+              </div>
+              <div>
+                <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
+                  Priority
+                </label>
+                <select
+                  aria-label="Task Priority"
+                  value={editPriority}
+                  onChange={(event) => setEditPriority(event.target.value as TaskPriority)}
+                  className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                >
+                  {priorityOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
+                  Due Date
+                </label>
+                <input
+                  aria-label="Task Due Date"
+                  type="date"
+                  value={editDueDate}
+                  onChange={(event) => setEditDueDate(event.target.value)}
+                  className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                />
+              </div>
+            </div>
+            <div className="mt-[var(--spacing-sm)] flex justify-end">
+              <button
+                type="button"
+                onClick={handleTaskSave}
+                disabled={!editTitle.trim() || savingTask}
+                className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingTask ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div
