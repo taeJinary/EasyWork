@@ -1,10 +1,19 @@
-﻿import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import GlobalHeader from '@/components/GlobalHeader';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
+import { apiOk } from '@/test/helpers';
+
+const mockGet = vi.fn();
+
+vi.mock('@/api/client', () => ({
+  default: {
+    get: (...args: unknown[]) => mockGet(...args),
+  },
+}));
 
 function LocationDisplay() {
   const location = useLocation();
@@ -14,6 +23,8 @@ function LocationDisplay() {
 describe('GlobalHeader', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
+    mockGet.mockResolvedValue(apiOk({ unreadCount: 0 }));
     useAuthStore.setState({
       accessToken: 'token',
       isAuthenticated: true,
@@ -58,5 +69,19 @@ describe('GlobalHeader', () => {
     await user.click(screen.getByRole('button', { name: /new/i }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/workspaces?create=workspace');
+  });
+
+  it('renders unread notification count from backend', async () => {
+    mockGet.mockResolvedValue(apiOk({ unreadCount: 3 }));
+
+    render(
+      <MemoryRouter>
+        <GlobalHeader />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
   });
 });

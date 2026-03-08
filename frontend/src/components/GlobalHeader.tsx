@@ -1,14 +1,17 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, LogOut, Menu, Plus, Search, Settings, User } from 'lucide-react';
+import apiClient from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
+import type { ApiResponse, NotificationUnreadCount } from '@/types';
 
 export default function GlobalHeader() {
   const { user, logout } = useAuthStore();
   const { toggleMobileSidebar } = useUiStore();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,6 +24,31 @@ export default function GlobalHeader() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchUnreadCount() {
+      try {
+        const response = await apiClient.get<ApiResponse<NotificationUnreadCount>>('/notifications/unread-count');
+        if (isMounted) {
+          setUnreadCount(response.data.data.unreadCount);
+        }
+      } catch {
+        if (isMounted) {
+          setUnreadCount(0);
+        }
+      }
+    }
+
+    if (user) {
+      fetchUnreadCount();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -53,7 +81,7 @@ export default function GlobalHeader() {
       </button>
 
       <Link
-        to="/workspaces"
+        to="/dashboard"
         className="shrink-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)] no-underline hover:no-underline"
       >
         EasyWork
@@ -102,12 +130,24 @@ export default function GlobalHeader() {
 
         <Link
           to="/notifications"
+          aria-label="Notifications"
           className="
             relative flex h-[32px] w-[32px] items-center justify-center rounded-[var(--radius-sm)]
             text-[var(--color-text-secondary)] no-underline hover:bg-[var(--color-surface-muted)]
           "
         >
           <Bell size={18} />
+          {unreadCount > 0 && (
+            <span
+              className="
+                absolute -right-[4px] -top-[4px] min-w-[18px] rounded-full
+                bg-[var(--color-danger)] px-[4px] py-[1px] text-center
+                text-[10px] font-bold leading-none text-white
+              "
+            >
+              {unreadCount}
+            </span>
+          )}
         </Link>
 
         <div ref={profileRef} className="relative">
