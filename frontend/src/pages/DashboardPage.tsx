@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
@@ -78,6 +78,9 @@ function ProjectRow({
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const mountedRef = useRef(true);
+  const dashboardRequestIdRef = useRef(0);
+  const projectStatsRequestIdRef = useRef(0);
   const [dashboard, setDashboard] = useState<DashboardProjectsResponse | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [projectStats, setProjectStats] = useState<DashboardProjectStatsResponse | null>(null);
@@ -87,72 +90,79 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    let isMounted = true;
+    mountedRef.current = true;
 
-    async function fetchDashboard() {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const fetchDashboard = useCallback(
+    async () => {
+      const requestId = ++dashboardRequestIdRef.current;
+
       try {
         setLoading(true);
         setError('');
         const response = await apiClient.get<ApiResponse<DashboardProjectsResponse>>('/dashboard/projects');
-        if (isMounted) {
+        if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
           setDashboard(response.data.data);
           setSelectedProjectId((current) => current ?? response.data.data.myProjects[0]?.projectId ?? null);
         }
       } catch {
-        if (isMounted) {
+        if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
+          setDashboard(null);
+          setSelectedProjectId(null);
           setError('Failed to load dashboard data.');
         }
       } finally {
-        if (isMounted) {
+        if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
           setLoading(false);
         }
       }
-    }
+    },
+    []
+  );
 
+  useEffect(() => {
     void fetchDashboard();
+  }, [fetchDashboard]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const fetchProjectStats = useCallback(
+    async (projectId: number) => {
+      const requestId = ++projectStatsRequestIdRef.current;
+
+      try {
+        setProjectStatsLoading(true);
+        setProjectStatsError('');
+        const response = await apiClient.get<ApiResponse<DashboardProjectStatsResponse>>(`/projects/${projectId}/dashboard`);
+        if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
+          setProjectStats(response.data.data);
+        }
+      } catch {
+        if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
+          setProjectStats(null);
+          setProjectStatsError('Failed to load project stats.');
+        }
+      } finally {
+        if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
+          setProjectStatsLoading(false);
+        }
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!selectedProjectId) {
+      projectStatsRequestIdRef.current += 1;
       setProjectStats(null);
       setProjectStatsError('');
       return;
     }
 
-    let isMounted = true;
-
-    async function fetchProjectStats() {
-      try {
-        setProjectStatsLoading(true);
-        setProjectStatsError('');
-        const response = await apiClient.get<ApiResponse<DashboardProjectStatsResponse>>(
-          `/projects/${selectedProjectId}/dashboard`
-        );
-        if (isMounted) {
-          setProjectStats(response.data.data);
-        }
-      } catch {
-        if (isMounted) {
-          setProjectStats(null);
-          setProjectStatsError('Failed to load project stats.');
-        }
-      } finally {
-        if (isMounted) {
-          setProjectStatsLoading(false);
-        }
-      }
-    }
-
-    void fetchProjectStats();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedProjectId]);
+    void fetchProjectStats(selectedProjectId);
+  }, [fetchProjectStats, selectedProjectId]);
 
   const totalProjects = dashboard?.myProjects.length ?? 0;
   const totalTasks = useMemo(
@@ -173,7 +183,14 @@ export default function DashboardPage() {
 
       {error && (
         <div className="mt-[var(--spacing-base)] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-danger)]">
-          {error}
+          <div>{error}</div>
+          <button
+            type="button"
+            onClick={() => void fetchDashboard()}
+            className="mt-[var(--spacing-sm)] h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-white/40"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -187,7 +204,8 @@ export default function DashboardPage() {
 
       {!loading && !error && dashboard && dashboard.myProjects.length === 0 && (
         <div className="mt-[var(--spacing-base)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          No active projects yet.
+          <div>No active projects yet.</div>
+          <div className="mt-[var(--spacing-sm)]">Create or join a project to start tracking workload and progress.</div>
         </div>
       )}
 
@@ -229,7 +247,16 @@ export default function DashboardPage() {
 
             {projectStatsError && (
               <div className="rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
-                {projectStatsError}
+                <div>{projectStatsError}</div>
+                {selectedProjectId && (
+                  <button
+                    type="button"
+                    onClick={() => void fetchProjectStats(selectedProjectId)}
+                    className="mt-[var(--spacing-sm)] h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-white/40"
+                  >
+                    Retry Stats
+                  </button>
+                )}
               </div>
             )}
 
