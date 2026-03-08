@@ -21,6 +21,7 @@ import type {
   ApiResponse,
   ProjectDetail,
   ProjectDetailResponse,
+  ProjectLabelResponse,
   TaskListItem,
   TaskListResponse,
   TaskStatus,
@@ -58,9 +59,11 @@ export default function TaskListPage() {
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
+  const [labels, setLabels] = useState<ProjectLabelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [labelFilter, setLabelFilter] = useState('');
   const [sortBy, setSortBy] = useState('updatedAt');
   const [direction, setDirection] = useState('DESC');
   const [page, setPage] = useState(0);
@@ -84,10 +87,12 @@ export default function TaskListPage() {
         const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
         if (statusFilter) params.status = statusFilter;
         if (searchQuery) params.keyword = searchQuery;
+        if (labelFilter) params.labelId = labelFilter;
 
-        const [projectResponse, tasksResponse] = await Promise.all([
+        const [projectResponse, tasksResponse, labelsResponse] = await Promise.all([
           apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
           apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
+          apiClient.get<ApiResponse<ProjectLabelResponse[]>>(`/projects/${projectId}/labels`),
         ]);
 
         if (cancelled) {
@@ -96,6 +101,7 @@ export default function TaskListPage() {
 
         setProject(toProjectDetail(projectResponse.data.data));
         setTasks(tasksResponse.data.data.content);
+        setLabels(labelsResponse.data.data);
         setTotalPages(tasksResponse.data.data.totalPages);
       } catch (caughtError) {
         if (cancelled) {
@@ -116,7 +122,7 @@ export default function TaskListPage() {
     return () => {
       cancelled = true;
     };
-  }, [projectId, page, statusFilter, searchQuery, sortBy, direction, refetchTrigger]);
+  }, [projectId, page, statusFilter, labelFilter, searchQuery, sortBy, direction, refetchTrigger]);
 
   const refreshList = () => {
     setRefetchTrigger((value) => value + 1);
@@ -152,9 +158,7 @@ export default function TaskListPage() {
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
           </div>
-          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">
-            {project?.name}
-          </h1>
+          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">{project?.name}</h1>
           {project?.description && (
             <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               {project.description}
@@ -205,13 +209,7 @@ export default function TaskListPage() {
       </div>
 
       {error && (
-        <div
-          className="
-            mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)]
-            border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)]
-            text-[var(--text-sm)] text-[var(--color-danger)]
-          "
-        >
+        <div className="mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
           <AlertCircle size={14} className="shrink-0" />
           {error}
         </div>
@@ -241,6 +239,26 @@ export default function TaskListPage() {
           <option value="TODO">TODO</option>
           <option value="IN_PROGRESS">IN PROGRESS</option>
           <option value="DONE">DONE</option>
+        </select>
+        <select
+          aria-label="Label Filter"
+          value={labelFilter}
+          onChange={(event) => {
+            setLabelFilter(event.target.value);
+            setPage(0);
+          }}
+          className="
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
+          "
+        >
+          <option value="">Label: All</option>
+          {labels.map((label) => (
+            <option key={label.labelId} value={String(label.labelId)}>
+              {label.name}
+            </option>
+          ))}
         </select>
         <select
           value={sortBy}
@@ -278,10 +296,7 @@ export default function TaskListPage() {
       {loading && (
         <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
           {[1, 2, 3, 4, 5].map((item) => (
-            <div
-              key={item}
-              className="animate-pulse border-b border-[var(--color-border)] p-[var(--spacing-base)] last:border-b-0"
-            >
+            <div key={item} className="animate-pulse border-b border-[var(--color-border)] p-[var(--spacing-base)] last:border-b-0">
               <div className="mb-2 h-4 w-3/4 rounded bg-[var(--color-surface-muted)]" />
               <div className="h-3 w-1/2 rounded bg-[var(--color-surface-muted)]" />
             </div>
@@ -291,7 +306,7 @@ export default function TaskListPage() {
 
       {!loading && tasks.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          {searchQuery || statusFilter ? 'No tasks matched your filter.' : 'No tasks yet. Create the first task.'}
+          {searchQuery || statusFilter || labelFilter ? 'No tasks matched your filter.' : 'No tasks yet. Create the first task.'}
         </div>
       )}
 
@@ -337,12 +352,7 @@ export default function TaskListPage() {
 
                   {task.assignee && (
                     <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-secondary)]">
-                      <div
-                        className="
-                          flex h-[14px] w-[14px] items-center justify-center rounded-full bg-[var(--color-primary)]
-                          text-[8px] font-semibold text-white
-                        "
-                      >
+                      <div className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-[var(--color-primary)] text-[8px] font-semibold text-white">
                         {task.assignee.nickname.charAt(0).toUpperCase()}
                       </div>
                       {task.assignee.nickname}
