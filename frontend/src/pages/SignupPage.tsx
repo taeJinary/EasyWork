@@ -4,7 +4,7 @@ import apiClient from '@/api/client';
 import type { ApiResponse, SignupResponse } from '@/types';
 
 export default function SignupPage() {
-  const [name, setName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +18,7 @@ export default function SignupPage() {
 
     try {
       await apiClient.post<ApiResponse<SignupResponse>>('/auth/signup', {
-        name,
+        nickname,
         email,
         password,
       });
@@ -60,13 +60,17 @@ export default function SignupPage() {
           )}
 
           <div className="mb-[var(--spacing-base)]">
-            <label className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
-              Name
+            <label
+              htmlFor="nickname"
+              className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]"
+            >
+              Nickname
             </label>
             <input
+              id="nickname"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
               required
               className="
                 w-full h-[36px] px-[var(--spacing-md)]

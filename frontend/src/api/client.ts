@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
-import type { ApiResponse } from '@/types';
+import type { ApiResponse, ReissueResponse } from '@/types';
 
 const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -28,7 +28,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const res = await axios.post<ApiResponse<{ accessToken: string; accessTokenExpiresIn: number }>>(
+        const res = await axios.post<ApiResponse<ReissueResponse>>(
           '/api/v1/auth/token/reissue',
           {},
           { withCredentials: true }

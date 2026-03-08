@@ -26,6 +26,9 @@ export default function GlobalHeader() {
     navigate('/login');
   };
 
+  const displayName = user?.nickname?.trim() || 'User';
+  const avatarInitial = displayName.charAt(0).toUpperCase() || 'U';
+
   return (
     <header className="
       h-[56px] bg-[var(--color-surface)] border-b border-[var(--color-border)]
@@ -121,7 +124,7 @@ export default function GlobalHeader() {
               border-none hover:opacity-90
             "
           >
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            {avatarInitial}
           </button>
 
           {profileOpen && (
@@ -133,7 +136,7 @@ export default function GlobalHeader() {
             ">
               <div className="px-[var(--spacing-base)] py-[var(--spacing-sm)] border-b border-[var(--color-border)]">
                 <div className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
-                  {user?.name || 'User'}
+                  {displayName}
                 </div>
                 <div className="text-[var(--text-xs)] text-[var(--color-text-muted)] truncate">
                   {user?.email || ''}

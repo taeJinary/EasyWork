@@ -22,7 +22,13 @@ vi.mock('@/api/client', () => ({
 const mockSetUser = vi.fn();
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: () => ({
-    user: { id: 1, email: 'test@test.com', name: 'Test' },
+    user: {
+      userId: 1,
+      email: 'test@test.com',
+      nickname: 'Test',
+      profileImg: null,
+      role: 'USER',
+    },
     setUser: mockSetUser,
   }),
 }));
@@ -92,6 +98,16 @@ describe('ProfileSettingsPage', () => {
 
     await waitFor(() => {
       expect(mockPatch).toHaveBeenCalledWith('/users/me', { nickname: 'NewName' });
+    });
+
+    await waitFor(() => {
+      expect(mockSetUser).toHaveBeenCalledWith({
+        userId: 1,
+        email: 'test@example.com',
+        nickname: 'NewName',
+        profileImg: null,
+        role: 'USER',
+      });
     });
   });
 

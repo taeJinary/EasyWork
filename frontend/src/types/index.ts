@@ -13,13 +13,15 @@ export interface PageInfo {
 }
 
 // ── User ──
-export interface User {
-  id: number;
+export interface AuthUser {
+  userId: number;
   email: string;
-  name: string;
-  profileImageUrl?: string;
-  createdAt: string;
+  nickname: string;
+  profileImg: string | null;
+  role: string;
 }
+
+export type User = AuthUser;
 
 // Matches backend UserProfileResponse exactly
 export interface UserProfile {
@@ -38,20 +40,25 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string;
-  accessTokenExpiresIn: number;
-  user: User;
+  expiresIn: number;
+  user: AuthUser;
 }
 
 export interface SignupRequest {
-  name: string;
+  nickname: string;
   email: string;
   password: string;
 }
 
 export interface SignupResponse {
-  id: number;
+  userId: number;
   email: string;
-  name: string;
+  nickname: string;
+}
+
+export interface ReissueResponse {
+  accessToken: string;
+  expiresIn: number;
 }
 
 // ── Workspace ──
@@ -59,13 +66,28 @@ export interface WorkspaceSummary {
   id: number;
   name: string;
   description?: string;
-  createdAt: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
   updatedAt: string;
 }
 
 export interface WorkspaceListResponse {
-  workspaces: WorkspaceSummary[];
-  pageInfo: PageInfo;
+  content: WorkspaceListItemResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface WorkspaceListItemResponse {
+  workspaceId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  updatedAt: string;
 }
 
 export interface WorkspaceDetail {
@@ -73,16 +95,33 @@ export interface WorkspaceDetail {
   name: string;
   description?: string;
   memberCount: number;
-  projectCount: number;
-  createdAt: string;
+  myRole: 'OWNER' | 'MEMBER';
   updatedAt: string;
 }
 
 export interface WorkspaceMember {
-  id: number;
+  memberId: number;
   userId: number;
-  name: string;
+  nickname: string;
   email: string;
+  role: 'OWNER' | 'MEMBER';
+  joinedAt: string;
+}
+
+export interface WorkspaceDetailResponse {
+  workspaceId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  updatedAt: string;
+}
+
+export interface WorkspaceMemberResponse {
+  memberId: number;
+  userId: number;
+  email: string;
+  nickname: string;
   role: 'OWNER' | 'MEMBER';
   joinedAt: string;
 }
@@ -92,30 +131,63 @@ export interface ProjectSummary {
   id: number;
   name: string;
   description?: string;
-  workspaceId: number;
   myRole: 'OWNER' | 'MEMBER';
   memberCount: number;
   openTaskCount: number;
-  createdAt: string;
+  taskCount: number;
+  doneTaskCount: number;
+  progressRate: number;
   updatedAt: string;
 }
 
 export interface ProjectListResponse {
-  projects: ProjectSummary[];
-  pageInfo: PageInfo;
+  content: ProjectListItemResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface ProjectListItemResponse {
+  projectId: number;
+  name: string;
+  description?: string;
+  role: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  taskCount: number;
+  doneTaskCount: number;
+  progressRate: number;
+  updatedAt: string;
 }
 
 export interface ProjectDetail {
   id: number;
   name: string;
   description?: string;
-  workspaceId: number;
-  workspaceName: string;
   myRole: 'OWNER' | 'MEMBER';
   memberCount: number;
-  openTaskCount: number;
-  createdAt: string;
-  updatedAt: string;
+  pendingInvitationCount: number;
+  taskSummary: ProjectTaskSummary;
+  members: ProjectMember[];
+}
+
+export interface ProjectTaskSummary {
+  todo: number;
+  inProgress: number;
+  done: number;
+}
+
+export interface ProjectDetailResponse {
+  projectId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  pendingInvitationCount: number;
+  taskSummary: ProjectTaskSummary;
+  members: ProjectMember[];
 }
 
 // ProjectMember is defined in the Phase C section below (matches backend ProjectMemberResponse)

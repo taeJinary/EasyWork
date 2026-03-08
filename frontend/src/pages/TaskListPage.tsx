@@ -5,7 +5,15 @@ import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
-import type { ApiResponse, ProjectDetail, TaskListResponse, TaskListItem, TaskStatus } from '@/types';
+import { toProjectDetail } from '@/utils/projectMappers';
+import type {
+  ApiResponse,
+  ProjectDetail,
+  ProjectDetailResponse,
+  TaskListResponse,
+  TaskListItem,
+  TaskStatus,
+} from '@/types';
 
 type TabType = 'board' | 'list' | 'members' | 'settings';
 
@@ -49,7 +57,7 @@ export default function TaskListPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('list');
-  // [Warn 2 fix] refetch trigger to avoid stale closure
+  // Trigger a reload after detail mutations without depending on stale closures.
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   // [Warn 4 fix] error state
   const [error, setError] = useState<string | null>(null);
@@ -63,10 +71,10 @@ export default function TaskListPage() {
       if (searchQuery) params.keyword = searchQuery;
 
       const [projectRes, tasksRes] = await Promise.all([
-        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+        apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
         apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
       ]);
-      setProject(projectRes.data.data);
+      setProject(toProjectDetail(projectRes.data.data));
       setTasks(tasksRes.data.data.content);
       setTotalPages(tasksRes.data.data.totalPages);
     } catch (err) {
@@ -75,13 +83,12 @@ export default function TaskListPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, page, statusFilter, searchQuery, sortBy, direction, refetchTrigger]);
+  }, [projectId, page, statusFilter, searchQuery, sortBy, direction]);
 
   useEffect(() => {
     if (projectId) fetchList();
-  }, [projectId, fetchList]);
+  }, [projectId, fetchList, refetchTrigger]);
 
-  // [Warn 2 fix] trigger refetch via state change instead of stale closure
   const refreshList = () => {
     setRefetchTrigger((n) => n + 1);
   };

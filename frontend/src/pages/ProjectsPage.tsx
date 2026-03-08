@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
+import { toProjectSummary } from '@/utils/projectMappers';
 import type { ApiResponse, ProjectListResponse, ProjectSummary } from '@/types';
 
 function formatTimeAgo(dateStr: string): string {
@@ -36,8 +37,8 @@ export default function ProjectsPage() {
         if (roleFilter) params.role = roleFilter;
 
         const res = await apiClient.get<ApiResponse<ProjectListResponse>>('/projects', { params });
-        setProjects(res.data.data.projects);
-        setTotalPages(res.data.data.pageInfo.totalPages);
+        setProjects(res.data.data.content.map(toProjectSummary));
+        setTotalPages(res.data.data.totalPages);
       } catch {
         setError('프로젝트 목록을 불러오는 데 실패했습니다.');
       } finally {

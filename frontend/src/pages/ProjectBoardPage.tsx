@@ -6,7 +6,16 @@ import TaskCard from '@/components/TaskCard';
 import FilterBar from '@/components/FilterBar';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
-import type { ApiResponse, ProjectDetail, TaskBoardResponse, BoardColumn, BoardTaskCard, TaskStatus } from '@/types';
+import { toProjectDetail } from '@/utils/projectMappers';
+import type {
+  ApiResponse,
+  ProjectDetail,
+  ProjectDetailResponse,
+  TaskBoardResponse,
+  BoardColumn,
+  BoardTaskCard,
+  TaskStatus,
+} from '@/types';
 
 type TabType = 'board' | 'list' | 'members' | 'settings';
 
@@ -31,10 +40,10 @@ export default function ProjectBoardPage() {
       setLoading(true);
       setError(null);
       const [projectRes, boardRes] = await Promise.all([
-        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+        apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
         apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`),
       ]);
-      setProject(projectRes.data.data);
+      setProject(toProjectDetail(projectRes.data.data));
       const rawColumns = boardRes.data.data.columns;
       const normalized = columnOrder.map((status) => {
         const found = rawColumns.find((c) => c.status === status);

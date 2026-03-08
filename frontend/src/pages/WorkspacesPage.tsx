@@ -4,7 +4,12 @@ import { Plus, Users, FolderKanban, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import FilterBar from '@/components/FilterBar';
 import apiClient from '@/api/client';
-import type { ApiResponse, WorkspaceListResponse, WorkspaceSummary } from '@/types';
+import type {
+  ApiResponse,
+  WorkspaceListItemResponse,
+  WorkspaceListResponse,
+  WorkspaceSummary,
+} from '@/types';
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -14,6 +19,17 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function toWorkspaceSummary(workspace: WorkspaceListItemResponse): WorkspaceSummary {
+  return {
+    id: workspace.workspaceId,
+    name: workspace.name,
+    description: workspace.description,
+    myRole: workspace.myRole,
+    memberCount: workspace.memberCount,
+    updatedAt: workspace.updatedAt,
+  };
 }
 
 export default function WorkspacesPage() {
@@ -28,7 +44,7 @@ export default function WorkspacesPage() {
       try {
         setLoading(true);
         const res = await apiClient.get<ApiResponse<WorkspaceListResponse>>('/workspaces');
-        setWorkspaces(res.data.data.workspaces);
+        setWorkspaces(res.data.data.content.map(toWorkspaceSummary));
       } catch {
         setError('워크스페이스 목록을 불러오는 데 실패했습니다.');
       } finally {
@@ -152,12 +168,11 @@ export default function WorkspacesPage() {
               <div className="flex items-center gap-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)] shrink-0">
                 <span className="flex items-center gap-1">
                   <Users size={12} />
-                  {/* memberCount will come from detail API */}
-                  members
+                  {ws.memberCount} members
                 </span>
                 <span className="flex items-center gap-1">
                   <FolderKanban size={12} />
-                  projects
+                  {ws.myRole}
                 </span>
                 <span>Updated {formatTimeAgo(ws.updatedAt)}</span>
                 <ChevronRight size={16} className="text-[var(--color-text-muted)]" />

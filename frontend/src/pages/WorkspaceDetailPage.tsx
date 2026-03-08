@@ -3,7 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, UserPlus, Settings, Users, FolderKanban } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
-import type { ApiResponse, WorkspaceDetail, WorkspaceMember } from '@/types';
+import type {
+  ApiResponse,
+  WorkspaceDetail,
+  WorkspaceDetailResponse,
+  WorkspaceMember,
+  WorkspaceMemberResponse,
+} from '@/types';
 
 type TabType = 'overview' | 'projects' | 'members' | 'settings';
 
@@ -15,6 +21,28 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function toWorkspaceDetail(workspace: WorkspaceDetailResponse): WorkspaceDetail {
+  return {
+    id: workspace.workspaceId,
+    name: workspace.name,
+    description: workspace.description,
+    memberCount: workspace.memberCount,
+    myRole: workspace.myRole,
+    updatedAt: workspace.updatedAt,
+  };
+}
+
+function toWorkspaceMember(member: WorkspaceMemberResponse): WorkspaceMember {
+  return {
+    memberId: member.memberId,
+    userId: member.userId,
+    email: member.email,
+    nickname: member.nickname,
+    role: member.role,
+    joinedAt: member.joinedAt,
+  };
 }
 
 export default function WorkspaceDetailPage() {
@@ -30,11 +58,11 @@ export default function WorkspaceDetailPage() {
       try {
         setLoading(true);
         const [wsRes, membersRes] = await Promise.all([
-          apiClient.get<ApiResponse<WorkspaceDetail>>(`/workspaces/${workspaceId}`),
-          apiClient.get<ApiResponse<WorkspaceMember[]>>(`/workspaces/${workspaceId}/members`),
+          apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
+          apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
         ]);
-        setWorkspace(wsRes.data.data);
-        setMembers(membersRes.data.data);
+        setWorkspace(toWorkspaceDetail(wsRes.data.data));
+        setMembers(membersRes.data.data.map(toWorkspaceMember));
       } catch {
         // Error handling
       } finally {
@@ -162,7 +190,7 @@ export default function WorkspaceDetailPage() {
               ) : (
                 members.map((member, i) => (
                   <div
-                    key={member.id}
+                    key={member.memberId}
                     className={`
                       flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-md)] py-[var(--spacing-sm)]
                       ${i < members.length - 1 ? 'border-b border-[var(--color-border)]' : ''}
@@ -173,10 +201,10 @@ export default function WorkspaceDetailPage() {
                       text-white text-[var(--text-xs)] font-semibold
                       flex items-center justify-center shrink-0
                     ">
-                      {member.name.charAt(0).toUpperCase()}
+                      {member.nickname.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-[var(--text-sm)] text-[var(--color-text-primary)] truncate flex-1">
-                      {member.name}
+                      {member.nickname}
                     </span>
                     <Badge variant={member.role === 'OWNER' ? 'warning' : 'default'}>
                       {member.role}
@@ -199,12 +227,12 @@ export default function WorkspaceDetailPage() {
               space-y-[var(--spacing-sm)]
             ">
               <div className="flex items-center gap-[var(--spacing-sm)]">
-                <FolderKanban size={14} className="text-[var(--color-text-muted)]" />
-                <span>{workspace?.projectCount ?? 0} projects</span>
-              </div>
-              <div className="flex items-center gap-[var(--spacing-sm)]">
                 <Users size={14} className="text-[var(--color-text-muted)]" />
                 <span>{workspace?.memberCount ?? 0} members</span>
+              </div>
+              <div className="flex items-center gap-[var(--spacing-sm)]">
+                <FolderKanban size={14} className="text-[var(--color-text-muted)]" />
+                <span>Role {workspace?.myRole ?? 'MEMBER'}</span>
               </div>
               {workspace?.updatedAt && (
                 <div className="flex items-center gap-[var(--spacing-sm)]">

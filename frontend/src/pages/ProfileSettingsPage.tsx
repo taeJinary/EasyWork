@@ -65,7 +65,12 @@ export default function ProfileSettingsPage() {
       setSuccess('프로필이 저장되었습니다.');
       // Sync auth store
       if (user) {
-        setUser({ ...user, name: res.data.data.nickname });
+        setUser({
+          ...user,
+          email: res.data.data.email,
+          nickname: res.data.data.nickname,
+          profileImg: res.data.data.profileImg,
+        });
       }
     } catch (err) {
       setError('프로필 저장에 실패했습니다.');
