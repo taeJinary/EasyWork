@@ -119,11 +119,16 @@ export default function TaskDetailDrawer({
 
   useEffect(() => {
     if (!task?.projectId) {
+      setProjectMembers([]);
+      setProjectLabels([]);
       return;
     }
 
     const projectId = task.projectId;
     let cancelled = false;
+
+    setProjectMembers([]);
+    setProjectLabels([]);
 
     async function fetchEditOptions() {
       try {
@@ -140,6 +145,8 @@ export default function TaskDetailDrawer({
         setProjectLabels(labelsResponse.data.data);
       } catch (caughtError) {
         if (!cancelled) {
+          setProjectMembers([]);
+          setProjectLabels([]);
           console.error('Failed to load task edit options:', caughtError);
         }
       }
