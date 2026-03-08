@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Trash2, AlertCircle, X, CheckCircle2 } from 'lucide-react';
+import { Settings, Trash2, AlertCircle, X, CheckCircle2, Tags, Pencil, Plus } from 'lucide-react';
 import apiClient from '@/api/client';
 import { AxiosError } from 'axios';
 import { toProjectDetail } from '@/utils/projectMappers';
-import type { ApiResponse, ProjectDetailResponse } from '@/types';
+import type { ApiResponse, ProjectDetailResponse, ProjectLabelResponse } from '@/types';
 import ErrorState from '@/components/ErrorState';
 import PageHeader from '@/components/PageHeader';
 
@@ -24,6 +24,18 @@ interface DeleteDialogState {
   projectId: string;
   confirmName: string;
   error: string | null;
+}
+
+interface LabelDraftState {
+  name: string;
+  colorHex: string;
+}
+
+interface LabelEditorState {
+  projectId: string;
+  editingLabelId: number | null;
+  draft: LabelDraftState;
+  error: string;
 }
 
 export default function ProjectSettingsPage() {
@@ -47,6 +59,15 @@ export default function ProjectSettingsPage() {
     confirmName: '',
     error: null,
   });
+  const [labelEditor, setLabelEditor] = useState<LabelEditorState>({
+    projectId: currentProjectId,
+    editingLabelId: null,
+    draft: {
+      name: '',
+      colorHex: '#2563EB',
+    },
+    error: '',
+  });
 
   const { data: projectRes, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
@@ -59,16 +80,34 @@ export default function ProjectSettingsPage() {
   });
 
   const project = projectRes;
+  const { data: labels = [] } = useQuery({
+    queryKey: ['project-labels', projectId],
+    queryFn: async () => {
+      const res = await apiClient.get<ApiResponse<ProjectLabelResponse[]>>(`/projects/${projectId}/labels`);
+      return res.data.data;
+    },
+    enabled: !!projectId,
+    retry: false,
+  });
 
   // Derive editable fields from server data (avoids setState-in-effect lint)
   const serverName = project?.name ?? '';
   const serverDesc = project?.description ?? '';
   const isCurrentDraft = draft.projectId === currentProjectId;
   const isCurrentDeleteDialog = deleteDialog.projectId === currentProjectId;
+  const isCurrentLabelEditor = labelEditor.projectId === currentProjectId;
   const editableName = isCurrentDraft ? draft.name ?? serverName : serverName;
   const editableDesc = isCurrentDraft ? draft.description ?? serverDesc : serverDesc;
   const deleteConfirmName = isCurrentDeleteDialog ? deleteDialog.confirmName : '';
   const deleteError = isCurrentDeleteDialog ? deleteDialog.error : null;
+  const editingLabelId = isCurrentLabelEditor ? labelEditor.editingLabelId : null;
+  const labelDraft = isCurrentLabelEditor
+    ? labelEditor.draft
+    : {
+        name: '',
+        colorHex: '#2563EB',
+      };
+  const labelError = isCurrentLabelEditor ? labelEditor.error : '';
 
   const updateDraft = (
     updater: (state: { name: string | null; description: string | null }) => {
@@ -140,6 +179,102 @@ export default function ProjectSettingsPage() {
     },
   });
 
+  const resetLabelDraft = () => {
+    updateLabelEditor(() => ({
+      editingLabelId: null,
+      draft: {
+        name: '',
+        colorHex: '#2563EB',
+      },
+      error: '',
+    }));
+  };
+
+  const updateLabelEditor = (
+    updater: (state: {
+      editingLabelId: number | null;
+      draft: LabelDraftState;
+      error: string;
+    }) => {
+      editingLabelId: number | null;
+      draft: LabelDraftState;
+      error: string;
+    }
+  ) => {
+    setLabelEditor((prev) => {
+      const baseState =
+        prev.projectId === currentProjectId
+          ? {
+              editingLabelId: prev.editingLabelId,
+              draft: prev.draft,
+              error: prev.error,
+            }
+          : {
+              editingLabelId: null,
+              draft: {
+                name: '',
+                colorHex: '#2563EB',
+              },
+              error: '',
+            };
+
+      return {
+        projectId: currentProjectId,
+        ...updater(baseState),
+      };
+    });
+  };
+
+  const createLabelMutation = useMutation({
+    mutationFn: async (payload: LabelDraftState) => {
+      return apiClient.post<ApiResponse<ProjectLabelResponse>>(`/projects/${projectId}/labels`, payload);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
+      resetLabelDraft();
+    },
+    onError: () => {
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 생성에 실패했습니다.',
+      }));
+    },
+  });
+
+  const updateLabelMutation = useMutation({
+    mutationFn: async ({ labelId, payload }: { labelId: number; payload: LabelDraftState }) => {
+      return apiClient.patch<ApiResponse<ProjectLabelResponse>>(`/labels/${labelId}`, payload);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
+      resetLabelDraft();
+    },
+    onError: () => {
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 수정에 실패했습니다.',
+      }));
+    },
+  });
+
+  const deleteLabelMutation = useMutation({
+    mutationFn: async (labelId: number) => {
+      return apiClient.delete(`/labels/${labelId}`);
+    },
+    onSuccess: async (_data, labelId) => {
+      await queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
+      if (editingLabelId === labelId) {
+        resetLabelDraft();
+      }
+    },
+    onError: () => {
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 삭제에 실패했습니다.',
+      }));
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="p-[var(--spacing-lg)] animate-pulse space-y-4">
@@ -187,6 +322,33 @@ export default function ProjectSettingsPage() {
   const handleDelete = () => {
     if (deleteConfirmName !== project.name || deleteMutation.isPending) return;
     deleteMutation.mutate();
+  };
+
+  const handleLabelSubmit = () => {
+    const name = labelDraft.name.trim();
+    const colorHex = labelDraft.colorHex.trim();
+
+    if (!name || !/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+      updateLabelEditor((state) => ({
+        ...state,
+        error: '라벨 이름과 HEX 색상을 확인해주세요.',
+      }));
+      return;
+    }
+
+    updateLabelEditor((state) => ({
+      ...state,
+      error: '',
+    }));
+    if (editingLabelId) {
+      updateLabelMutation.mutate({
+        labelId: editingLabelId,
+        payload: { name, colorHex },
+      });
+      return;
+    }
+
+    createLabelMutation.mutate({ name, colorHex });
   };
 
   return (
@@ -307,6 +469,148 @@ export default function ProjectSettingsPage() {
               </button>
             </div>
           </form>
+        </section>
+
+        <section>
+          <div className="border-b border-[var(--color-border)] pb-[var(--spacing-sm)] mb-[var(--spacing-base)] flex items-center gap-[var(--spacing-xs)]">
+            <Tags size={18} className="text-[var(--color-text-secondary)]" />
+            <h2 className="text-[var(--text-md)] font-semibold text-[var(--color-text-primary)] m-0">
+              Labels
+            </h2>
+          </div>
+
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-[var(--spacing-lg)] space-y-[var(--spacing-base)]">
+            {labelError && (
+              <div className="p-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)] flex items-center gap-2">
+                <AlertCircle size={14} />
+                {labelError}
+              </div>
+            )}
+
+            {labels.length === 0 ? (
+              <div className="text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                아직 등록된 라벨이 없습니다.
+              </div>
+            ) : (
+              <div className="space-y-[var(--spacing-sm)]">
+                {labels.map((label) => (
+                  <div
+                    key={label.labelId}
+                    className="flex items-center justify-between gap-[var(--spacing-base)] rounded-[var(--radius-sm)] border border-[var(--color-border)] px-[var(--spacing-base)] py-[var(--spacing-sm)]"
+                  >
+                    <div className="flex items-center gap-[var(--spacing-sm)]">
+                      <span
+                        className="inline-flex h-[12px] w-[12px] rounded-full"
+                        style={{ backgroundColor: label.colorHex }}
+                      />
+                      <span className="text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">{label.name}</span>
+                      <code className="text-[var(--text-xs)] text-[var(--color-text-muted)]">{label.colorHex}</code>
+                    </div>
+                    <div className="flex items-center gap-[var(--spacing-sm)]">
+                      <button
+                        type="button"
+                        aria-label={`Edit label ${label.name}`}
+                        onClick={() => {
+                          updateLabelEditor(() => ({
+                            editingLabelId: label.labelId,
+                            draft: { name: label.name, colorHex: label.colorHex },
+                            error: '',
+                          }));
+                        }}
+                        className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-xs)] text-[var(--color-text-secondary)]"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <Pencil size={12} />
+                          Edit
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete label ${label.name}`}
+                        onClick={() => deleteLabelMutation.mutate(label.labelId)}
+                        className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-xs)] text-[var(--color-danger)]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t border-[var(--color-border)] pt-[var(--spacing-base)]">
+              <div className="mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
+                {editingLabelId ? 'Edit Label' : 'Create Label'}
+              </div>
+              <div className="grid gap-[var(--spacing-base)] md:grid-cols-[1fr_160px_auto]">
+                <div>
+                  <label htmlFor="labelName" className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
+                    Label Name
+                  </label>
+                  <input
+                    id="labelName"
+                    aria-label="Label Name"
+                    type="text"
+                    value={labelDraft.name}
+                    onChange={(event) =>
+                      updateLabelEditor((state) => ({
+                        ...state,
+                        draft: {
+                          ...state.draft,
+                          name: event.target.value,
+                        },
+                      }))
+                    }
+                    maxLength={30}
+                    className="w-full h-[36px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="labelColorHex" className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
+                    Color Hex
+                  </label>
+                  <input
+                    id="labelColorHex"
+                    aria-label="Color Hex"
+                    type="text"
+                    value={labelDraft.colorHex}
+                    onChange={(event) =>
+                      updateLabelEditor((state) => ({
+                        ...state,
+                        draft: {
+                          ...state.draft,
+                          colorHex: event.target.value,
+                        },
+                      }))
+                    }
+                    className="w-full h-[36px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
+                  />
+                </div>
+                <div className="flex items-end gap-[var(--spacing-sm)]">
+                  <button
+                    type="button"
+                    onClick={handleLabelSubmit}
+                    disabled={createLabelMutation.isPending || updateLabelMutation.isPending || deleteLabelMutation.isPending}
+                    className="h-[36px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:opacity-50"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <Plus size={14} />
+                      {editingLabelId ? 'Update Label' : 'Create Label'}
+                    </span>
+                  </button>
+                  {editingLabelId && (
+                    <button
+                      type="button"
+                      onClick={resetLabelDraft}
+                      className="h-[36px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)]"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Danger Zone */}

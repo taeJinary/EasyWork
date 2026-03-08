@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import apiClient from '@/api/client';
-import type { ApiResponse, TaskCreateResponse, TaskPriority } from '@/types';
+import type { ApiResponse, ProjectLabelResponse, TaskCreateResponse, TaskPriority } from '@/types';
 
 type TaskCreateModalProps = {
   projectId: number;
@@ -16,6 +16,8 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
+  const [labels, setLabels] = useState<ProjectLabelResponse[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,8 +28,38 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
     setTitle('');
     setDescription('');
     setPriority('MEDIUM');
+    setLabels([]);
+    setSelectedLabelIds([]);
     setError(null);
-  }, [open]);
+  }, [open, projectId]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchLabels() {
+      try {
+        const response = await apiClient.get<ApiResponse<ProjectLabelResponse[]>>(`/projects/${projectId}/labels`);
+        if (!cancelled) {
+          setLabels(response.data.data);
+        }
+      } catch (caughtError: unknown) {
+        if (!cancelled) {
+          const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          setError(message || 'Failed to load labels.');
+        }
+      }
+    }
+
+    void fetchLabels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
 
   if (!open) {
     return null;
@@ -52,6 +84,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
         title: title.trim(),
         description: description.trim(),
         priority,
+        labelIds: selectedLabelIds,
       });
       onCreated(response.data.data);
       onClose();
@@ -62,6 +95,12 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const toggleLabel = (labelId: number) => {
+    setSelectedLabelIds((current) =>
+      current.includes(labelId) ? current.filter((id) => id !== labelId) : [...current, labelId]
+    );
   };
 
   return (
@@ -133,6 +172,41 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <div className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
+                Labels
+              </div>
+              {labels.length === 0 ? (
+                <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                  No labels available.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-sm)]">
+                  {labels.map((label) => {
+                    const checked = selectedLabelIds.includes(label.labelId);
+                    return (
+                      <label
+                        key={label.labelId}
+                        className="flex cursor-pointer items-center gap-[var(--spacing-xs)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={label.name}
+                          checked={checked}
+                          onChange={() => toggleLabel(label.labelId)}
+                        />
+                        <span
+                          className="inline-flex h-[10px] w-[10px] rounded-full"
+                          style={{ backgroundColor: label.colorHex }}
+                        />
+                        {label.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-[var(--spacing-sm)]">

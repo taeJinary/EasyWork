@@ -8,6 +8,7 @@ import { apiOk } from '@/test/helpers';
 import type { ProjectDetailResponse } from '@/types';
 
 const mockGet = vi.fn();
+const mockPost = vi.fn();
 const mockPatch = vi.fn();
 const mockDelete = vi.fn();
 const mockNavigate = vi.fn();
@@ -19,7 +20,7 @@ vi.mock('@/api/client', () => ({
     get: (...args: unknown[]) => mockGet(...args),
     patch: (...args: unknown[]) => mockPatch(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
-    post: vi.fn(),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -81,6 +82,16 @@ describe('ProjectSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentProjectId = '1';
+    const labelsByProject: Record<string, Array<{ labelId: number; name: string; colorHex: string }>> = {
+      '1': [
+        {
+          labelId: 1,
+          name: 'Release',
+          colorHex: '#2563EB',
+        },
+      ],
+      '2': [],
+    };
 
     mockGet.mockImplementation((url: string) => {
       if (url === '/projects/1') {
@@ -99,7 +110,70 @@ describe('ProjectSettingsPage', () => {
         );
       }
 
+      if (url === '/projects/1/labels') {
+        return Promise.resolve(apiOk(labelsByProject['1']));
+      }
+
+      if (url === '/projects/2/labels') {
+        return Promise.resolve(apiOk(labelsByProject['2']));
+      }
+
       return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    mockPost.mockImplementation((url: string, payload: { name: string; colorHex: string }) => {
+      if (url === '/projects/1/labels') {
+        const created = {
+          labelId: 2,
+          name: payload.name,
+          colorHex: payload.colorHex,
+        };
+        labelsByProject['1'] = [...labelsByProject['1'], created];
+        return Promise.resolve(apiOk(created));
+      }
+
+      if (url === '/projects/2/labels') {
+        const created = {
+          labelId: 3,
+          name: payload.name,
+          colorHex: payload.colorHex,
+        };
+        labelsByProject['2'] = [...labelsByProject['2'], created];
+        return Promise.resolve(apiOk(created));
+      }
+
+      return Promise.reject(new Error(`Unexpected POST ${url}`));
+    });
+
+    mockPatch.mockImplementation((url: string, payload: { name: string; colorHex: string }) => {
+      if (url === '/labels/1') {
+        labelsByProject['1'] = labelsByProject['1'].map((label) =>
+          label.labelId === 1 ? { ...label, name: payload.name, colorHex: payload.colorHex } : label
+        );
+        return Promise.resolve(
+          apiOk({
+            labelId: 1,
+            name: payload.name,
+            colorHex: payload.colorHex,
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected PATCH ${url}`));
+    });
+
+    mockDelete.mockImplementation((url: string) => {
+      if (url === '/labels/1') {
+        labelsByProject['1'] = labelsByProject['1'].filter((label) => label.labelId !== 1);
+        return Promise.resolve(apiOk(null));
+      }
+
+      if (url === '/labels/2') {
+        labelsByProject['1'] = labelsByProject['1'].filter((label) => label.labelId !== 2);
+        return Promise.resolve(apiOk(null));
+      }
+
+      return Promise.reject(new Error(`Unexpected DELETE ${url}`));
     });
   });
 
@@ -153,5 +227,122 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/삭제에 실패했습니다/)).toBeInTheDocument();
     });
+  });
+
+  it('creates, updates, and deletes labels from project settings', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Release')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit label Release' }));
+    const nameInput = screen.getByLabelText('Label Name');
+    const colorInput = screen.getByLabelText('Color Hex');
+
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Urgent');
+    await user.clear(colorInput);
+    await user.type(colorInput, '#EF4444');
+    await user.click(screen.getByRole('button', { name: 'Update Label' }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith('/labels/1', {
+        name: 'Urgent',
+        colorHex: '#EF4444',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Urgent')).toBeInTheDocument();
+    });
+
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Backend');
+    await user.clear(colorInput);
+    await user.type(colorInput, '#10B981');
+    await user.click(screen.getByRole('button', { name: 'Create Label' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/projects/1/labels', {
+        name: 'Backend',
+        colorHex: '#10B981',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Delete label Backend' }));
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith('/labels/2');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Backend')).not.toBeInTheDocument();
+    });
+  });
+
+  it('resets label editor state when projectId changes', async () => {
+    const view = renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Release')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit label Release' }));
+    await user.clear(screen.getByLabelText('Label Name'));
+    await user.type(screen.getByLabelText('Label Name'), 'Carry Over');
+
+    currentProjectId = '2';
+    view.rerender(createWrapper(view.queryClient));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Project Beta')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: 'Create Label' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update Label' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label Name')).toHaveValue('');
+    expect(screen.getByLabelText('Color Hex')).toHaveValue('#2563EB');
+
+    await user.type(screen.getByLabelText('Label Name'), 'Beta Label');
+    await user.click(screen.getByRole('button', { name: 'Create Label' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/projects/2/labels', {
+        name: 'Beta Label',
+        colorHex: '#2563EB',
+      });
+    });
+
+    expect(mockPatch).not.toHaveBeenCalledWith('/labels/1', expect.anything());
+  });
+
+  it('clears label editor state after deleting the label being edited', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Release')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit label Release' }));
+
+    expect(screen.getByRole('button', { name: 'Update Label' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Label Name')).toHaveValue('Release');
+
+    await user.click(screen.getByRole('button', { name: 'Delete label Release' }));
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith('/labels/1');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Create Label' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Update Label' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label Name')).toHaveValue('');
+    expect(screen.getByLabelText('Color Hex')).toHaveValue('#2563EB');
+    expect(screen.queryByText('Release')).not.toBeInTheDocument();
   });
 });
