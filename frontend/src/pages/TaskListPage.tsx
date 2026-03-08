@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
+import TaskCreateModal from '@/components/TaskCreateModal';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
 import { toProjectDetail } from '@/utils/projectMappers';
@@ -69,6 +70,7 @@ export default function TaskListPage() {
   const [activeTab, setActiveTab] = useState<TabType>('list');
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   useEffect(() => {
     if (!projectId) {
@@ -163,6 +165,8 @@ export default function TaskListPage() {
         </div>
         <div className="flex items-center gap-[var(--spacing-sm)]">
           <button
+            type="button"
+            onClick={() => navigate(`/projects/${projectId}/members?invite=1`)}
             className="
               flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
               bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
@@ -173,6 +177,8 @@ export default function TaskListPage() {
             Invite
           </button>
           <button
+            type="button"
+            onClick={() => setShowTaskModal(true)}
             className="
               flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
               bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
@@ -184,6 +190,15 @@ export default function TaskListPage() {
           </button>
         </div>
       </div>
+
+      <TaskCreateModal
+        projectId={Number(projectId)}
+        open={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        onCreated={() => {
+          refreshList();
+        }}
+      />
 
       <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
