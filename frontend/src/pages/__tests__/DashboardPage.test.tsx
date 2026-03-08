@@ -180,4 +180,168 @@ describe('Dashboard route', () => {
 
     expect(await screen.findByText('Failed to load project stats.')).toBeInTheDocument();
   });
+
+  it('retries dashboard fetch after initial load failure', async () => {
+    let dashboardAttempts = 0;
+
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/projects') {
+        dashboardAttempts += 1;
+
+        if (dashboardAttempts === 1) {
+          return Promise.reject(new Error('dashboard failed'));
+        }
+
+        return Promise.resolve(
+          apiOk({
+            pendingInvitationCount: 0,
+            myProjects: [
+              {
+                projectId: 21,
+                name: 'Gamma Project',
+                role: 'OWNER',
+                memberCount: 3,
+                taskCount: 7,
+                doneTaskCount: 1,
+                progressRate: 14,
+                updatedAt: '2026-03-08T12:00:00',
+              },
+            ],
+          })
+        );
+      }
+
+      if (url === '/projects/21/dashboard') {
+        return Promise.resolve(
+          apiOk({
+            projectId: 21,
+            memberCount: 3,
+            taskCount: 7,
+            todoCount: 4,
+            inProgressCount: 2,
+            doneCount: 1,
+            overdueCount: 0,
+            dueSoonCount: 1,
+            completionRate: 14,
+          })
+        );
+      }
+
+      if (url === '/notifications/unread-count') {
+        return Promise.resolve(apiOk({ unreadCount: 0 }));
+      }
+
+      return Promise.reject(new Error(`unexpected url: ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Failed to load dashboard data.')).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect((await screen.findAllByText('Gamma Project')).length).toBeGreaterThan(0);
+    expect(mockGet).toHaveBeenCalledWith('/dashboard/projects');
+  });
+
+  it('shows a guided empty state when there are no active projects', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/projects') {
+        return Promise.resolve(
+          apiOk({
+            pendingInvitationCount: 0,
+            myProjects: [],
+          })
+        );
+      }
+
+      if (url === '/notifications/unread-count') {
+        return Promise.resolve(apiOk({ unreadCount: 0 }));
+      }
+
+      return Promise.reject(new Error(`unexpected url: ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('No active projects yet.')).toBeInTheDocument();
+    expect(screen.getByText('Create or join a project to start tracking workload and progress.')).toBeInTheDocument();
+  });
+
+  it('retries project stats fetch when the selected project stats request fails', async () => {
+    let projectStatsAttempts = 0;
+
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/projects') {
+        return Promise.resolve(
+          apiOk({
+            pendingInvitationCount: 0,
+            myProjects: [
+              {
+                projectId: 11,
+                name: 'Alpha Project',
+                role: 'OWNER',
+                memberCount: 4,
+                taskCount: 12,
+                doneTaskCount: 5,
+                progressRate: 42,
+                updatedAt: '2026-03-08T10:00:00',
+              },
+            ],
+          })
+        );
+      }
+
+      if (url === '/projects/11/dashboard') {
+        projectStatsAttempts += 1;
+
+        if (projectStatsAttempts === 1) {
+          return Promise.reject(new Error('stats failed'));
+        }
+
+        return Promise.resolve(
+          apiOk({
+            projectId: 11,
+            memberCount: 4,
+            taskCount: 12,
+            todoCount: 3,
+            inProgressCount: 4,
+            doneCount: 5,
+            overdueCount: 1,
+            dueSoonCount: 2,
+            completionRate: 42,
+          })
+        );
+      }
+
+      if (url === '/notifications/unread-count') {
+        return Promise.resolve(apiOk({ unreadCount: 0 }));
+      }
+
+      return Promise.reject(new Error(`unexpected url: ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Failed to load project stats.')).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Retry Stats' }));
+
+    expect(await screen.findByText('Overdue')).toBeInTheDocument();
+    expect(mockGet).toHaveBeenCalledWith('/projects/11/dashboard');
+  });
 });
