@@ -152,9 +152,7 @@ export default function TaskListPage() {
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
           </div>
-          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">
-            {project?.name}
-          </h1>
+          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">{project?.name}</h1>
           {project?.description && (
             <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               {project.description}
@@ -205,13 +203,7 @@ export default function TaskListPage() {
       </div>
 
       {error && (
-        <div
-          className="
-            mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)]
-            border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)]
-            text-[var(--text-sm)] text-[var(--color-danger)]
-          "
-        >
+        <div className="mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
           <AlertCircle size={14} className="shrink-0" />
           {error}
         </div>
@@ -278,10 +270,7 @@ export default function TaskListPage() {
       {loading && (
         <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
           {[1, 2, 3, 4, 5].map((item) => (
-            <div
-              key={item}
-              className="animate-pulse border-b border-[var(--color-border)] p-[var(--spacing-base)] last:border-b-0"
-            >
+            <div key={item} className="animate-pulse border-b border-[var(--color-border)] p-[var(--spacing-base)] last:border-b-0">
               <div className="mb-2 h-4 w-3/4 rounded bg-[var(--color-surface-muted)]" />
               <div className="h-3 w-1/2 rounded bg-[var(--color-surface-muted)]" />
             </div>
@@ -337,12 +326,7 @@ export default function TaskListPage() {
 
                   {task.assignee && (
                     <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-secondary)]">
-                      <div
-                        className="
-                          flex h-[14px] w-[14px] items-center justify-center rounded-full bg-[var(--color-primary)]
-                          text-[8px] font-semibold text-white
-                        "
-                      >
+                      <div className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-[var(--color-primary)] text-[8px] font-semibold text-white">
                         {task.assignee.nickname.charAt(0).toUpperCase()}
                       </div>
                       {task.assignee.nickname}

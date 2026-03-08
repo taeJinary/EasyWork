@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProjectBoardPage from '@/pages/ProjectBoardPage';
 import { apiOk } from '@/test/helpers';
@@ -79,6 +80,18 @@ describe('ProjectBoardPage', () => {
         );
       }
 
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(
+          apiOk([
+            {
+              labelId: 1,
+              name: 'Release',
+              colorHex: '#2563EB',
+            },
+          ])
+        );
+      }
+
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
 
@@ -98,9 +111,88 @@ describe('ProjectBoardPage', () => {
     expect(screen.getByText('TODO')).toBeInTheDocument();
     expect(screen.getByText('IN PROGRESS')).toBeInTheDocument();
     expect(screen.getByText('DONE')).toBeInTheDocument();
-    expect(screen.getByText('Release')).toBeInTheDocument();
+    expect(screen.getAllByText('Release').length).toBeGreaterThan(0);
     expect(screen.getByText('Owner')).toBeInTheDocument();
     expect(screen.getByText('Mar 15')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
+  });
+
+  it('loads project labels and sends labelId filter to board query', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/projects/3') {
+        return Promise.resolve(
+          apiOk({
+            projectId: 3,
+            name: 'Release Project',
+            description: 'Board contract',
+            myRole: 'OWNER',
+            memberCount: 4,
+            pendingInvitationCount: 0,
+            taskSummary: {
+              todo: 1,
+              inProgress: 0,
+              done: 0,
+            },
+            members: [],
+          })
+        );
+      }
+
+      if (url === '/projects/3/tasks/board') {
+        return Promise.resolve(
+          apiOk({
+            projectId: 3,
+            filters: {
+              assigneeUserId: null,
+              priority: null,
+              labelId: null,
+              keyword: null,
+            },
+            columns: [
+              {
+                status: 'TODO',
+                tasks: [],
+              },
+            ],
+          })
+        );
+      }
+
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(
+          apiOk([
+            {
+              labelId: 1,
+              name: 'Release',
+              colorHex: '#2563EB',
+            },
+          ])
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/projects/3/board']}>
+        <Routes>
+          <Route path="/projects/:projectId/board" element={<ProjectBoardPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('option', { name: 'Release' })).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Label Filter' }), '1');
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        '/projects/3/tasks/board',
+        expect.objectContaining({
+          params: expect.objectContaining({ labelId: '1' }),
+        })
+      );
+    });
   });
 });

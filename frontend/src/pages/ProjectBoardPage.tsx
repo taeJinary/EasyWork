@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, UserPlus, AlertCircle } from 'lucide-react';
 import BoardColumnComponent from '@/components/BoardColumn';
@@ -11,6 +11,7 @@ import type {
   ApiResponse,
   ProjectDetail,
   ProjectDetailResponse,
+  ProjectLabelResponse,
   TaskBoardResponse,
   BoardColumn,
   BoardTaskCard,
@@ -26,86 +27,105 @@ export default function ProjectBoardPage() {
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [columns, setColumns] = useState<BoardColumn[]>([]);
+  const [labels, setLabels] = useState<ProjectLabelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('board');
-  // [Bug 4 fix] filter states
-  const [priorityFilter, setPriorityFilter] = useState<string>('');
-  // [Warn 4 fix] error state
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [labelFilter, setLabelFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const normalizeColumns = (rawColumns: BoardColumn[]) =>
+    columnOrder.map((status) => rawColumns.find((column) => column.status === status) ?? { status, tasks: [] });
+
   const fetchBoard = useCallback(async () => {
+    if (!projectId) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const [projectRes, boardRes] = await Promise.all([
+
+      const boardParams: Record<string, string> = {};
+      if (labelFilter) boardParams.labelId = labelFilter;
+
+      const [projectRes, boardRes, labelsRes] = await Promise.all([
         apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
-        apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`),
+        apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`, {
+          params: boardParams,
+        }),
+        apiClient.get<ApiResponse<ProjectLabelResponse[]>>(`/projects/${projectId}/labels`),
       ]);
+
       setProject(toProjectDetail(projectRes.data.data));
-      const rawColumns = boardRes.data.data.columns;
-      const normalized = columnOrder.map((status) => {
-        const found = rawColumns.find((c) => c.status === status);
-        return found ?? { status, tasks: [] };
-      });
-      setColumns(normalized);
-    } catch (err) {
-      setError('보드를 불러오는 데 실패했습니다.');
-      console.error('Failed to fetch board:', err);
+      setColumns(normalizeColumns(boardRes.data.data.columns));
+      setLabels(labelsRes.data.data);
+    } catch (caughtError) {
+      setError('Failed to load board.');
+      console.error('Failed to fetch board:', caughtError);
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, labelFilter]);
 
   useEffect(() => {
-    if (projectId) fetchBoard();
-  }, [projectId, fetchBoard]);
+    void fetchBoard();
+  }, [fetchBoard]);
 
   const handleTabClick = (tab: TabType) => {
     if (tab === 'list') {
       navigate(`/projects/${projectId}/tasks`);
-    } else if (tab === 'members') {
-      navigate(`/projects/${projectId}/members`);
-    } else if (tab === 'settings') {
-      navigate(`/projects/${projectId}/settings`);
-    } else {
-      setActiveTab(tab);
+      return;
     }
+    if (tab === 'members') {
+      navigate(`/projects/${projectId}/members`);
+      return;
+    }
+    if (tab === 'settings') {
+      navigate(`/projects/${projectId}/settings`);
+      return;
+    }
+    setActiveTab(tab);
   };
 
-  // Called by TaskDetailDrawer AFTER it already PATCHes /tasks/{id}/move.
-  // This callback only refreshes the board columns — no duplicate PATCH.
   const refreshBoard = async () => {
+    if (!projectId) {
+      return;
+    }
+
     try {
       setError(null);
-      const res = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`);
-      const rawColumns = res.data.data.columns;
-      const normalized = columnOrder.map((status) => {
-        const found = rawColumns.find((c) => c.status === status);
-        return found ?? { status, tasks: [] };
+      const boardParams: Record<string, string> = {};
+      if (labelFilter) boardParams.labelId = labelFilter;
+
+      const res = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`, {
+        params: boardParams,
       });
-      setColumns(normalized);
-    } catch (err) {
-      setError('보드 새로고침에 실패했습니다.');
-      console.error('Failed to refresh board:', err);
+      setColumns(normalizeColumns(res.data.data.columns));
+    } catch (caughtError) {
+      setError('Failed to refresh board.');
+      console.error('Failed to refresh board:', caughtError);
     }
   };
 
-  // [Bug 4 fix] filterTasks now checks searchQuery + priorityFilter
   const filterTasks = (tasks: BoardTaskCard[]) => {
     let result = tasks;
+
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+      const normalizedQuery = searchQuery.toLowerCase();
       result = result.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.labels.some((l) => l.name.toLowerCase().includes(q))
+        (task) =>
+          task.title.toLowerCase().includes(normalizedQuery) ||
+          task.labels.some((label) => label.name.toLowerCase().includes(normalizedQuery))
       );
     }
+
     if (priorityFilter) {
-      result = result.filter((t) => t.priority === priorityFilter);
+      result = result.filter((task) => task.priority === priorityFilter);
     }
+
     return result;
   };
 
@@ -116,7 +136,7 @@ export default function ProjectBoardPage() {
     { key: 'settings', label: 'Settings' },
   ];
 
-  const priorityOptions: { value: string; label: string }[] = [
+  const priorityOptions = [
     { value: '', label: 'Priority: All' },
     { value: 'URGENT', label: 'URGENT' },
     { value: 'HIGH', label: 'HIGH' },
@@ -127,11 +147,11 @@ export default function ProjectBoardPage() {
   if (loading) {
     return (
       <div className="animate-pulse space-y-4">
-        <div className="h-6 bg-[var(--color-surface-muted)] rounded w-48" />
-        <div className="h-4 bg-[var(--color-surface-muted)] rounded w-96" />
-        <div className="flex gap-4 mt-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex-1 h-[300px] bg-[var(--color-surface-muted)] rounded-[var(--radius-md)]" />
+        <div className="h-6 w-48 rounded bg-[var(--color-surface-muted)]" />
+        <div className="h-4 w-96 rounded bg-[var(--color-surface-muted)]" />
+        <div className="mt-6 flex gap-4">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-[300px] flex-1 rounded-[var(--radius-md)] bg-[var(--color-surface-muted)]" />
           ))}
         </div>
       </div>
@@ -140,62 +160,57 @@ export default function ProjectBoardPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-start justify-between pb-[var(--spacing-base)] border-b border-[var(--color-border)]">
+      <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-[var(--spacing-base)]">
         <div>
-          <div className="flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)] mb-[var(--spacing-xs)]">
-            <span
-              className="cursor-pointer hover:text-[var(--color-primary)]"
-              onClick={() => navigate('/workspaces')}
-            >
+          <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+            <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
               Workspace
             </span>
             <span>/</span>
-            <span className="text-[var(--color-text-primary)] font-medium">{project?.name}</span>
+            <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
           </div>
-          <h1 className="text-[var(--text-lg)] font-bold text-[var(--color-text-primary)] m-0">
-            {project?.name}
-          </h1>
+          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">{project?.name}</h1>
           {project?.description && (
-            <p className="text-[var(--text-sm)] text-[var(--color-text-secondary)] mt-[var(--spacing-xs)] m-0">
+            <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               {project.description}
             </p>
           )}
         </div>
         <div className="flex items-center gap-[var(--spacing-sm)]">
-          <button className="
-            flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-            border border-[var(--color-border)] rounded-[var(--radius-sm)]
-            bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-            cursor-pointer hover:bg-[var(--color-surface-muted)]
-          ">
+          <button
+            className="
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+              cursor-pointer hover:bg-[var(--color-surface-muted)]
+            "
+          >
             <UserPlus size={14} />
             Invite
           </button>
-          <button className="
-            flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-            bg-[var(--color-primary)] text-white rounded-[var(--radius-sm)]
-            text-[var(--text-sm)] font-medium border-none cursor-pointer
-            hover:bg-[var(--color-primary-hover)]
-          ">
+          <button
+            className="
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
+              bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
+              cursor-pointer hover:bg-[var(--color-primary-hover)]
+            "
+          >
             <Plus size={14} />
             New Task
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[var(--color-border)] mt-[var(--spacing-base)]">
+      <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => handleTabClick(tab.key)}
             className={`
-              px-[var(--spacing-base)] py-[var(--spacing-sm)]
-              text-[var(--text-sm)] border-b-2 bg-transparent cursor-pointer
-              ${activeTab === tab.key
-                ? 'border-[var(--color-primary)] text-[var(--color-text-primary)] font-semibold'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border)]'
+              border-b-2 bg-transparent px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--text-sm)]
+              ${
+                activeTab === tab.key
+                  ? 'border-[var(--color-primary)] font-semibold text-[var(--color-text-primary)]'
+                  : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
               }
             `}
           >
@@ -204,57 +219,60 @@ export default function ProjectBoardPage() {
         ))}
       </div>
 
-      {/* [Warn 4 fix] Error banner */}
       {error && (
-        <div className="
-          flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mt-[var(--spacing-sm)]
-          bg-[var(--color-accent-red)] border border-[var(--color-danger)]
-          rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
-        ">
+        <div className="mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
           <AlertCircle size={14} className="shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Filter bar — [Bug 4 fix] filters wired to state */}
-      <FilterBar
-        searchPlaceholder="태스크 검색..."
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-      >
+      <FilterBar searchPlaceholder="Search tasks..." searchValue={searchQuery} onSearchChange={setSearchQuery}>
         <select
           value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
+          onChange={(event) => setPriorityFilter(event.target.value)}
           className="
-            h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-            rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-            text-[var(--text-sm)] text-[var(--color-text-secondary)]
-            focus:outline-none focus:border-[var(--color-primary)]
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
           "
         >
-          {priorityOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          {priorityOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Label Filter"
+          value={labelFilter}
+          onChange={(event) => setLabelFilter(event.target.value)}
+          className="
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
+          "
+        >
+          <option value="">Label: All</option>
+          {labels.map((label) => (
+            <option key={label.labelId} value={String(label.labelId)}>
+              {label.name}
+            </option>
           ))}
         </select>
       </FilterBar>
 
-      {/* Kanban Board — iterate columns */}
-      <div className="flex gap-[var(--spacing-base)] mt-[var(--spacing-sm)] overflow-x-auto pb-[var(--spacing-base)]">
-        {columns.map((col) => {
-          const filtered = filterTasks(col.tasks);
+      <div className="mt-[var(--spacing-sm)] flex gap-[var(--spacing-base)] overflow-x-auto pb-[var(--spacing-base)]">
+        {columns.map((column) => {
+          const filteredTasks = filterTasks(column.tasks);
           return (
-            <BoardColumnComponent key={col.status} status={col.status} count={filtered.length}>
-              {filtered.length === 0 ? (
-                <div className="text-center py-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                  태스크 없음
+            <BoardColumnComponent key={column.status} status={column.status} count={filteredTasks.length}>
+              {filteredTasks.length === 0 ? (
+                <div className="py-[var(--spacing-lg)] text-center text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                  No tasks
                 </div>
               ) : (
-                filtered.map((task) => (
-                  <TaskCard
-                    key={task.taskId}
-                    task={task}
-                    onClick={() => setSelectedTaskId(task.taskId)}
-                  />
+                filteredTasks.map((task) => (
+                  <TaskCard key={task.taskId} task={task} onClick={() => setSelectedTaskId(task.taskId)} />
                 ))
               )}
             </BoardColumnComponent>
@@ -262,7 +280,6 @@ export default function ProjectBoardPage() {
         })}
       </div>
 
-      {/* Task Detail Drawer */}
       {selectedTaskId && (
         <TaskDetailDrawer
           taskId={selectedTaskId}

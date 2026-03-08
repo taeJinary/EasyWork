@@ -89,4 +89,62 @@ describe('TaskListPage', () => {
     expect(screen.getByText('Mar 12')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
   });
+
+  it('does not expose unsupported label filter in task list request', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/projects/3') {
+        return Promise.resolve(
+          apiOk({
+            projectId: 3,
+            name: 'Release Project',
+            description: 'Ship the release safely',
+            myRole: 'OWNER',
+            memberCount: 4,
+            pendingInvitationCount: 1,
+            taskSummary: {
+              todo: 1,
+              inProgress: 0,
+              done: 0,
+            },
+            members: [],
+          })
+        );
+      }
+
+      if (url === '/projects/3/tasks') {
+        return Promise.resolve(
+          apiOk({
+            content: [],
+            page: 0,
+            size: 20,
+            totalElements: 0,
+            totalPages: 1,
+            first: true,
+            last: true,
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/projects/3/tasks']}>
+        <Routes>
+          <Route path="/projects/:projectId/tasks" element={<TaskListPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        '/projects/3/tasks',
+        expect.objectContaining({
+          params: expect.not.objectContaining({ labelId: expect.anything() }),
+        })
+      );
+    });
+
+    expect(screen.queryByRole('combobox', { name: 'Label Filter' })).not.toBeInTheDocument();
+  });
 });

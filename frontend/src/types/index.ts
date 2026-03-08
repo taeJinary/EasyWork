@@ -361,6 +361,12 @@ export interface Label {
   color: string;
 }
 
+export interface ProjectLabelResponse {
+  labelId: number;
+  name: string;
+  colorHex: string;
+}
+
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELED' | 'EXPIRED';
 
 export interface InvitationListItem {
