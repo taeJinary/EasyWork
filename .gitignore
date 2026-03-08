@@ -42,5 +42,6 @@ docker-compose.override.yml
 *.tmp
 *.swp
 Task.md
+review.md
 storage/
 .run-logs/
