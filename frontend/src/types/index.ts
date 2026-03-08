@@ -1,5 +1,4 @@
-// ── Common ──
-export interface ApiResponse<T> {
+﻿export interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
@@ -12,7 +11,6 @@ export interface PageInfo {
   totalPages: number;
 }
 
-// ── User ──
 export interface AuthUser {
   userId: number;
   email: string;
@@ -23,7 +21,6 @@ export interface AuthUser {
 
 export type User = AuthUser;
 
-// Matches backend UserProfileResponse exactly
 export interface UserProfile {
   userId: number;
   email: string;
@@ -61,9 +58,24 @@ export interface ReissueResponse {
   expiresIn: number;
 }
 
-// ── Workspace ──
 export interface WorkspaceSummary {
   id: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  updatedAt: string;
+}
+
+export interface WorkspaceSummaryResponse {
+  workspaceId: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+}
+
+export interface WorkspaceListItemResponse {
+  workspaceId: number;
   name: string;
   description?: string;
   myRole: 'OWNER' | 'MEMBER';
@@ -79,33 +91,6 @@ export interface WorkspaceListResponse {
   totalPages: number;
   first: boolean;
   last: boolean;
-}
-
-export interface WorkspaceListItemResponse {
-  workspaceId: number;
-  name: string;
-  description?: string;
-  myRole: 'OWNER' | 'MEMBER';
-  memberCount: number;
-  updatedAt: string;
-}
-
-export interface WorkspaceDetail {
-  id: number;
-  name: string;
-  description?: string;
-  memberCount: number;
-  myRole: 'OWNER' | 'MEMBER';
-  updatedAt: string;
-}
-
-export interface WorkspaceMember {
-  memberId: number;
-  userId: number;
-  nickname: string;
-  email: string;
-  role: 'OWNER' | 'MEMBER';
-  joinedAt: string;
 }
 
 export interface WorkspaceDetailResponse {
@@ -126,7 +111,24 @@ export interface WorkspaceMemberResponse {
   joinedAt: string;
 }
 
-// ── Project ──
+export interface WorkspaceDetail {
+  id: number;
+  name: string;
+  description?: string;
+  memberCount: number;
+  myRole: 'OWNER' | 'MEMBER';
+  updatedAt: string;
+}
+
+export interface WorkspaceMember {
+  memberId: number;
+  userId: number;
+  nickname: string;
+  email: string;
+  role: 'OWNER' | 'MEMBER';
+  joinedAt: string;
+}
+
 export interface ProjectSummary {
   id: number;
   name: string;
@@ -162,21 +164,21 @@ export interface ProjectListItemResponse {
   updatedAt: string;
 }
 
-export interface ProjectDetail {
-  id: number;
-  name: string;
-  description?: string;
-  myRole: 'OWNER' | 'MEMBER';
-  memberCount: number;
-  pendingInvitationCount: number;
-  taskSummary: ProjectTaskSummary;
-  members: ProjectMember[];
-}
-
 export interface ProjectTaskSummary {
   todo: number;
   inProgress: number;
   done: number;
+}
+
+export type ProjectRole = 'OWNER' | 'MEMBER';
+
+export interface ProjectMember {
+  memberId: number;
+  userId: number;
+  email: string;
+  nickname: string;
+  role: ProjectRole;
+  joinedAt: string;
 }
 
 export interface ProjectDetailResponse {
@@ -190,9 +192,17 @@ export interface ProjectDetailResponse {
   members: ProjectMember[];
 }
 
-// ProjectMember is defined in the Phase C section below (matches backend ProjectMemberResponse)
+export interface ProjectDetail {
+  id: number;
+  name: string;
+  description?: string;
+  myRole: 'OWNER' | 'MEMBER';
+  memberCount: number;
+  pendingInvitationCount: number;
+  taskSummary: ProjectTaskSummary;
+  members: ProjectMember[];
+}
 
-// ── Task ──
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
@@ -211,7 +221,6 @@ export interface TaskSummary {
   updatedAt: string;
 }
 
-// ── Board Response (matches backend TaskBoardResponse) ──
 export interface BoardAssignee {
   userId: number;
   nickname: string;
@@ -253,7 +262,6 @@ export interface TaskBoardResponse {
   columns: BoardColumn[];
 }
 
-// ── List Response (matches backend TaskListResponse + TaskListItemResponse) ──
 export interface TaskListItemAssignee {
   userId: number;
   nickname: string;
@@ -281,7 +289,6 @@ export interface TaskListResponse {
   last: boolean;
 }
 
-// ── Task Detail (matches backend TaskDetailResponse) ──
 export interface TaskDetailUserSummary {
   userId: number;
   nickname: string;
@@ -320,7 +327,6 @@ export interface TaskDetail {
   updatedAt: string;
 }
 
-// ── Comment (matches backend CommentResponse / CommentListResponse) ──
 export interface CommentAuthor {
   userId: number;
   nickname: string;
@@ -341,26 +347,12 @@ export interface CommentListResponse {
   hasNext: boolean;
 }
 
-// ── Label ──
 export interface Label {
   id: number;
   name: string;
   color: string;
 }
 
-// ── Project Member (matches backend ProjectMemberResponse) ──
-export type ProjectRole = 'OWNER' | 'MEMBER';
-
-export interface ProjectMember {
-  memberId: number;
-  userId: number;
-  email: string;
-  nickname: string;
-  role: ProjectRole;
-  joinedAt: string;
-}
-
-// ── Invitation (matches backend InvitationListItemResponse / InvitationListResponse) ──
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELED' | 'EXPIRED';
 
 export interface InvitationListItem {
@@ -404,7 +396,6 @@ export interface InvitationSummary {
   expiresAt: string;
 }
 
-// ── Notification (matches backend NotificationListItemResponse / NotificationListResponse) ──
 export type NotificationType =
   | 'PROJECT_INVITED'
   | 'INVITATION_ACCEPTED'
@@ -439,7 +430,6 @@ export interface NotificationUnreadCount {
   unreadCount: number;
 }
 
-// ── Attachment (matches backend TaskAttachmentResponse) ──
 export interface Attachment {
   attachmentId: number;
   taskId: number;

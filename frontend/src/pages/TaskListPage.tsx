@@ -1,6 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, UserPlus, ChevronLeft, ChevronRight, Circle, Loader, CheckCircle2, MessageSquare, Calendar, AlertCircle } from 'lucide-react';
+﻿import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Loader,
+  MessageSquare,
+  Plus,
+  UserPlus,
+} from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
@@ -10,8 +21,8 @@ import type {
   ApiResponse,
   ProjectDetail,
   ProjectDetailResponse,
-  TaskListResponse,
   TaskListItem,
+  TaskListResponse,
   TaskStatus,
 } from '@/types';
 
@@ -36,11 +47,10 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   LOW: 'muted',
 };
 
-// Parse YYYY-MM-DD LocalDate without UTC shift
 function formatDate(dateStr: string): string {
-  const [, m, d] = dateStr.split('-');
+  const [, month, day] = dateStr.split('-');
   const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${monthNames[parseInt(m, 10)]} ${parseInt(d, 10)}`;
+  return `${monthNames[parseInt(month, 10)]} ${parseInt(day, 10)}`;
 }
 
 export default function TaskListPage() {
@@ -50,47 +60,66 @@ export default function TaskListPage() {
   const [tasks, setTasks] = useState<TaskListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('updatedAt');
   const [direction, setDirection] = useState('DESC');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('list');
-  // Trigger a reload after detail mutations without depending on stale closures.
   const [refetchTrigger, setRefetchTrigger] = useState(0);
-  // [Warn 4 fix] error state
   const [error, setError] = useState<string | null>(null);
 
-  const fetchList = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
-      if (statusFilter) params.status = statusFilter;
-      if (searchQuery) params.keyword = searchQuery;
-
-      const [projectRes, tasksRes] = await Promise.all([
-        apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
-        apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
-      ]);
-      setProject(toProjectDetail(projectRes.data.data));
-      setTasks(tasksRes.data.data.content);
-      setTotalPages(tasksRes.data.data.totalPages);
-    } catch (err) {
-      setError('태스크 목록을 불러오는 데 실패했습니다.');
-      console.error('Failed to fetch task list:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, page, statusFilter, searchQuery, sortBy, direction]);
-
   useEffect(() => {
-    if (projectId) fetchList();
-  }, [projectId, fetchList, refetchTrigger]);
+    if (!projectId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchList() {
+      try {
+        setLoading(true);
+        setError(null);
+        const params: Record<string, string | number> = { page, size: 20, sortBy, direction };
+        if (statusFilter) params.status = statusFilter;
+        if (searchQuery) params.keyword = searchQuery;
+
+        const [projectResponse, tasksResponse] = await Promise.all([
+          apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
+          apiClient.get<ApiResponse<TaskListResponse>>(`/projects/${projectId}/tasks`, { params }),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setProject(toProjectDetail(projectResponse.data.data));
+        setTasks(tasksResponse.data.data.content);
+        setTotalPages(tasksResponse.data.data.totalPages);
+      } catch (caughtError) {
+        if (cancelled) {
+          return;
+        }
+
+        setError('Failed to load tasks.');
+        console.error('Failed to fetch task list:', caughtError);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchList();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, page, statusFilter, searchQuery, sortBy, direction, refetchTrigger]);
 
   const refreshList = () => {
-    setRefetchTrigger((n) => n + 1);
+    setRefetchTrigger((value) => value + 1);
   };
 
   const handleTabClick = (tab: TabType) => {
@@ -114,62 +143,59 @@ export default function TaskListPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-start justify-between pb-[var(--spacing-base)] border-b border-[var(--color-border)]">
+      <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-[var(--spacing-base)]">
         <div>
-          <div className="flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)] mb-[var(--spacing-xs)]">
-            <span
-              className="cursor-pointer hover:text-[var(--color-primary)]"
-              onClick={() => navigate('/workspaces')}
-            >
+          <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+            <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
               Workspace
             </span>
             <span>/</span>
-            <span className="text-[var(--color-text-primary)] font-medium">{project?.name}</span>
+            <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
           </div>
-          <h1 className="text-[var(--text-lg)] font-bold text-[var(--color-text-primary)] m-0">
+          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">
             {project?.name}
           </h1>
           {project?.description && (
-            <p className="text-[var(--text-sm)] text-[var(--color-text-secondary)] mt-[var(--spacing-xs)] m-0">
+            <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               {project.description}
             </p>
           )}
         </div>
         <div className="flex items-center gap-[var(--spacing-sm)]">
-          <button className="
-            flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-            border border-[var(--color-border)] rounded-[var(--radius-sm)]
-            bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-            cursor-pointer hover:bg-[var(--color-surface-muted)]
-          ">
+          <button
+            className="
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+              hover:bg-[var(--color-surface-muted)]
+            "
+          >
             <UserPlus size={14} />
             Invite
           </button>
-          <button className="
-            flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-            bg-[var(--color-primary)] text-white rounded-[var(--radius-sm)]
-            text-[var(--text-sm)] font-medium border-none cursor-pointer
-            hover:bg-[var(--color-primary-hover)]
-          ">
+          <button
+            className="
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
+              bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
+              hover:bg-[var(--color-primary-hover)]
+            "
+          >
             <Plus size={14} />
             New Task
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[var(--color-border)] mt-[var(--spacing-base)]">
+      <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => handleTabClick(tab.key)}
             className={`
-              px-[var(--spacing-base)] py-[var(--spacing-sm)]
-              text-[var(--text-sm)] border-b-2 bg-transparent cursor-pointer
-              ${activeTab === tab.key
-                ? 'border-[var(--color-primary)] text-[var(--color-text-primary)] font-semibold'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border)]'
+              border-b-2 bg-transparent px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--text-sm)]
+              ${
+                activeTab === tab.key
+                  ? 'border-[var(--color-primary)] font-semibold text-[var(--color-text-primary)]'
+                  : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
               }
             `}
           >
@@ -178,32 +204,37 @@ export default function TaskListPage() {
         ))}
       </div>
 
-      {/* [Warn 4 fix] Error banner */}
       {error && (
-        <div className="
-          flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mt-[var(--spacing-sm)]
-          bg-[var(--color-accent-red)] border border-[var(--color-danger)]
-          rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
-        ">
+        <div
+          className="
+            mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)]
+            border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)]
+            text-[var(--text-sm)] text-[var(--color-danger)]
+          "
+        >
           <AlertCircle size={14} className="shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Filter bar */}
       <FilterBar
-        searchPlaceholder="태스크 검색..."
+        searchPlaceholder="Search tasks..."
         searchValue={searchQuery}
-        onSearchChange={(v) => { setSearchQuery(v); setPage(0); }}
+        onSearchChange={(value) => {
+          setSearchQuery(value);
+          setPage(0);
+        }}
       >
         <select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setPage(0);
+          }}
           className="
-            h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-            rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-            text-[var(--text-sm)] text-[var(--color-text-secondary)]
-            focus:outline-none focus:border-[var(--color-primary)]
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
           "
         >
           <option value="">Status: All</option>
@@ -211,15 +242,16 @@ export default function TaskListPage() {
           <option value="IN_PROGRESS">IN PROGRESS</option>
           <option value="DONE">DONE</option>
         </select>
-        {/* [Warn 1 fix] setPage(0) on sort/direction change */}
         <select
           value={sortBy}
-          onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
+          onChange={(event) => {
+            setSortBy(event.target.value);
+            setPage(0);
+          }}
           className="
-            h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-            rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-            text-[var(--text-sm)] text-[var(--color-text-secondary)]
-            focus:outline-none focus:border-[var(--color-primary)]
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
           "
         >
           <option value="updatedAt">Sort: Updated</option>
@@ -228,12 +260,14 @@ export default function TaskListPage() {
         </select>
         <select
           value={direction}
-          onChange={(e) => { setDirection(e.target.value); setPage(0); }}
+          onChange={(event) => {
+            setDirection(event.target.value);
+            setPage(0);
+          }}
           className="
-            h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-            rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-            text-[var(--text-sm)] text-[var(--color-text-secondary)]
-            focus:outline-none focus:border-[var(--color-primary)]
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
           "
         >
           <option value="DESC">Direction: Desc</option>
@@ -241,33 +275,28 @@ export default function TaskListPage() {
         </select>
       </FilterBar>
 
-      {/* Loading state */}
       {loading && (
-        <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-surface)] overflow-hidden">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="p-[var(--spacing-base)] border-b border-[var(--color-border)] last:border-b-0 animate-pulse">
-              <div className="h-4 bg-[var(--color-surface-muted)] rounded w-3/4 mb-2" />
-              <div className="h-3 bg-[var(--color-surface-muted)] rounded w-1/2" />
+        <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div
+              key={item}
+              className="animate-pulse border-b border-[var(--color-border)] p-[var(--spacing-base)] last:border-b-0"
+            >
+              <div className="mb-2 h-4 w-3/4 rounded bg-[var(--color-surface-muted)]" />
+              <div className="h-3 w-1/2 rounded bg-[var(--color-surface-muted)]" />
             </div>
           ))}
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && tasks.length === 0 && (
-        <div className="
-          text-center py-[var(--spacing-xl)]
-          text-[var(--color-text-muted)] text-[var(--text-sm)]
-        ">
-          {searchQuery || statusFilter
-            ? '검색 결과가 없습니다.'
-            : '아직 태스크가 없습니다. 첫 태스크를 생성하세요.'}
+        <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
+          {searchQuery || statusFilter ? 'No tasks matched your filter.' : 'No tasks yet. Create the first task.'}
         </div>
       )}
 
-      {/* Task list */}
       {!loading && tasks.length > 0 && (
-        <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-surface)] overflow-hidden">
+        <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
           {tasks.map((task, index) => {
             const StatusIcon = statusIcons[task.status];
             return (
@@ -275,25 +304,23 @@ export default function TaskListPage() {
                 key={task.taskId}
                 onClick={() => setSelectedTaskId(task.taskId)}
                 className={`
-                  px-[var(--spacing-base)] py-[var(--spacing-md)] cursor-pointer
-                  hover:bg-[var(--color-surface-muted)] transition-colors
+                  cursor-pointer px-[var(--spacing-base)] py-[var(--spacing-md)] transition-colors hover:bg-[var(--color-surface-muted)]
                   ${index < tasks.length - 1 ? 'border-b border-[var(--color-border)]' : ''}
                 `}
               >
-                {/* Row 1: status icon + title + meta right */}
                 <div className="flex items-center gap-[var(--spacing-sm)]">
                   <StatusIcon
                     size={16}
                     style={{ color: statusColors[task.status] }}
                     className={`shrink-0 ${task.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`}
                   />
-                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] font-mono shrink-0">
+                  <span className="shrink-0 font-mono text-[var(--text-xs)] text-[var(--color-text-muted)]">
                     TASK-{task.taskId}
                   </span>
-                  <span className="text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] truncate">
+                  <span className="truncate text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
                     {task.title}
                   </span>
-                  <div className="ml-auto flex items-center gap-[var(--spacing-md)] shrink-0">
+                  <div className="ml-auto flex shrink-0 items-center gap-[var(--spacing-md)]">
                     {task.commentCount > 0 && (
                       <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-muted)]">
                         <MessageSquare size={12} />
@@ -303,28 +330,25 @@ export default function TaskListPage() {
                   </div>
                 </div>
 
-                {/* Row 2: priority + assignee + due date */}
-                <div className="flex items-center gap-[var(--spacing-md)] mt-[var(--spacing-xs)] ml-[24px]">
-                  {/* Priority */}
+                <div className="ml-[24px] mt-[var(--spacing-xs)] flex items-center gap-[var(--spacing-md)]">
                   <Badge variant={priorityVariant[task.priority] || 'muted'} size="sm">
                     {task.priority}
                   </Badge>
 
-                  {/* Assignee */}
                   {task.assignee && (
                     <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-secondary)]">
-                      <div className="
-                        w-[14px] h-[14px] rounded-full bg-[var(--color-primary)]
-                        text-white text-[8px] font-semibold
-                        flex items-center justify-center
-                      ">
+                      <div
+                        className="
+                          flex h-[14px] w-[14px] items-center justify-center rounded-full bg-[var(--color-primary)]
+                          text-[8px] font-semibold text-white
+                        "
+                      >
                         {task.assignee.nickname.charAt(0).toUpperCase()}
                       </div>
                       {task.assignee.nickname}
                     </span>
                   )}
 
-                  {/* Due date */}
                   {task.dueDate && (
                     <span className="flex items-center gap-[2px] text-[var(--text-xs)] text-[var(--color-text-muted)]">
                       <Calendar size={11} />
@@ -338,18 +362,15 @@ export default function TaskListPage() {
         </div>
       )}
 
-      {/* Pagination */}
       {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-between mt-[var(--spacing-base)] text-[var(--text-sm)]">
+        <div className="mt-[var(--spacing-base)] flex items-center justify-between text-[var(--text-sm)]">
           <button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => setPage((value) => Math.max(0, value - 1))}
             disabled={page === 0}
             className="
-              flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-              border border-[var(--color-border)] rounded-[var(--radius-sm)]
-              bg-[var(--color-surface)] text-[var(--color-text-secondary)]
-              cursor-pointer hover:bg-[var(--color-surface-muted)]
-              disabled:opacity-50 disabled:cursor-not-allowed
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--color-text-secondary)]
+              hover:bg-[var(--color-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50
             "
           >
             <ChevronLeft size={14} />
@@ -359,14 +380,12 @@ export default function TaskListPage() {
             Page {page + 1} / {totalPages}
           </span>
           <button
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
             disabled={page >= totalPages - 1}
             className="
-              flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-              border border-[var(--color-border)] rounded-[var(--radius-sm)]
-              bg-[var(--color-surface)] text-[var(--color-text-secondary)]
-              cursor-pointer hover:bg-[var(--color-surface-muted)]
-              disabled:opacity-50 disabled:cursor-not-allowed
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--color-text-secondary)]
+              hover:bg-[var(--color-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50
             "
           >
             Next
@@ -375,7 +394,6 @@ export default function TaskListPage() {
         </div>
       )}
 
-      {/* Task Detail Drawer — [Warn 2 fix] refreshList triggers refetch via state */}
       {selectedTaskId && (
         <TaskDetailDrawer
           taskId={selectedTaskId}

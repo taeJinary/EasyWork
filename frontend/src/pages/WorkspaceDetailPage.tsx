@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, UserPlus, Settings, Users, FolderKanban } from 'lucide-react';
+﻿import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { FolderKanban, Plus, Settings, UserPlus, Users } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
 import type {
@@ -57,19 +57,22 @@ export default function WorkspaceDetailPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [wsRes, membersRes] = await Promise.all([
+        const [workspaceResponse, membersResponse] = await Promise.all([
           apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
           apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
         ]);
-        setWorkspace(toWorkspaceDetail(wsRes.data.data));
-        setMembers(membersRes.data.data.map(toWorkspaceMember));
+        setWorkspace(toWorkspaceDetail(workspaceResponse.data.data));
+        setMembers(membersResponse.data.data.map(toWorkspaceMember));
       } catch {
-        // Error handling
+        // TODO: add dedicated error view.
       } finally {
         setLoading(false);
       }
     }
-    if (workspaceId) fetchData();
+
+    if (workspaceId) {
+      void fetchData();
+    }
   }, [workspaceId]);
 
   const tabs: { key: TabType; label: string }[] = [
@@ -82,68 +85,71 @@ export default function WorkspaceDetailPage() {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-6 bg-[var(--color-surface-muted)] rounded w-48 mb-2" />
-        <div className="h-4 bg-[var(--color-surface-muted)] rounded w-96 mb-4" />
-        <div className="h-8 bg-[var(--color-surface-muted)] rounded w-full" />
+        <div className="mb-2 h-6 w-48 rounded bg-[var(--color-surface-muted)]" />
+        <div className="mb-4 h-4 w-96 rounded bg-[var(--color-surface-muted)]" />
+        <div className="h-8 w-full rounded bg-[var(--color-surface-muted)]" />
       </div>
     );
   }
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-start justify-between pb-[var(--spacing-base)] border-b border-[var(--color-border)]">
+      <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-[var(--spacing-base)]">
         <div>
-          <div className="flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)] mb-[var(--spacing-xs)]">
-            <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
+          <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+            <span
+              className="cursor-pointer hover:text-[var(--color-primary)]"
+              onClick={() => navigate('/workspaces')}
+            >
               Workspaces
             </span>
             <span>/</span>
-            <span className="text-[var(--color-text-primary)] font-medium">{workspace?.name}</span>
+            <span className="font-medium text-[var(--color-text-primary)]">{workspace?.name}</span>
           </div>
-          <h1 className="text-[var(--text-lg)] font-bold text-[var(--color-text-primary)] m-0">
+          <h1 className="m-0 text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">
             {workspace?.name}
           </h1>
           {workspace?.description && (
-            <p className="text-[var(--text-sm)] text-[var(--color-text-secondary)] mt-[var(--spacing-xs)] m-0">
+            <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               {workspace.description}
             </p>
           )}
         </div>
         <div className="flex items-center gap-[var(--spacing-sm)]">
-          <button className="
-            flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-            border border-[var(--color-border)] rounded-[var(--radius-sm)]
-            bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-            cursor-pointer hover:bg-[var(--color-surface-muted)]
-          ">
+          <button
+            className="
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+              hover:bg-[var(--color-surface-muted)]
+            "
+          >
             <UserPlus size={14} />
             Invite
           </button>
-          <button className="
-            flex items-center gap-1 h-[32px] px-[var(--spacing-md)]
-            bg-[var(--color-primary)] text-white rounded-[var(--radius-sm)]
-            text-[var(--text-sm)] font-medium border-none cursor-pointer
-            hover:bg-[var(--color-primary-hover)]
-          ">
+          <button
+            className="
+              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
+              bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
+              hover:bg-[var(--color-primary-hover)]
+            "
+          >
             <Plus size={14} />
             New Project
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[var(--color-border)] mt-[var(--spacing-base)]">
+      <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`
-              px-[var(--spacing-base)] py-[var(--spacing-sm)]
-              text-[var(--text-sm)] border-b-2 bg-transparent cursor-pointer
-              ${activeTab === tab.key
-                ? 'border-[var(--color-primary)] text-[var(--color-text-primary)] font-semibold'
-                : 'border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border)]'
+              border-b-2 bg-transparent px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--text-sm)]
+              ${
+                activeTab === tab.key
+                  ? 'border-[var(--color-primary)] font-semibold text-[var(--color-text-primary)]'
+                  : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
               }
             `}
           >
@@ -152,58 +158,51 @@ export default function WorkspaceDetailPage() {
         ))}
       </div>
 
-      {/* Content */}
       <div className="mt-[var(--spacing-lg)] flex gap-[var(--spacing-lg)]">
-        {/* Main Column */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-[var(--spacing-md)]">
-            <h2 className="text-[var(--text-base)] font-semibold text-[var(--color-text-primary)] m-0">
+        <div className="min-w-0 flex-1">
+          <div className="mb-[var(--spacing-md)] flex items-center justify-between">
+            <h2 className="m-0 text-[var(--text-base)] font-semibold text-[var(--color-text-primary)]">
               Projects
             </h2>
           </div>
 
-          {/* Empty state for projects */}
-          <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-surface)] overflow-hidden">
-            <div className="
-              text-center py-[var(--spacing-xl)]
-              text-[var(--color-text-muted)] text-[var(--text-sm)]
-            ">
-              아직 프로젝트가 없습니다. 첫 프로젝트를 생성하세요.
+          <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
+              No projects yet. Create the first project in this workspace.
             </div>
           </div>
         </div>
 
-        {/* Right Rail */}
         <div className="w-[280px] shrink-0">
-          {/* Members */}
           <div className="mb-[var(--spacing-lg)]">
-            <h3 className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)] mb-[var(--spacing-sm)] m-0 flex items-center gap-[var(--spacing-sm)]">
+            <h3 className="m-0 mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
               <Users size={14} />
               Members
-              <span className="text-[var(--color-text-muted)] font-normal">({members.length})</span>
+              <span className="font-normal text-[var(--color-text-muted)]">({members.length})</span>
             </h3>
-            <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-surface)] overflow-hidden">
+            <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
               {members.length === 0 ? (
-                <div className="p-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-muted)] text-center">
-                  멤버 없음
+                <div className="p-[var(--spacing-base)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                  No members
                 </div>
               ) : (
-                members.map((member, i) => (
+                members.map((member, index) => (
                   <div
                     key={member.memberId}
                     className={`
                       flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-md)] py-[var(--spacing-sm)]
-                      ${i < members.length - 1 ? 'border-b border-[var(--color-border)]' : ''}
+                      ${index < members.length - 1 ? 'border-b border-[var(--color-border)]' : ''}
                     `}
                   >
-                    <div className="
-                      w-[24px] h-[24px] rounded-full bg-[var(--color-primary)]
-                      text-white text-[var(--text-xs)] font-semibold
-                      flex items-center justify-center shrink-0
-                    ">
+                    <div
+                      className="
+                        flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]
+                        text-[var(--text-xs)] font-semibold text-white
+                      "
+                    >
                       {member.nickname.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-[var(--text-sm)] text-[var(--color-text-primary)] truncate flex-1">
+                    <span className="flex-1 truncate text-[var(--text-sm)] text-[var(--color-text-primary)]">
                       {member.nickname}
                     </span>
                     <Badge variant={member.role === 'OWNER' ? 'warning' : 'default'}>
@@ -215,17 +214,16 @@ export default function WorkspaceDetailPage() {
             </div>
           </div>
 
-          {/* Quick Info */}
           <div>
-            <h3 className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)] mb-[var(--spacing-sm)] m-0">
+            <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
               Info
             </h3>
-            <div className="
-              border border-[var(--color-border)] rounded-[var(--radius-md)]
-              bg-[var(--color-surface)] p-[var(--spacing-base)]
-              text-[var(--text-sm)] text-[var(--color-text-secondary)]
-              space-y-[var(--spacing-sm)]
-            ">
+            <div
+              className="
+                space-y-[var(--spacing-sm)] rounded-[var(--radius-md)] border border-[var(--color-border)]
+                bg-[var(--color-surface)] p-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+              "
+            >
               <div className="flex items-center gap-[var(--spacing-sm)]">
                 <Users size={14} className="text-[var(--color-text-muted)]" />
                 <span>{workspace?.memberCount ?? 0} members</span>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
 import type { ApiResponse, SignupResponse } from '@/types';
@@ -24,7 +24,7 @@ export default function SignupPage() {
       });
       navigate('/login');
     } catch {
-      setError('회원가입에 실패했습니다. 입력 정보를 확인해주세요.');
+      setError('Failed to sign up. Please check your input.');
     } finally {
       setLoading(false);
     }
@@ -32,88 +32,93 @@ export default function SignupPage() {
 
   return (
     <div className="w-full max-w-[440px]">
-      <div className="
-        bg-[var(--color-surface)] border border-[var(--color-border)]
-        rounded-[var(--radius-md)] p-[var(--spacing-lg)]
-      ">
-        {/* Header */}
-        <div className="text-center mb-[var(--spacing-lg)]">
-          <h1 className="text-[var(--text-xl)] font-bold text-[var(--color-text-primary)] m-0">
+      <div
+        className="
+          rounded-[var(--radius-md)] border border-[var(--color-border)]
+          bg-[var(--color-surface)] p-[var(--spacing-lg)]
+        "
+      >
+        <div className="mb-[var(--spacing-lg)] text-center">
+          <h1 className="m-0 text-[var(--text-xl)] font-bold text-[var(--color-text-primary)]">
             Create your account
           </h1>
-          <p className="text-[var(--text-sm)] text-[var(--color-text-secondary)] mt-[var(--spacing-xs)] m-0">
-            EasyWork에 가입하여 팀 협업을 시작하세요
+          <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+            Join EasyWork and start collaborating with your team.
           </p>
         </div>
 
-        {/* Signup Form */}
         <form onSubmit={handleSubmit}>
           {error && (
-            <div className="
-              mb-[var(--spacing-base)] p-[var(--spacing-sm)]
-              bg-[var(--color-accent-red)] text-[var(--color-danger)]
-              text-[var(--text-sm)] rounded-[var(--radius-sm)]
-              border border-[var(--color-danger)]/20
-            ">
+            <div
+              className="
+                mb-[var(--spacing-base)] rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20
+                bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
+              "
+            >
               {error}
             </div>
           )}
 
           <div className="mb-[var(--spacing-base)]">
             <label
-              htmlFor="nickname"
-              className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]"
+              htmlFor="signup-nickname"
+              className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
             >
               Nickname
             </label>
             <input
-              id="nickname"
+              id="signup-nickname"
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               required
               className="
-                w-full h-[36px] px-[var(--spacing-md)]
-                border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-                focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
+                bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]
               "
             />
           </div>
 
           <div className="mb-[var(--spacing-base)]">
-            <label className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+            <label
+              htmlFor="signup-email"
+              className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
+            >
               Email
             </label>
             <input
+              id="signup-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               className="
-                w-full h-[36px] px-[var(--spacing-md)]
-                border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-                focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
+                bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]
               "
             />
           </div>
 
           <div className="mb-[var(--spacing-base)]">
-            <label className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+            <label
+              htmlFor="signup-password"
+              className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
+            >
               Password
             </label>
             <input
+              id="signup-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
               className="
-                w-full h-[36px] px-[var(--spacing-md)]
-                border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-                focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
+                bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]
               "
             />
           </div>
@@ -122,27 +127,24 @@ export default function SignupPage() {
             type="submit"
             disabled={loading}
             className="
-              w-full h-[36px] bg-[var(--color-primary)] text-white
-              rounded-[var(--radius-sm)] text-[var(--text-sm)] font-medium
-              border-none cursor-pointer
-              hover:bg-[var(--color-primary-hover)]
-              disabled:opacity-50 disabled:cursor-not-allowed
+              h-[36px] w-full rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)]
+              text-[var(--text-sm)] font-medium text-white hover:bg-[var(--color-primary-hover)]
+              disabled:cursor-not-allowed disabled:opacity-50
             "
           >
-            {loading ? '가입 중...' : 'Create account'}
+            {loading ? 'Creating...' : 'Create account'}
           </button>
         </form>
       </div>
 
-      {/* Login link */}
-      <div className="
-        mt-[var(--spacing-base)] text-center
-        text-[var(--text-sm)] text-[var(--color-text-secondary)]
-        bg-[var(--color-surface)] border border-[var(--color-border)]
-        rounded-[var(--radius-md)] p-[var(--spacing-base)]
-      ">
-        이미 계정이 있으신가요?{' '}
-        <Link to="/login" className="text-[var(--color-primary)] font-medium">
+      <div
+        className="
+          mt-[var(--spacing-base)] rounded-[var(--radius-md)] border border-[var(--color-border)]
+          bg-[var(--color-surface)] p-[var(--spacing-base)] text-center text-[var(--text-sm)] text-[var(--color-text-secondary)]
+        "
+      >
+        Already have an account?{' '}
+        <Link to="/login" className="font-medium text-[var(--color-primary)]">
           Sign in
         </Link>
       </div>

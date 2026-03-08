@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+﻿import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WorkspaceDetailPage from '@/pages/WorkspaceDetailPage';
 import { apiOk } from '@/test/helpers';
 
@@ -59,9 +59,7 @@ describe('WorkspaceDetailPage', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('heading', { level: 1, name: 'Alpha Workspace' })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Alpha Workspace' })).toBeInTheDocument();
     });
 
     expect(screen.getByText('Owner')).toBeInTheDocument();
