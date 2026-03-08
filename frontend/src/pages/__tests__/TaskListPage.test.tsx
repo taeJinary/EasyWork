@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import TaskListPage from '@/pages/TaskListPage';
 import { apiOk } from '@/test/helpers';
@@ -68,18 +67,6 @@ describe('TaskListPage', () => {
         );
       }
 
-      if (url === '/projects/3/labels') {
-        return Promise.resolve(
-          apiOk([
-            {
-              labelId: 1,
-              name: 'Release',
-              colorHex: '#2563EB',
-            },
-          ])
-        );
-      }
-
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
 
@@ -103,7 +90,7 @@ describe('TaskListPage', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
-  it('loads project labels and sends labelId filter to task list query', async () => {
+  it('does not expose unsupported label filter in task list request', async () => {
     mockGet.mockImplementation((url: string) => {
       if (url === '/projects/3') {
         return Promise.resolve(
@@ -138,18 +125,6 @@ describe('TaskListPage', () => {
         );
       }
 
-      if (url === '/projects/3/labels') {
-        return Promise.resolve(
-          apiOk([
-            {
-              labelId: 1,
-              name: 'Release',
-              colorHex: '#2563EB',
-            },
-          ])
-        );
-      }
-
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
 
@@ -161,18 +136,15 @@ describe('TaskListPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('option', { name: 'Release' })).toBeInTheDocument();
-
-    const user = userEvent.setup();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Label Filter' }), '1');
-
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(
         '/projects/3/tasks',
         expect.objectContaining({
-          params: expect.objectContaining({ labelId: '1' }),
+          params: expect.not.objectContaining({ labelId: expect.anything() }),
         })
       );
     });
+
+    expect(screen.queryByRole('combobox', { name: 'Label Filter' })).not.toBeInTheDocument();
   });
 });
