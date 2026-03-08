@@ -488,3 +488,15 @@ export interface DashboardProjectsResponse {
   pendingInvitationCount: number;
   myProjects: DashboardProjectSummary[];
 }
+
+export interface DashboardProjectStatsResponse {
+  projectId: number;
+  memberCount: number;
+  taskCount: number;
+  todoCount: number;
+  inProgressCount: number;
+  doneCount: number;
+  overdueCount: number;
+  dueSoonCount: number;
+  completionRate: number;
+}
