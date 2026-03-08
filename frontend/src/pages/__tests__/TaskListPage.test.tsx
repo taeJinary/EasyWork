@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import TaskListPage from '@/pages/TaskListPage';
 import { apiOk } from '@/test/helpers';
 
 const mockGet = vi.fn();
+const mockPost = vi.fn();
 
 vi.mock('@/api/client', () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -146,5 +148,81 @@ describe('TaskListPage', () => {
     });
 
     expect(screen.queryByRole('combobox', { name: 'Label Filter' })).not.toBeInTheDocument();
+  });
+
+  it('opens new task modal and creates a task for the current project', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/projects/3') {
+        return Promise.resolve(
+          apiOk({
+            projectId: 3,
+            name: 'Release Project',
+            description: 'Ship the release safely',
+            myRole: 'OWNER',
+            memberCount: 4,
+            pendingInvitationCount: 1,
+            taskSummary: {
+              todo: 0,
+              inProgress: 0,
+              done: 0,
+            },
+            members: [],
+          })
+        );
+      }
+
+      if (url === '/projects/3/tasks') {
+        return Promise.resolve(
+          apiOk({
+            content: [],
+            page: 0,
+            size: 20,
+            totalElements: 0,
+            totalPages: 1,
+            first: true,
+            last: true,
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    mockPost.mockResolvedValue(
+      apiOk({
+        taskId: 9,
+        projectId: 3,
+        title: 'Draft release notes',
+        status: 'TODO',
+        priority: 'MEDIUM',
+        position: 0,
+        version: 1,
+        assignee: null,
+      })
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/projects/3/tasks']}>
+        <Routes>
+          <Route path="/projects/:projectId/tasks" element={<TaskListPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('button', { name: 'New Task' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'New Task' }));
+
+    expect(await screen.findByRole('heading', { name: 'Create Task' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Task Title'), { target: { value: 'Draft release notes' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Write the summary' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/projects/3/tasks', {
+        title: 'Draft release notes',
+        description: 'Write the summary',
+        priority: 'MEDIUM',
+      });
+    });
   });
 });

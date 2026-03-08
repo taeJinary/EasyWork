@@ -142,6 +142,13 @@ export interface ProjectSummary {
   updatedAt: string;
 }
 
+export interface ProjectCreateResponse {
+  projectId: number;
+  name: string;
+  description?: string;
+  role: 'OWNER' | 'MEMBER';
+}
+
 export interface ProjectListResponse {
   content: ProjectListItemResponse[];
   page: number;
@@ -219,6 +226,17 @@ export interface TaskSummary {
   attachmentCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskCreateResponse {
+  taskId: number;
+  projectId: number;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  position: number;
+  version: number;
+  assignee: BoardAssignee | null;
 }
 
 export interface BoardAssignee {

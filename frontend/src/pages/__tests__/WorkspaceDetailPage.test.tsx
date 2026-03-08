@@ -1,14 +1,16 @@
-﻿import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WorkspaceDetailPage from '@/pages/WorkspaceDetailPage';
 import { apiOk } from '@/test/helpers';
 
 const mockGet = vi.fn();
+const mockPost = vi.fn();
 
 vi.mock('@/api/client', () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -54,6 +56,7 @@ describe('WorkspaceDetailPage', () => {
       <MemoryRouter initialEntries={['/workspaces/1']}>
         <Routes>
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+          <Route path="/projects/:projectId/board" element={<div>Project Board</div>} />
         </Routes>
       </MemoryRouter>
     );
@@ -66,5 +69,55 @@ describe('WorkspaceDetailPage', () => {
     expect(screen.getByText('Member')).toBeInTheDocument();
     expect(screen.getByText('2 members')).toBeInTheDocument();
     expect(screen.getAllByText('OWNER').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('opens new project modal and creates a project in the current workspace', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        apiOk({
+          workspaceId: 1,
+          name: 'Alpha Workspace',
+          description: 'Main workspace',
+          myRole: 'OWNER',
+          memberCount: 2,
+          updatedAt: '2026-03-01T10:00:00',
+        })
+      )
+      .mockResolvedValueOnce(apiOk([]));
+    mockPost.mockResolvedValue(
+      apiOk({
+        projectId: 21,
+        name: 'Roadmap',
+        description: 'Q2 roadmap',
+        role: 'OWNER',
+      })
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/workspaces/1']}>
+        <Routes>
+          <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+          <Route path="/projects/:projectId/board" element={<div>Project Board</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Alpha Workspace' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Project' }));
+
+    expect(await screen.findByRole('heading', { name: 'Create Project' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Project Name'), { target: { value: 'Roadmap' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Q2 roadmap' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/projects', {
+        workspaceId: 1,
+        name: 'Roadmap',
+        description: 'Q2 roadmap',
+      });
+    });
   });
 });

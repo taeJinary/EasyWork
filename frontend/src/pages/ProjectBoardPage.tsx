@@ -1,20 +1,20 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, UserPlus, AlertCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AlertCircle, Plus, UserPlus } from 'lucide-react';
 import BoardColumnComponent from '@/components/BoardColumn';
-import TaskCard from '@/components/TaskCard';
 import FilterBar from '@/components/FilterBar';
+import TaskCard from '@/components/TaskCard';
+import TaskCreateModal from '@/components/TaskCreateModal';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
 import { toProjectDetail } from '@/utils/projectMappers';
 import type {
   ApiResponse,
+  BoardTaskCard,
   ProjectDetail,
   ProjectDetailResponse,
   ProjectLabelResponse,
   TaskBoardResponse,
-  BoardColumn,
-  BoardTaskCard,
   TaskStatus,
 } from '@/types';
 
@@ -26,7 +26,7 @@ export default function ProjectBoardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [columns, setColumns] = useState<BoardColumn[]>([]);
+  const [columns, setColumns] = useState<TaskBoardResponse['columns']>([]);
   const [labels, setLabels] = useState<ProjectLabelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,8 +35,9 @@ export default function ProjectBoardPage() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [labelFilter, setLabelFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
-  const normalizeColumns = (rawColumns: BoardColumn[]) =>
+  const normalizeColumns = (rawColumns: TaskBoardResponse['columns']) =>
     columnOrder.map((status) => rawColumns.find((column) => column.status === status) ?? { status, tasks: [] });
 
   const fetchBoard = useCallback(async () => {
@@ -71,8 +72,10 @@ export default function ProjectBoardPage() {
   }, [projectId, labelFilter]);
 
   useEffect(() => {
-    void fetchBoard();
-  }, [fetchBoard]);
+    if (projectId) {
+      void fetchBoard();
+    }
+  }, [projectId, fetchBoard]);
 
   const handleTabClick = (tab: TabType) => {
     if (tab === 'list') {
@@ -100,10 +103,10 @@ export default function ProjectBoardPage() {
       const boardParams: Record<string, string> = {};
       if (labelFilter) boardParams.labelId = labelFilter;
 
-      const res = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`, {
+      const response = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`, {
         params: boardParams,
       });
-      setColumns(normalizeColumns(res.data.data.columns));
+      setColumns(normalizeColumns(response.data.data.columns));
     } catch (caughtError) {
       setError('Failed to refresh board.');
       console.error('Failed to refresh board:', caughtError);
@@ -178,20 +181,24 @@ export default function ProjectBoardPage() {
         </div>
         <div className="flex items-center gap-[var(--spacing-sm)]">
           <button
+            type="button"
+            onClick={() => navigate(`/projects/${projectId}/members?invite=1`)}
             className="
-              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              flex h-[32px] cursor-pointer items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
               bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-              cursor-pointer hover:bg-[var(--color-surface-muted)]
+              hover:bg-[var(--color-surface-muted)]
             "
           >
             <UserPlus size={14} />
             Invite
           </button>
           <button
+            type="button"
+            onClick={() => setShowTaskModal(true)}
             className="
-              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
+              flex h-[32px] cursor-pointer items-center gap-1 rounded-[var(--radius-sm)] border-none
               bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
-              cursor-pointer hover:bg-[var(--color-primary-hover)]
+              hover:bg-[var(--color-primary-hover)]
             "
           >
             <Plus size={14} />
@@ -199,6 +206,15 @@ export default function ProjectBoardPage() {
           </button>
         </div>
       </div>
+
+      <TaskCreateModal
+        projectId={Number(projectId)}
+        open={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        onCreated={() => {
+          void refreshBoard();
+        }}
+      />
 
       <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (

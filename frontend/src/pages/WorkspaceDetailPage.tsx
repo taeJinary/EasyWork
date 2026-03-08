@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FolderKanban, Plus, Settings, UserPlus, Users } from 'lucide-react';
 import Badge from '@/components/Badge';
+import ProjectCreateModal from '@/components/ProjectCreateModal';
 import apiClient from '@/api/client';
 import type {
   ApiResponse,
@@ -52,6 +53,7 @@ export default function WorkspaceDetailPage() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [loading, setLoading] = useState(true);
+  const [showProjectModal, setShowProjectModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -117,27 +119,38 @@ export default function WorkspaceDetailPage() {
         </div>
         <div className="flex items-center gap-[var(--spacing-sm)]">
           <button
+            type="button"
             className="
               flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
               bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
               hover:bg-[var(--color-surface-muted)]
             "
+            onClick={() => setActiveTab('members')}
           >
             <UserPlus size={14} />
             Invite
           </button>
           <button
+            type="button"
             className="
               flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
               bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
               hover:bg-[var(--color-primary-hover)]
             "
+            onClick={() => setShowProjectModal(true)}
           >
             <Plus size={14} />
             New Project
           </button>
         </div>
       </div>
+
+      <ProjectCreateModal
+        fixedWorkspaceId={workspace?.id}
+        open={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        onCreated={(project) => navigate(`/projects/${project.projectId}/board`)}
+      />
 
       <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
