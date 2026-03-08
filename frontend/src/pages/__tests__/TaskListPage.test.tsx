@@ -69,6 +69,18 @@ describe('TaskListPage', () => {
         );
       }
 
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(
+          apiOk([
+            {
+              labelId: 1,
+              name: 'Release',
+              colorHex: '#2563EB',
+            },
+          ])
+        );
+      }
+
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
 
@@ -124,6 +136,18 @@ describe('TaskListPage', () => {
             first: true,
             last: true,
           })
+        );
+      }
+
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(
+          apiOk([
+            {
+              labelId: 1,
+              name: 'Release',
+              colorHex: '#2563EB',
+            },
+          ])
         );
       }
 
@@ -185,6 +209,18 @@ describe('TaskListPage', () => {
         );
       }
 
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(
+          apiOk([
+            {
+              labelId: 1,
+              name: 'Release',
+              colorHex: '#2563EB',
+            },
+          ])
+        );
+      }
+
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
     mockPost.mockResolvedValue(
@@ -212,6 +248,7 @@ describe('TaskListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New Task' }));
 
     expect(await screen.findByRole('heading', { name: 'Create Task' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByLabelText('Release'));
 
     fireEvent.change(screen.getByLabelText('Task Title'), { target: { value: 'Draft release notes' } });
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Write the summary' } });
@@ -222,6 +259,7 @@ describe('TaskListPage', () => {
         title: 'Draft release notes',
         description: 'Write the summary',
         priority: 'MEDIUM',
+        labelIds: [1],
       });
     });
   });
