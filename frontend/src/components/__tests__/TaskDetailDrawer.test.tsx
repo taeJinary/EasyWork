@@ -1,4 +1,4 @@
-﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
@@ -16,6 +16,18 @@ const { apiMock } = vi.hoisted(() => ({
 
 vi.mock('@/api/client', () => ({
   default: apiMock,
+}));
+
+vi.mock('@/stores/authStore', () => ({
+  useAuthStore: () => ({
+    user: {
+      userId: 7,
+      email: 'owner@easywork.local',
+      nickname: 'Owner',
+      profileImg: null,
+      role: 'USER',
+    },
+  }),
 }));
 
 function stubTaskDetail() {
@@ -47,6 +59,21 @@ function stubComments() {
   };
 }
 
+function stubAttachments() {
+  return [
+    {
+      attachmentId: 101,
+      taskId: 7,
+      originalFilename: 'release-notes.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 4096,
+      uploaderUserId: 7,
+      uploaderNickname: 'Owner',
+      createdAt: '2026-03-08T10:30:00',
+    },
+  ];
+}
+
 describe('TaskDetailDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,7 +88,7 @@ describe('TaskDetailDrawer', () => {
       }
 
       if (url === '/tasks/7/attachments') {
-        return Promise.resolve(apiOk([]));
+        return Promise.resolve(apiOk(stubAttachments()));
       }
 
       return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -133,5 +160,24 @@ describe('TaskDetailDrawer', () => {
 
     expect(await screen.findByText('Looks good to me')).toBeInTheDocument();
     expect(screen.getByText('Activity (1)')).toBeInTheDocument();
+  });
+
+  it('deletes an owned attachment and removes it from the list', async () => {
+    apiMock.delete.mockResolvedValue(apiOk(null));
+
+    render(<TaskDetailDrawer taskId={7} onClose={vi.fn()} />);
+
+    await screen.findByText('release-notes.pdf');
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Delete attachment release-notes.pdf' }));
+
+    await waitFor(() => {
+      expect(apiMock.delete).toHaveBeenCalledWith('/attachments/101');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('release-notes.pdf')).not.toBeInTheDocument();
+    });
   });
 });

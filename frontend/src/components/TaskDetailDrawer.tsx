@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, Clock, Edit, MessageSquare, Paperclip, Trash2, X } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
+import { useAuthStore } from '@/stores/authStore';
 import type {
   ApiResponse,
   Attachment,
@@ -48,12 +49,14 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: TaskDetailDrawerProps) {
+  const { user } = useAuthStore();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -131,6 +134,20 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
       console.error('Failed to submit comment:', caughtError);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAttachmentDelete = async (attachmentId: number) => {
+    try {
+      setDeletingAttachmentId(attachmentId);
+      setError(null);
+      await apiClient.delete(`/attachments/${attachmentId}`);
+      setAttachments((current) => current.filter((attachment) => attachment.attachmentId !== attachmentId));
+    } catch (caughtError) {
+      setError('Failed to delete attachment.');
+      console.error('Failed to delete attachment:', caughtError);
+    } finally {
+      setDeletingAttachmentId(null);
     }
   };
 
@@ -391,14 +408,31 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                   Attachments ({attachments.length})
                 </div>
                 {attachments.length > 0 ? (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {attachments.map((file) => (
-                      <div key={file.attachmentId} className="text-[var(--text-xs)] text-[var(--color-text-secondary)]">
-                        <span className="font-medium text-[var(--color-primary)]">{file.originalFilename}</span>
-                        <br />
-                        <span className="text-[var(--color-text-muted)]">
-                          {file.uploaderNickname} · {(file.sizeBytes / 1024).toFixed(1)}KB
-                        </span>
+                      <div key={file.attachmentId} className="rounded-[var(--radius-sm)] border border-[var(--color-border-muted)] p-[var(--spacing-xs)]">
+                        <div className="text-[var(--text-xs)] text-[var(--color-text-secondary)]">
+                          <span className="font-medium text-[var(--color-primary)]">{file.originalFilename}</span>
+                          <br />
+                          <span className="text-[var(--color-text-muted)]">
+                            {file.uploaderNickname} · {(file.sizeBytes / 1024).toFixed(1)}KB
+                          </span>
+                        </div>
+                        {user?.userId === file.uploaderUserId && (
+                          <button
+                            type="button"
+                            aria-label={`Delete attachment ${file.originalFilename}`}
+                            onClick={() => handleAttachmentDelete(file.attachmentId)}
+                            disabled={deletingAttachmentId === file.attachmentId}
+                            className="
+                              mt-[var(--spacing-xs)] rounded-[var(--radius-sm)] border border-[var(--color-danger)]
+                              bg-transparent px-[var(--spacing-xs)] py-[2px] text-[11px] font-medium text-[var(--color-danger)]
+                              hover:bg-[var(--color-accent-red)] disabled:cursor-not-allowed disabled:opacity-50
+                            "
+                          >
+                            {deletingAttachmentId === file.attachmentId ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -417,7 +451,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                     {task.recentStatusHistories.map((history) => (
                       <div key={history.historyId} className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
                         <span className="font-medium text-[var(--color-text-secondary)]">{history.changedBy.nickname}</span>{' '}
-                        {history.fromStatus} → {history.toStatus}
+                        {history.fromStatus} {'->'} {history.toStatus}
                         <br />
                         <span>{formatTimeAgo(history.changedAt)}</span>
                       </div>
