@@ -8,6 +8,17 @@ import { apiOk } from '@/test/helpers';
 
 const mockGet = vi.fn();
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 vi.mock('@/api/client', () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
@@ -343,5 +354,100 @@ describe('Dashboard route', () => {
 
     expect(await screen.findByText('Overdue')).toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledWith('/projects/11/dashboard');
+  });
+
+  it('ignores stale project stats responses after switching to another project', async () => {
+    const alphaStats = deferred<ReturnType<typeof apiOk>>();
+
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/projects') {
+        return Promise.resolve(
+          apiOk({
+            pendingInvitationCount: 0,
+            myProjects: [
+              {
+                projectId: 11,
+                name: 'Alpha Project',
+                role: 'OWNER',
+                memberCount: 4,
+                taskCount: 12,
+                doneTaskCount: 5,
+                progressRate: 42,
+                updatedAt: '2026-03-08T10:00:00',
+              },
+              {
+                projectId: 12,
+                name: 'Beta Project',
+                role: 'MEMBER',
+                memberCount: 6,
+                taskCount: 9,
+                doneTaskCount: 2,
+                progressRate: 22,
+                updatedAt: '2026-03-08T11:00:00',
+              },
+            ],
+          })
+        );
+      }
+
+      if (url === '/projects/11/dashboard') {
+        return alphaStats.promise;
+      }
+
+      if (url === '/projects/12/dashboard') {
+        return Promise.resolve(
+          apiOk({
+            projectId: 12,
+            memberCount: 6,
+            taskCount: 9,
+            todoCount: 5,
+            inProgressCount: 2,
+            doneCount: 2,
+            overdueCount: 0,
+            dueSoonCount: 3,
+            completionRate: 22,
+          })
+        );
+      }
+
+      if (url === '/notifications/unread-count') {
+        return Promise.resolve(apiOk({ unreadCount: 0 }));
+      }
+
+      return Promise.reject(new Error(`unexpected url: ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    await screen.findByRole('heading', { name: 'Dashboard' });
+
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('button', { name: 'View Stats' })[1]);
+
+    expect(await screen.findByText('22%')).toBeInTheDocument();
+
+    alphaStats.resolve(
+      apiOk({
+        projectId: 11,
+        memberCount: 4,
+        taskCount: 12,
+        todoCount: 3,
+        inProgressCount: 4,
+        doneCount: 5,
+        overdueCount: 1,
+        dueSoonCount: 2,
+        completionRate: 42,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('22%')).toBeInTheDocument();
+    expect(screen.queryByText('42%')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
@@ -78,6 +78,9 @@ function ProjectRow({
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const mountedRef = useRef(true);
+  const dashboardRequestIdRef = useRef(0);
+  const projectStatsRequestIdRef = useRef(0);
   const [dashboard, setDashboard] = useState<DashboardProjectsResponse | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [projectStats, setProjectStats] = useState<DashboardProjectStatsResponse | null>(null);
@@ -86,24 +89,34 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const fetchDashboard = useCallback(
-    async (isMounted = true) => {
+    async () => {
+      const requestId = ++dashboardRequestIdRef.current;
+
       try {
         setLoading(true);
         setError('');
         const response = await apiClient.get<ApiResponse<DashboardProjectsResponse>>('/dashboard/projects');
-        if (isMounted) {
+        if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
           setDashboard(response.data.data);
           setSelectedProjectId((current) => current ?? response.data.data.myProjects[0]?.projectId ?? null);
         }
       } catch {
-        if (isMounted) {
+        if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
           setDashboard(null);
           setSelectedProjectId(null);
           setError('Failed to load dashboard data.');
         }
       } finally {
-        if (isMounted) {
+        if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
           setLoading(false);
         }
       }
@@ -112,31 +125,27 @@ export default function DashboardPage() {
   );
 
   useEffect(() => {
-    let isMounted = true;
-
-    void fetchDashboard(isMounted);
-
-    return () => {
-      isMounted = false;
-    };
+    void fetchDashboard();
   }, [fetchDashboard]);
 
   const fetchProjectStats = useCallback(
-    async (projectId: number, isMounted = true) => {
+    async (projectId: number) => {
+      const requestId = ++projectStatsRequestIdRef.current;
+
       try {
         setProjectStatsLoading(true);
         setProjectStatsError('');
         const response = await apiClient.get<ApiResponse<DashboardProjectStatsResponse>>(`/projects/${projectId}/dashboard`);
-        if (isMounted) {
+        if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
           setProjectStats(response.data.data);
         }
       } catch {
-        if (isMounted) {
+        if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
           setProjectStats(null);
           setProjectStatsError('Failed to load project stats.');
         }
       } finally {
-        if (isMounted) {
+        if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
           setProjectStatsLoading(false);
         }
       }
@@ -146,18 +155,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!selectedProjectId) {
+      projectStatsRequestIdRef.current += 1;
       setProjectStats(null);
       setProjectStatsError('');
       return;
     }
 
-    let isMounted = true;
-
-    void fetchProjectStats(selectedProjectId, isMounted);
-
-    return () => {
-      isMounted = false;
-    };
+    void fetchProjectStats(selectedProjectId);
   }, [fetchProjectStats, selectedProjectId]);
 
   const totalProjects = dashboard?.myProjects.length ?? 0;
