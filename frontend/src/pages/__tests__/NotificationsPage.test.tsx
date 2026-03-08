@@ -150,4 +150,35 @@ describe('NotificationsPage', () => {
       expect(screen.getByText('알림을 불러오는 데 실패했습니다.')).toBeInTheDocument();
     });
   });
+
+  it('restores the full notification item when unread-only read fails', async () => {
+    const notification = makeNotification({
+      notificationId: 77,
+      title: 'Unread invitation',
+      referenceType: 'INVITATION',
+      referenceId: 77,
+      isRead: false,
+    });
+    setupMocks([notification], 1);
+    mockPatch.mockRejectedValue(new Error('Patch failed'));
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Unread invitation')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByText('Unread invitation'));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith('/notifications/77/read');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Unread invitation')).toBeInTheDocument();
+    });
+  });
+
 });
