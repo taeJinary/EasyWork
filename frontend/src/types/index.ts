@@ -327,6 +327,14 @@ export interface TaskDetail {
   updatedAt: string;
 }
 
+export interface TaskMoveResponse {
+  taskId: number;
+  status: TaskStatus;
+  position: number;
+  version: number;
+  completedAt?: string | null;
+}
+
 export interface CommentAuthor {
   userId: number;
   nickname: string;

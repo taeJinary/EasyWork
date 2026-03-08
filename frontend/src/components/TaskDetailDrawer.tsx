@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
-import { X, Edit, Trash2, MessageSquare, Paperclip, Clock, AlertCircle } from 'lucide-react';
+﻿import { useEffect, useState } from 'react';
+import { AlertCircle, Clock, Edit, MessageSquare, Paperclip, Trash2, X } from 'lucide-react';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
-import type { ApiResponse, TaskDetail, Comment, CommentListResponse, Attachment, TaskStatus as TStatus } from '@/types';
+import type {
+  ApiResponse,
+  Attachment,
+  Comment,
+  CommentListResponse,
+  TaskDetail,
+  TaskMoveResponse,
+  TaskStatus as TStatus,
+} from '@/types';
 
 interface TaskDetailDrawerProps {
   taskId: number;
@@ -23,22 +31,20 @@ const priorityVariant: Record<string, 'danger' | 'warning' | 'primary' | 'muted'
   LOW: 'muted',
 };
 
-// Parse YYYY-MM-DD LocalDate without UTC shift
 function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-');
-  return `${y}.${m}.${d}`;
+  const [year, month, day] = dateStr.split('-');
+  return `${year}.${month}.${day}`;
 }
 
-// [Warn 3 fix] "방금 전" for < 1 min
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return `${days}일 전`;
+  return `${days}d ago`;
 }
 
 export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: TaskDetailDrawerProps) {
@@ -48,7 +54,6 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  // [Warn 4 fix] error state for user feedback
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,59 +61,74 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
       try {
         setLoading(true);
         setError(null);
-        const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
+        const [taskResponse, commentsResponse, attachmentsResponse] = await Promise.all([
           apiClient.get<ApiResponse<TaskDetail>>(`/tasks/${taskId}`),
           apiClient.get<ApiResponse<CommentListResponse>>(`/tasks/${taskId}/comments`),
           apiClient.get<ApiResponse<Attachment[]>>(`/tasks/${taskId}/attachments`),
         ]);
-        setTask(taskRes.data.data);
-        setComments(commentsRes.data.data.content);
-        setAttachments(attachmentsRes.data.data);
-      } catch (err) {
-        setError('태스크를 불러오는 데 실패했습니다.');
-        console.error('Failed to fetch task detail:', err);
+        setTask(taskResponse.data.data);
+        setComments(commentsResponse.data.data.content);
+        setAttachments(attachmentsResponse.data.data);
+      } catch (caughtError) {
+        setError('Failed to load task.');
+        console.error('Failed to fetch task detail:', caughtError);
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
+
+    void fetchData();
   }, [taskId]);
 
-  // [Bug 1 fix] targetPosition: 0 → 새 컬럼 맨 앞에 배치 (서버가 재정렬)
   const handleStatusChange = async (newStatus: string) => {
     if (!task) return;
+
     try {
       setError(null);
-      await apiClient.patch(`/tasks/${taskId}/move`, {
+      const response = await apiClient.patch<ApiResponse<TaskMoveResponse>>(`/tasks/${taskId}/move`, {
         toStatus: newStatus,
         targetPosition: 0,
         version: task.version,
       });
-      setTask({ ...task, status: newStatus as TStatus, version: task.version + 1 });
-      onStatusChange?.(taskId, newStatus);
-    } catch (err) {
-      setError('상태 변경에 실패했습니다. 다시 시도해주세요.');
-      console.error('Failed to move task:', err);
+      const movedTask = response.data.data;
+      setTask((current) =>
+        current
+          ? {
+              ...current,
+              status: movedTask.status,
+              version: movedTask.version,
+            }
+          : current
+      );
+      onStatusChange?.(taskId, movedTask.status);
+    } catch (caughtError) {
+      setError('Failed to update task status.');
+      console.error('Failed to move task:', caughtError);
     }
   };
 
-  // [Sug 1 fix] commentCount 증가
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return;
+
     setSubmitting(true);
     try {
       setError(null);
-      const res = await apiClient.post<ApiResponse<Comment>>(`/tasks/${taskId}/comments`, {
+      const response = await apiClient.post<ApiResponse<Comment>>(`/tasks/${taskId}/comments`, {
         content: newComment,
       });
-      setComments([...comments, res.data.data]);
+      setComments((current) => [...current, response.data.data]);
       setNewComment('');
-      if (task) {
-        setTask({ ...task, commentCount: task.commentCount + 1 });
-      }
-    } catch (err) {
-      setError('댓글 작성에 실패했습니다.');
-      console.error('Failed to submit comment:', err);
+      setTask((current) =>
+        current
+          ? {
+              ...current,
+              commentCount: current.commentCount + 1,
+            }
+          : current
+      );
+    } catch (caughtError) {
+      setError('Failed to submit comment.');
+      console.error('Failed to submit comment:', caughtError);
     } finally {
       setSubmitting(false);
     }
@@ -116,134 +136,111 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
 
   return (
     <>
-      {/* Backdrop — [Bug 3 fix] z-40 < Drawer z-50 */}
-      <div
-        className="fixed inset-0 bg-black/20 z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
 
-      {/* Drawer — [Bug 3 fix] z-50 > Backdrop z-40 */}
-      <div className="
-        fixed top-0 right-0 h-full w-full md:w-[680px]
-        bg-[var(--color-surface)] border-l border-[var(--color-border)]
-        z-50 overflow-y-auto
-        shadow-[-4px_0_12px_rgba(0,0,0,0.05)]
-      ">
-        {/* Header */}
-        <div className="sticky top-0 bg-[var(--color-surface)] border-b border-[var(--color-border)] px-[var(--spacing-lg)] py-[var(--spacing-md)] flex items-center justify-between z-10">
+      <div
+        className="
+          fixed right-0 top-0 z-50 h-full w-full overflow-y-auto border-l border-[var(--color-border)]
+          bg-[var(--color-surface)] shadow-[-4px_0_12px_rgba(0,0,0,0.05)] md:w-[680px]
+        "
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-lg)] py-[var(--spacing-md)]">
           <div className="flex items-center gap-[var(--spacing-sm)]">
-            <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] font-mono">
-              TASK-{taskId}
-            </span>
+            <span className="font-mono text-[var(--text-xs)] text-[var(--color-text-muted)]">TASK-{taskId}</span>
           </div>
           <div className="flex items-center gap-[var(--spacing-sm)]">
-            {/* [Bug 2 fix] Edit/Delete buttons disabled with tooltip */}
             <button
               disabled
-              title="편집 기능 준비 중"
-              className="
-                p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
-                text-[var(--color-text-muted)] bg-transparent border-none
-                cursor-not-allowed opacity-50
-              "
+              title="Edit is not available yet"
+              className="cursor-not-allowed rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-muted)] opacity-50"
             >
               <Edit size={14} />
             </button>
             <button
               disabled
-              title="삭제 기능 준비 중"
-              className="
-                p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
-                text-[var(--color-text-muted)] bg-transparent border-none
-                cursor-not-allowed opacity-50
-              "
+              title="Delete is not available yet"
+              className="cursor-not-allowed rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-muted)] opacity-50"
             >
               <Trash2 size={14} />
             </button>
             <button
               onClick={onClose}
-              className="
-                p-[var(--spacing-xs)] rounded-[var(--radius-sm)]
-                text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]
-                bg-transparent border-none cursor-pointer
-              "
+              className="rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
             >
               <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* [Warn 4 fix] Error banner */}
         {error && (
-          <div className="
-            mx-[var(--spacing-lg)] mt-[var(--spacing-sm)]
-            flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)]
-            bg-[var(--color-accent-red)] border border-[var(--color-danger)]
-            rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
-          ">
+          <div
+            className="
+              mx-[var(--spacing-lg)] mt-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)]
+              rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)]
+              p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
+            "
+          >
             <AlertCircle size={14} className="shrink-0" />
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="p-[var(--spacing-lg)] animate-pulse space-y-4">
-            <div className="h-6 bg-[var(--color-surface-muted)] rounded w-3/4" />
-            <div className="h-4 bg-[var(--color-surface-muted)] rounded w-1/2" />
-            <div className="h-32 bg-[var(--color-surface-muted)] rounded" />
+          <div className="space-y-4 p-[var(--spacing-lg)] animate-pulse">
+            <div className="h-6 w-3/4 rounded bg-[var(--color-surface-muted)]" />
+            <div className="h-4 w-1/2 rounded bg-[var(--color-surface-muted)]" />
+            <div className="h-32 rounded bg-[var(--color-surface-muted)]" />
           </div>
         ) : task ? (
           <div className="flex flex-col md:flex-row">
-            {/* Main content (left) */}
-            <div className="flex-1 p-[var(--spacing-lg)] md:border-r border-[var(--color-border)] min-w-0">
-              {/* Title */}
-              <h2 className="text-[var(--text-lg)] font-bold text-[var(--color-text-primary)] m-0 mb-[var(--spacing-xs)]">
+            <div className="min-w-0 flex-1 border-[var(--color-border)] p-[var(--spacing-lg)] md:border-r">
+              <h2 className="m-0 mb-[var(--spacing-xs)] text-[var(--text-lg)] font-bold text-[var(--color-text-primary)]">
                 {task.title}
               </h2>
-              <div className="text-[var(--text-xs)] text-[var(--color-text-muted)] mb-[var(--spacing-lg)]">
+              <div className="mb-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
                 opened by {task.creator.nickname} · {formatTimeAgo(task.createdAt)} · updated {formatTimeAgo(task.updatedAt)}
               </div>
 
-              {/* Description */}
               <div className="mb-[var(--spacing-lg)]">
-                <h3 className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)] mb-[var(--spacing-sm)] m-0">
+                <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
                   Description
                 </h3>
-                <div className="
-                  text-[var(--text-sm)] text-[var(--color-text-secondary)] leading-relaxed
-                  p-[var(--spacing-base)] bg-[var(--color-surface-muted)]
-                  rounded-[var(--radius-sm)] border border-[var(--color-border-muted)]
-                ">
-                  {task.description || '설명이 없습니다.'}
+                <div
+                  className="
+                    rounded-[var(--radius-sm)] border border-[var(--color-border-muted)]
+                    bg-[var(--color-surface-muted)] p-[var(--spacing-base)] text-[var(--text-sm)]
+                    leading-relaxed text-[var(--color-text-secondary)]
+                  "
+                >
+                  {task.description || 'No description.'}
                 </div>
               </div>
 
-              {/* Activity / Comments */}
               <div>
-                <h3 className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)] mb-[var(--spacing-md)] m-0 flex items-center gap-[var(--spacing-xs)]">
+                <h3 className="m-0 mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-xs)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
                   <MessageSquare size={14} />
                   Activity ({comments.length})
                 </h3>
 
                 {comments.length === 0 && (
-                  <div className="text-[var(--text-sm)] text-[var(--color-text-muted)] mb-[var(--spacing-base)]">
-                    아직 댓글이 없습니다.
+                  <div className="mb-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                    No comments yet.
                   </div>
                 )}
 
-                {/* Comment list */}
-                <div className="space-y-[var(--spacing-md)] mb-[var(--spacing-lg)]">
+                <div className="mb-[var(--spacing-lg)] space-y-[var(--spacing-md)]">
                   {comments.map((comment) => (
                     <div key={comment.commentId} className="flex gap-[var(--spacing-sm)]">
-                      <div className="
-                        w-[24px] h-[24px] rounded-full bg-[var(--color-primary)]
-                        text-white text-[10px] font-semibold
-                        flex items-center justify-center shrink-0 mt-[2px]
-                      ">
+                      <div
+                        className="
+                          mt-[2px] flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]
+                          text-[10px] font-semibold text-white
+                        "
+                      >
                         {comment.author.nickname.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-[var(--spacing-sm)] mb-[var(--spacing-xs)]">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)]">
                           <span className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
                             {comment.author.nickname}
                           </span>
@@ -251,11 +248,13 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                             {formatTimeAgo(comment.createdAt)}
                           </span>
                         </div>
-                        <div className="
-                          text-[var(--text-sm)] text-[var(--color-text-secondary)]
-                          p-[var(--spacing-sm)] bg-[var(--color-surface-muted)]
-                          rounded-[var(--radius-sm)] border border-[var(--color-border-muted)]
-                        ">
+                        <div
+                          className="
+                            rounded-[var(--radius-sm)] border border-[var(--color-border-muted)]
+                            bg-[var(--color-surface-muted)] p-[var(--spacing-sm)] text-[var(--text-sm)]
+                            text-[var(--color-text-secondary)]
+                          "
+                        >
                           {comment.content}
                         </div>
                       </div>
@@ -263,75 +262,70 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                   ))}
                 </div>
 
-                {/* Comment input */}
                 <div className="border-t border-[var(--color-border)] pt-[var(--spacing-md)]">
                   <textarea
+                    aria-label="Comment"
                     value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="댓글을 작성하세요..."
+                    onChange={(event) => setNewComment(event.target.value)}
+                    placeholder="Write a comment..."
                     rows={3}
                     className="
-                      w-full p-[var(--spacing-sm)]
-                      border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                      bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-                      placeholder:text-[var(--color-text-muted)] resize-vertical
-                      focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                      w-full resize-vertical rounded-[var(--radius-sm)] border border-[var(--color-border)]
+                      bg-[var(--color-surface)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                      placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]
                     "
                   />
-                  <div className="flex justify-end mt-[var(--spacing-sm)]">
+                  <div className="mt-[var(--spacing-sm)] flex justify-end">
                     <button
                       onClick={handleCommentSubmit}
                       disabled={!newComment.trim() || submitting}
                       className="
-                        h-[32px] px-[var(--spacing-md)]
-                        bg-[var(--color-primary)] text-white rounded-[var(--radius-sm)]
-                        text-[var(--text-sm)] font-medium border-none cursor-pointer
-                        hover:bg-[var(--color-primary-hover)]
-                        disabled:opacity-50 disabled:cursor-not-allowed
+                        h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)]
+                        px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
+                        hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50
                       "
                     >
-                      {submitting ? '전송 중...' : 'Comment'}
+                      {submitting ? 'Sending...' : 'Comment'}
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right sidebar meta panel */}
-            <div className="w-full md:w-[220px] p-[var(--spacing-base)] shrink-0 space-y-[var(--spacing-base)] border-t md:border-t-0 border-[var(--color-border)]">
-              {/* Status */}
+            <div className="w-full shrink-0 space-y-[var(--spacing-base)] border-[var(--color-border)] p-[var(--spacing-base)] md:w-[220px] md:border-t-0 border-t">
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Status
                 </div>
                 <select
                   value={task.status}
-                  onChange={(e) => handleStatusChange(e.target.value)}
+                  onChange={(event) => handleStatusChange(event.target.value)}
                   className="
-                    w-full h-[28px] px-[var(--spacing-xs)]
-                    border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                    bg-[var(--color-surface)] text-[var(--text-sm)]
-                    focus:outline-none focus:border-[var(--color-primary)]
+                    h-[28px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
+                    bg-[var(--color-surface)] px-[var(--spacing-xs)] text-[var(--text-sm)]
+                    focus:border-[var(--color-primary)] focus:outline-none
                   "
                 >
-                  {statusOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Assignee */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Assignee
                 </div>
                 {task.assignee ? (
                   <div className="flex items-center gap-[var(--spacing-xs)]">
-                    <div className="
-                      w-[20px] h-[20px] rounded-full bg-[var(--color-primary)]
-                      text-white text-[10px] font-semibold
-                      flex items-center justify-center
-                    ">
+                    <div
+                      className="
+                        flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[var(--color-primary)]
+                        text-[10px] font-semibold text-white
+                      "
+                    >
                       {task.assignee.nickname.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">
@@ -339,23 +333,19 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                     </span>
                   </div>
                 ) : (
-                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">미배정</span>
+                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">Unassigned</span>
                 )}
               </div>
 
-              {/* Priority */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Priority
                 </div>
-                <Badge variant={priorityVariant[task.priority] || 'muted'}>
-                  {task.priority}
-                </Badge>
+                <Badge variant={priorityVariant[task.priority] || 'muted'}>{task.priority}</Badge>
               </div>
 
-              {/* Due date */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Due Date
                 </div>
                 <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">
@@ -363,19 +353,15 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                 </span>
               </div>
 
-              {/* Creator */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Creator
                 </div>
-                <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">
-                  {task.creator.nickname}
-                </span>
+                <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">{task.creator.nickname}</span>
               </div>
 
-              {/* Labels */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   Labels
                 </div>
                 {task.labels.length > 0 ? (
@@ -383,10 +369,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                     {task.labels.map((label) => (
                       <span
                         key={label.labelId}
-                        className="
-                          inline-block px-[5px] py-[1px] text-[11px] font-medium
-                          rounded-[var(--radius-sm)] border
-                        "
+                        className="inline-block rounded-[var(--radius-sm)] border px-[5px] py-[1px] text-[11px] font-medium"
                         style={{
                           backgroundColor: `${label.colorHex}20`,
                           borderColor: `${label.colorHex}40`,
@@ -398,24 +381,20 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">없음</span>
+                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">None</span>
                 )}
               </div>
 
-              {/* Attachments — [Sug 4] download deferred (backend needs presigned URL API) */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   <Paperclip size={11} />
                   Attachments ({attachments.length})
                 </div>
                 {attachments.length > 0 ? (
                   <div className="space-y-1">
                     {attachments.map((file) => (
-                      <div
-                        key={file.attachmentId}
-                        className="text-[var(--text-xs)] text-[var(--color-text-secondary)]"
-                      >
-                        <span className="text-[var(--color-primary)] font-medium">{file.originalFilename}</span>
+                      <div key={file.attachmentId} className="text-[var(--text-xs)] text-[var(--color-text-secondary)]">
+                        <span className="font-medium text-[var(--color-primary)]">{file.originalFilename}</span>
                         <br />
                         <span className="text-[var(--color-text-muted)]">
                           {file.uploaderNickname} · {(file.sizeBytes / 1024).toFixed(1)}KB
@@ -424,39 +403,34 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">없음</span>
+                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">None</span>
                 )}
               </div>
 
-              {/* Status History */}
               <div>
-                <div className="text-[var(--text-xs)] font-semibold text-[var(--color-text-muted)] uppercase mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)]">
+                <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   <Clock size={11} />
                   Status History
                 </div>
                 {task.recentStatusHistories.length > 0 ? (
                   <div className="space-y-1">
-                    {task.recentStatusHistories.map((h) => (
-                      <div key={h.historyId} className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                        <span className="font-medium text-[var(--color-text-secondary)]">{h.changedBy.nickname}</span>
-                        {' '}{h.fromStatus} → {h.toStatus}
+                    {task.recentStatusHistories.map((history) => (
+                      <div key={history.historyId} className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                        <span className="font-medium text-[var(--color-text-secondary)]">{history.changedBy.nickname}</span>{' '}
+                        {history.fromStatus} → {history.toStatus}
                         <br />
-                        <span>{formatTimeAgo(h.changedAt)}</span>
+                        <span>{formatTimeAgo(history.changedAt)}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                    상태 이력이 없습니다
-                  </span>
+                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">No status history</span>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          <div className="p-[var(--spacing-lg)] text-[var(--color-text-muted)]">
-            태스크를 불러올 수 없습니다.
-          </div>
+          <div className="p-[var(--spacing-lg)] text-[var(--color-text-muted)]">Task could not be loaded.</div>
         )}
       </div>
     </>
