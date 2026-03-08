@@ -448,3 +448,19 @@ export interface Attachment {
   uploaderNickname: string;
   createdAt: string;
 }
+
+export interface DashboardProjectSummary {
+  projectId: number;
+  name: string;
+  role: ProjectRole;
+  memberCount: number;
+  taskCount: number;
+  doneTaskCount: number;
+  progressRate: number;
+  updatedAt: string;
+}
+
+export interface DashboardProjectsResponse {
+  pendingInvitationCount: number;
+  myProjects: DashboardProjectSummary[];
+}
