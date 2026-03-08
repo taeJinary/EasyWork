@@ -84,6 +84,12 @@ export default function NotificationsPage() {
   }, [fetchNotifications]);
 
   const handleRead = async (notificationId: number) => {
+    const originalIndex = notifications.findIndex((notification) => notification.notificationId === notificationId);
+    const originalNotification = notifications[originalIndex];
+    if (!originalNotification || originalNotification.isRead) {
+      return;
+    }
+
     // Optimistically mark as read immediately to prevent duplicate clicks
     setNotifications((prev) =>
       unreadOnly
@@ -97,7 +103,11 @@ export default function NotificationsPage() {
       // Revert on failure
       setNotifications((prev) =>
         unreadOnly
-          ? [...prev, { notificationId, isRead: false } as NotificationItem] // simplified revert
+          ? (() => {
+              const restored = [...prev];
+              restored.splice(Math.min(originalIndex, restored.length), 0, originalNotification);
+              return restored;
+            })()
           : prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: false } : n)
       );
       setUnreadCount((c) => c + 1);

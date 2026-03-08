@@ -203,7 +203,7 @@ export default function TaskDetailDrawer({ taskId, onClose, onStatusChange }: Ta
         )}
 
         {loading ? (
-          <div className="animate-pulse space-y-4 p-[var(--spacing-lg)]">
+          <div className="space-y-4 p-[var(--spacing-lg)] animate-pulse">
             <div className="h-6 w-3/4 rounded bg-[var(--color-surface-muted)]" />
             <div className="h-4 w-1/2 rounded bg-[var(--color-surface-muted)]" />
             <div className="h-32 rounded bg-[var(--color-surface-muted)]" />
