@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, LogOut, Menu, Plus, Search, Settings, User } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, FolderKanban, Plus, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';

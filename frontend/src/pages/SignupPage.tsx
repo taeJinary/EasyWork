@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
 import type { ApiResponse, SignupResponse } from '@/types';

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FolderKanban, Plus, Settings, UserPlus, Users } from 'lucide-react';
 import Badge from '@/components/Badge';
