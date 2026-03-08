@@ -74,6 +74,34 @@ function stubAttachments() {
   ];
 }
 
+function stubProjectMembers() {
+  return [
+    {
+      memberId: 11,
+      userId: 2,
+      email: 'worker@easywork.local',
+      nickname: 'Worker',
+      role: 'MEMBER' as const,
+      joinedAt: '2026-03-01T10:00:00',
+    },
+    {
+      memberId: 12,
+      userId: 3,
+      email: 'reviewer@easywork.local',
+      nickname: 'Reviewer',
+      role: 'MEMBER' as const,
+      joinedAt: '2026-03-02T10:00:00',
+    },
+  ];
+}
+
+function stubProjectLabels() {
+  return [
+    { labelId: 1, name: 'Release', colorHex: '#2563EB' },
+    { labelId: 2, name: 'Backend', colorHex: '#10B981' },
+  ];
+}
+
 describe('TaskDetailDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -89,6 +117,14 @@ describe('TaskDetailDrawer', () => {
 
       if (url === '/tasks/7/attachments') {
         return Promise.resolve(apiOk(stubAttachments()));
+      }
+
+      if (url === '/projects/3/members') {
+        return Promise.resolve(apiOk(stubProjectMembers()));
+      }
+
+      if (url === '/projects/3/labels') {
+        return Promise.resolve(apiOk(stubProjectLabels()));
       }
 
       return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -188,6 +224,8 @@ describe('TaskDetailDrawer', () => {
         ...stubTaskDetail(),
         title: 'Prepare final release',
         description: 'Ship the final release notes',
+        assignee: { userId: 3, nickname: 'Reviewer' },
+        labels: [{ labelId: 2, name: 'Backend', colorHex: '#10B981' }],
         version: 4,
       })
     );
@@ -203,21 +241,26 @@ describe('TaskDetailDrawer', () => {
     await user.type(screen.getByLabelText('Task Title'), 'Prepare final release');
     await user.clear(screen.getByLabelText('Task Description'));
     await user.type(screen.getByLabelText('Task Description'), 'Ship the final release notes');
+    await user.selectOptions(screen.getByLabelText('Task Assignee'), '3');
+    await user.click(screen.getByLabelText('Release'));
+    await user.click(screen.getByLabelText('Backend'));
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     await waitFor(() => {
       expect(apiMock.patch).toHaveBeenCalledWith('/tasks/7', {
         title: 'Prepare final release',
         description: 'Ship the final release notes',
-        assigneeUserId: 2,
+        assigneeUserId: 3,
         priority: 'HIGH',
         dueDate: '2026-03-10',
-        labelIds: [1],
+        labelIds: [2],
         version: 3,
       });
     });
 
     expect(await screen.findByText('Prepare final release')).toBeInTheDocument();
+    expect(screen.getByText('Reviewer')).toBeInTheDocument();
+    expect(screen.getByText('Backend')).toBeInTheDocument();
     expect(onTaskUpdated).toHaveBeenCalledTimes(1);
   });
 
