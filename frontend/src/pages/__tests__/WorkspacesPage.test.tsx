@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WorkspacesPage from '@/pages/WorkspacesPage';
@@ -55,6 +55,10 @@ describe('WorkspacesPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Core Team')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('Main workspace')).toBeInTheDocument();
+    expect(screen.getByText('3 members')).toBeInTheDocument();
+    expect(screen.getByText('OWNER')).toBeInTheDocument();
   });
 
   it('opens create modal from query param and creates a workspace', async () => {

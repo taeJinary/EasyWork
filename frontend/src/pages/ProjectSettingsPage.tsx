@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Trash2, AlertCircle, X, CheckCircle2 } from 'lucide-react';
 import apiClient from '@/api/client';
 import { AxiosError } from 'axios';
-import type { ApiResponse, ProjectDetail } from '@/types';
+import { toProjectDetail } from '@/utils/projectMappers';
+import type { ApiResponse, ProjectDetailResponse } from '@/types';
 import ErrorState from '@/components/ErrorState';
 import PageHeader from '@/components/PageHeader';
 
@@ -50,8 +51,8 @@ export default function ProjectSettingsPage() {
   const { data: projectRes, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
     queryFn: async () => {
-      const res = await apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`);
-      return res.data.data;
+      const res = await apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`);
+      return toProjectDetail(res.data.data);
     },
     enabled: !!projectId,
     retry: false, // Don't retry on 403 or 404

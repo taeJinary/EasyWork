@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+﻿import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,31 +28,29 @@ describe('SignupPage', () => {
   });
 
   it('submits nickname field required by backend signup contract', async () => {
-    mockPost.mockResolvedValue(apiOk({ userId: 1, email: 'tester@example.com', nickname: 'tester' }));
+    mockPost.mockResolvedValue(apiOk({ userId: 1, email: 'nick@example.com', nickname: 'Nick' }));
 
-    const { container } = render(
+    render(
       <MemoryRouter>
         <SignupPage />
       </MemoryRouter>
     );
 
     const user = userEvent.setup();
-    const textInputs = screen.getAllByRole('textbox');
-    const passwordInput = container.querySelector('input[type="password"]');
+    const nicknameInput = screen.getByLabelText('Nickname');
+    const emailInput = screen.getByLabelText('Email');
+    const passwordInput = screen.getByLabelText('Password');
 
-    expect(textInputs).toHaveLength(2);
-    expect(passwordInput).not.toBeNull();
-
-    await user.type(textInputs[0], 'tester');
-    await user.type(textInputs[1], 'tester@example.com');
-    await user.type(passwordInput!, 'Abcd1234!');
+    await user.type(nicknameInput, 'Nick');
+    await user.type(emailInput, 'nick@example.com');
+    await user.type(passwordInput, 'Password1!');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/auth/signup', {
-        nickname: 'tester',
-        email: 'tester@example.com',
-        password: 'Abcd1234!',
+        nickname: 'Nick',
+        email: 'nick@example.com',
+        password: 'Password1!',
       });
     });
   });

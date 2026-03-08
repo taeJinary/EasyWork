@@ -4,7 +4,15 @@ import { UserPlus, Shield, Trash2, AlertCircle, X } from 'lucide-react';
 import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
-import type { ApiResponse, ProjectDetail, ProjectMember, ProjectRole, InvitationSummary } from '@/types';
+import { toProjectDetail } from '@/utils/projectMappers';
+import type {
+  ApiResponse,
+  ProjectDetail,
+  ProjectDetailResponse,
+  ProjectMember,
+  ProjectRole,
+  InvitationSummary,
+} from '@/types';
 
 type TabType = 'board' | 'list' | 'members' | 'settings';
 
@@ -40,10 +48,10 @@ export default function ProjectMembersPage() {
       setLoading(true);
       setError(null);
       const [projectRes, membersRes] = await Promise.all([
-        apiClient.get<ApiResponse<ProjectDetail>>(`/projects/${projectId}`),
+        apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
         apiClient.get<ApiResponse<ProjectMember[]>>(`/projects/${projectId}/members`),
       ]);
-      setProject(projectRes.data.data);
+      setProject(toProjectDetail(projectRes.data.data));
       setMembers(membersRes.data.data);
     } catch (err) {
       setError('멤버 목록을 불러오는 데 실패했습니다.');

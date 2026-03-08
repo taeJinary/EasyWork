@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectSettingsPage from '@/pages/ProjectSettingsPage';
 import { apiOk } from '@/test/helpers';
-import type { ProjectDetail } from '@/types';
+import type { ProjectDetailResponse } from '@/types';
 
 const mockGet = vi.fn();
 const mockPatch = vi.fn();
@@ -32,18 +32,20 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-function makeProject(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
+function makeProject(overrides: Partial<ProjectDetailResponse> = {}): ProjectDetailResponse {
   return {
-    id: 1,
+    projectId: 1,
     name: 'Project Alpha',
     description: 'Alpha description',
-    workspaceId: 10,
-    workspaceName: 'Workspace',
     myRole: 'OWNER',
     memberCount: 3,
-    openTaskCount: 4,
-    createdAt: '2026-03-07T10:00:00',
-    updatedAt: '2026-03-07T10:00:00',
+    pendingInvitationCount: 1,
+    taskSummary: {
+      todo: 2,
+      inProgress: 1,
+      done: 3,
+    },
+    members: [],
     ...overrides,
   };
 }
@@ -89,7 +91,7 @@ describe('ProjectSettingsPage', () => {
         return Promise.resolve(
           apiOk(
             makeProject({
-              id: 2,
+              projectId: 2,
               name: 'Project Beta',
               description: 'Beta description',
             })
