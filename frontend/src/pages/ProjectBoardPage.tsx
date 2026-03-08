@@ -10,10 +10,10 @@ import apiClient from '@/api/client';
 import { toProjectDetail } from '@/utils/projectMappers';
 import type {
   ApiResponse,
-  BoardColumn,
   BoardTaskCard,
   ProjectDetail,
   ProjectDetailResponse,
+  ProjectLabelResponse,
   TaskBoardResponse,
   TaskStatus,
 } from '@/types';
@@ -26,12 +26,14 @@ export default function ProjectBoardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [columns, setColumns] = useState<BoardColumn[]>([]);
+  const [columns, setColumns] = useState<TaskBoardResponse['columns']>([]);
+  const [labels, setLabels] = useState<ProjectLabelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('board');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [labelFilter, setLabelFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
 
@@ -39,22 +41,35 @@ export default function ProjectBoardPage() {
     columnOrder.map((status) => rawColumns.find((column) => column.status === status) ?? { status, tasks: [] });
 
   const fetchBoard = useCallback(async () => {
+    if (!projectId) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const [projectRes, boardRes] = await Promise.all([
+
+      const boardParams: Record<string, string> = {};
+      if (labelFilter) boardParams.labelId = labelFilter;
+
+      const [projectRes, boardRes, labelsRes] = await Promise.all([
         apiClient.get<ApiResponse<ProjectDetailResponse>>(`/projects/${projectId}`),
-        apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`),
+        apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`, {
+          params: boardParams,
+        }),
+        apiClient.get<ApiResponse<ProjectLabelResponse[]>>(`/projects/${projectId}/labels`),
       ]);
+
       setProject(toProjectDetail(projectRes.data.data));
       setColumns(normalizeColumns(boardRes.data.data.columns));
+      setLabels(labelsRes.data.data);
     } catch (caughtError) {
       setError('Failed to load board.');
       console.error('Failed to fetch board:', caughtError);
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, labelFilter]);
 
   useEffect(() => {
     if (projectId) {
@@ -65,19 +80,32 @@ export default function ProjectBoardPage() {
   const handleTabClick = (tab: TabType) => {
     if (tab === 'list') {
       navigate(`/projects/${projectId}/tasks`);
-    } else if (tab === 'members') {
-      navigate(`/projects/${projectId}/members`);
-    } else if (tab === 'settings') {
-      navigate(`/projects/${projectId}/settings`);
-    } else {
-      setActiveTab(tab);
+      return;
     }
+    if (tab === 'members') {
+      navigate(`/projects/${projectId}/members`);
+      return;
+    }
+    if (tab === 'settings') {
+      navigate(`/projects/${projectId}/settings`);
+      return;
+    }
+    setActiveTab(tab);
   };
 
   const refreshBoard = async () => {
+    if (!projectId) {
+      return;
+    }
+
     try {
       setError(null);
-      const response = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`);
+      const boardParams: Record<string, string> = {};
+      if (labelFilter) boardParams.labelId = labelFilter;
+
+      const response = await apiClient.get<ApiResponse<TaskBoardResponse>>(`/projects/${projectId}/tasks/board`, {
+        params: boardParams,
+      });
       setColumns(normalizeColumns(response.data.data.columns));
     } catch (caughtError) {
       setError('Failed to refresh board.');
@@ -87,15 +115,20 @@ export default function ProjectBoardPage() {
 
   const filterTasks = (tasks: BoardTaskCard[]) => {
     let result = tasks;
+
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const normalizedQuery = searchQuery.toLowerCase();
       result = result.filter(
-        (task) => task.title.toLowerCase().includes(query) || task.labels.some((label) => label.name.toLowerCase().includes(query))
+        (task) =>
+          task.title.toLowerCase().includes(normalizedQuery) ||
+          task.labels.some((label) => label.name.toLowerCase().includes(normalizedQuery))
       );
     }
+
     if (priorityFilter) {
       result = result.filter((task) => task.priority === priorityFilter);
     }
+
     return result;
   };
 
@@ -106,7 +139,7 @@ export default function ProjectBoardPage() {
     { key: 'settings', label: 'Settings' },
   ];
 
-  const priorityOptions: { value: string; label: string }[] = [
+  const priorityOptions = [
     { value: '', label: 'Priority: All' },
     { value: 'URGENT', label: 'URGENT' },
     { value: 'HIGH', label: 'HIGH' },
@@ -151,7 +184,7 @@ export default function ProjectBoardPage() {
             type="button"
             onClick={() => navigate(`/projects/${projectId}/members?invite=1`)}
             className="
-              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
+              flex h-[32px] cursor-pointer items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
               bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
               hover:bg-[var(--color-surface-muted)]
             "
@@ -163,7 +196,7 @@ export default function ProjectBoardPage() {
             type="button"
             onClick={() => setShowTaskModal(true)}
             className="
-              flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border-none
+              flex h-[32px] cursor-pointer items-center gap-1 rounded-[var(--radius-sm)] border-none
               bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white
               hover:bg-[var(--color-primary-hover)]
             "
@@ -214,15 +247,31 @@ export default function ProjectBoardPage() {
           value={priorityFilter}
           onChange={(event) => setPriorityFilter(event.target.value)}
           className="
-            h-[32px] px-[var(--spacing-sm)] border border-[var(--color-border)]
-            rounded-[var(--radius-sm)] bg-[var(--color-surface)]
-            text-[var(--text-sm)] text-[var(--color-text-secondary)]
-            focus:outline-none focus:border-[var(--color-primary)]
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
           "
         >
           {priorityOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Label Filter"
+          value={labelFilter}
+          onChange={(event) => setLabelFilter(event.target.value)}
+          className="
+            h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
+            focus:border-[var(--color-primary)] focus:outline-none
+          "
+        >
+          <option value="">Label: All</option>
+          {labels.map((label) => (
+            <option key={label.labelId} value={String(label.labelId)}>
+              {label.name}
             </option>
           ))}
         </select>
