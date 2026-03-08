@@ -163,6 +163,11 @@ describe('ProjectSettingsPage', () => {
     });
 
     mockDelete.mockImplementation((url: string) => {
+      if (url === '/labels/1') {
+        labelsByProject['1'] = labelsByProject['1'].filter((label) => label.labelId !== 1);
+        return Promise.resolve(apiOk(null));
+      }
+
       if (url === '/labels/2') {
         labelsByProject['1'] = labelsByProject['1'].filter((label) => label.labelId !== 2);
         return Promise.resolve(apiOk(null));
@@ -312,5 +317,32 @@ describe('ProjectSettingsPage', () => {
     });
 
     expect(mockPatch).not.toHaveBeenCalledWith('/labels/1', expect.anything());
+  });
+
+  it('clears label editor state after deleting the label being edited', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Release')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit label Release' }));
+
+    expect(screen.getByRole('button', { name: 'Update Label' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Label Name')).toHaveValue('Release');
+
+    await user.click(screen.getByRole('button', { name: 'Delete label Release' }));
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith('/labels/1');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Create Label' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Update Label' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label Name')).toHaveValue('');
+    expect(screen.getByLabelText('Color Hex')).toHaveValue('#2563EB');
+    expect(screen.queryByText('Release')).not.toBeInTheDocument();
   });
 });

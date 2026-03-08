@@ -261,8 +261,11 @@ export default function ProjectSettingsPage() {
     mutationFn: async (labelId: number) => {
       return apiClient.delete(`/labels/${labelId}`);
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, labelId) => {
       await queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
+      if (editingLabelId === labelId) {
+        resetLabelDraft();
+      }
     },
     onError: () => {
       updateLabelEditor((state) => ({
