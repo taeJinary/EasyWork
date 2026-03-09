@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, AlertTriangle, AlertCircle, CheckCircle, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
@@ -45,7 +45,7 @@ export default function AccountSettingsPage() {
   const [pushSubmitting, setPushSubmitting] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [pushSuccess, setPushSuccess] = useState<string | null>(null);
-  const [registeredDevice, setRegisteredDevice] = useState<PushTokenRegistrationState | null>(null);
+  const [registeredDevices, setRegisteredDevices] = useState<PushTokenRegistrationState[]>([]);
 
   const handleNewPasswordChange = (value: string) => {
     setNewPassword(value);
@@ -56,6 +56,24 @@ export default function AccountSettingsPage() {
 
   const canChangePassword = currentPassword.trim().length > 0 && newPassword.trim().length > 0 && !pwValidation && !pwSubmitting;
   const canRegisterDevice = pushToken.trim().length > 0 && !pushSubmitting;
+
+  const loadRegisteredDevices = async () => {
+    try {
+      const response = await apiClient.get<ApiResponse<NotificationPushTokenResponse[]>>('/notifications/push-tokens');
+      setRegisteredDevices(response.data.data.map((device) => ({
+        token: device.token,
+        platform: device.platform,
+        active: device.active,
+      })));
+    } catch (err) {
+      setRegisteredDevices([]);
+      console.error('Failed to load push tokens:', err);
+    }
+  };
+
+  useEffect(() => {
+    void loadRegisteredDevices();
+  }, []);
 
   const handleChangePassword = async () => {
     const err = validateNewPassword(newPassword);
@@ -121,10 +139,16 @@ export default function AccountSettingsPage() {
         }
       );
 
-      setRegisteredDevice({
-        token: response.data.data.token,
-        platform: response.data.data.platform,
-        active: response.data.data.active,
+      setRegisteredDevices((current) => {
+        const next = current.filter((device) => device.token !== response.data.data.token);
+        return [
+          {
+            token: response.data.data.token,
+            platform: response.data.data.platform,
+            active: response.data.data.active,
+          },
+          ...next,
+        ];
       });
       setPushToken('');
       setPushSuccess('활성 디바이스가 등록되었습니다.');
@@ -137,8 +161,7 @@ export default function AccountSettingsPage() {
     }
   };
 
-  const handleUnregisterPushToken = async () => {
-    if (!registeredDevice) return;
+  const handleUnregisterPushToken = async (token: string) => {
 
     setPushSubmitting(true);
     setPushError(null);
@@ -148,12 +171,12 @@ export default function AccountSettingsPage() {
       const response = await apiClient.delete<ApiResponse<NotificationPushTokenUnregisterResponse>>(
         '/notifications/push-tokens',
         {
-          params: { token: registeredDevice.token },
+          params: { token },
         }
       );
 
       if (response.data.data.removed) {
-        setRegisteredDevice(null);
+        setRegisteredDevices((current) => current.filter((device) => device.token !== token));
         setPushSuccess('디바이스 등록이 해제되었습니다.');
       }
     } catch (err: unknown) {
@@ -335,32 +358,43 @@ export default function AccountSettingsPage() {
               >
                 {pushSubmitting ? '처리 중...' : '디바이스 등록'}
               </button>
-              {registeredDevice && (
-                <button
-                  onClick={handleUnregisterPushToken}
-                  disabled={pushSubmitting}
-                  className="
-                    h-[36px] px-[var(--spacing-lg)]
-                    bg-transparent border border-[var(--color-border)] text-[var(--color-text-secondary)]
-                    rounded-[var(--radius-sm)] text-[var(--text-sm)] font-medium cursor-pointer
-                    hover:bg-[var(--color-surface-muted)]
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                  "
-                >
-                  디바이스 해제
-                </button>
-              )}
             </div>
           </div>
 
-          {registeredDevice && (
-            <div className="mt-[var(--spacing-lg)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]">
+          {registeredDevices.length > 0 && (
+            <div
+              data-testid="registered-device-list"
+              className="mt-[var(--spacing-lg)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]"
+            >
               <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
                 등록된 디바이스
               </h3>
-              <div className="space-y-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-                <p className="m-0">{registeredDevice.platform}</p>
-                <p className="m-0 break-all">{registeredDevice.token}</p>
+              <div className="space-y-[var(--spacing-sm)]">
+                {registeredDevices.map((device) => (
+                  <div
+                    key={device.token}
+                    className="flex items-start justify-between gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-sm)]"
+                  >
+                    <div className="space-y-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+                      <p className="m-0">{device.platform}</p>
+                      <p className="m-0 break-all">{device.token}</p>
+                    </div>
+                    <button
+                      onClick={() => handleUnregisterPushToken(device.token)}
+                      disabled={pushSubmitting}
+                      aria-label={`디바이스 해제 ${device.token}`}
+                      className="
+                        h-[32px] shrink-0 px-[var(--spacing-md)]
+                        bg-transparent border border-[var(--color-border)] text-[var(--color-text-secondary)]
+                        rounded-[var(--radius-sm)] text-[var(--text-sm)] font-medium cursor-pointer
+                        hover:bg-[var(--color-surface-muted)]
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                      "
+                    >
+                      디바이스 해제
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
