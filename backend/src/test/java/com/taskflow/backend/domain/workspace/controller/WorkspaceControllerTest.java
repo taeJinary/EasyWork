@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.workspace.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.request.UpdateWorkspaceRequest;
+import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
@@ -11,6 +12,7 @@ import com.taskflow.backend.domain.workspace.dto.response.WorkspaceSummaryRespon
 import com.taskflow.backend.domain.workspace.service.WorkspaceService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
 import com.taskflow.backend.global.auth.jwt.JwtAuthenticationFilter;
+import com.taskflow.backend.global.common.enums.ProjectRole;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import com.taskflow.backend.global.common.enums.WorkspaceRole;
 import java.time.LocalDateTime;
@@ -153,6 +155,30 @@ class WorkspaceControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].memberId").value(100L))
                 .andExpect(jsonPath("$.data[1].role").value("MEMBER"));
+    }
+
+    @Test
+    void getWorkspaceProjectsReturnsResponse() throws Exception {
+        ProjectListItemResponse project = new ProjectListItemResponse(
+                21L,
+                "Roadmap",
+                "Q2 roadmap",
+                ProjectRole.OWNER,
+                3L,
+                5L,
+                2L,
+                40,
+                LocalDateTime.of(2026, 3, 3, 9, 0)
+        );
+        given(workspaceService.getWorkspaceProjects(1L, 10L)).willReturn(List.of(project));
+
+        mockMvc.perform(get(WorkspaceHttpContract.projectsPath(10L))
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].projectId").value(21L))
+                .andExpect(jsonPath("$.data[0].role").value("OWNER"))
+                .andExpect(jsonPath("$.data[0].taskCount").value(5L));
     }
 
     @Test

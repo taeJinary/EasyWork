@@ -1,6 +1,11 @@
 package com.taskflow.backend.domain.workspace.service;
 
+import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
+import com.taskflow.backend.domain.project.entity.Project;
+import com.taskflow.backend.domain.project.entity.ProjectMember;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
+import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
+import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
@@ -16,9 +21,11 @@ import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberCountProj
 import com.taskflow.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.taskflow.backend.domain.workspace.repository.WorkspaceRepository;
 import com.taskflow.backend.global.common.enums.WorkspaceRole;
+import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +49,8 @@ public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final TaskRepository taskRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -121,6 +130,20 @@ public class WorkspaceService {
                 .toList();
     }
 
+    public List<ProjectListItemResponse> getWorkspaceProjects(Long userId, Long workspaceId) {
+        findUser(userId);
+        findWorkspace(workspaceId);
+        findWorkspaceMembership(workspaceId, userId);
+
+        return projectRepository.findAllByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
+                .sorted(Comparator.comparing(Project::getUpdatedAt).reversed())
+                .map(project -> projectMemberRepository.findByProjectIdAndUserId(project.getId(), userId)
+                        .map(membership -> toProjectListItem(project, membership))
+                        .orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     @Transactional
     public WorkspaceSummaryResponse updateWorkspace(Long userId, Long workspaceId, UpdateWorkspaceRequest request) {
         findUser(userId);
@@ -175,6 +198,24 @@ public class WorkspaceService {
         );
     }
 
+    private ProjectListItemResponse toProjectListItem(Project project, ProjectMember membership) {
+        long memberCount = projectMemberRepository.countByProjectId(project.getId());
+        long taskCount = taskRepository.countByProjectIdAndDeletedAtIsNull(project.getId());
+        long doneTaskCount = taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(project.getId(), TaskStatus.DONE);
+
+        return new ProjectListItemResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                membership.getRole(),
+                memberCount,
+                taskCount,
+                doneTaskCount,
+                calculateProgressRate(taskCount, doneTaskCount),
+                project.getUpdatedAt()
+        );
+    }
+
     private Map<Long, Long> loadMemberCounts(List<WorkspaceMember> memberships) {
         Set<Long> workspaceIds = memberships.stream()
                 .map(membership -> membership.getWorkspace().getId())
@@ -215,6 +256,13 @@ public class WorkspaceService {
             return DEFAULT_PAGE_SIZE;
         }
         return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    private int calculateProgressRate(long taskCount, long doneTaskCount) {
+        if (taskCount <= 0L) {
+            return 0;
+        }
+        return (int) ((doneTaskCount * 100L) / taskCount);
     }
 
     private String normalizeDescription(String description) {

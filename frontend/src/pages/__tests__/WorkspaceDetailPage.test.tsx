@@ -50,6 +50,21 @@ describe('WorkspaceDetailPage', () => {
             joinedAt: '2026-03-01T11:00:00',
           },
         ])
+      )
+      .mockResolvedValueOnce(
+        apiOk([
+          {
+            projectId: 21,
+            name: 'Roadmap',
+            description: 'Q2 roadmap',
+            role: 'OWNER',
+            memberCount: 2,
+            taskCount: 5,
+            doneTaskCount: 2,
+            progressRate: 40,
+            updatedAt: '2026-03-01T12:00:00',
+          },
+        ])
       );
 
     render(
@@ -67,7 +82,9 @@ describe('WorkspaceDetailPage', () => {
 
     expect(screen.getByText('Owner')).toBeInTheDocument();
     expect(screen.getByText('Member')).toBeInTheDocument();
-    expect(screen.getByText('2 members')).toBeInTheDocument();
+    expect(screen.getAllByText('2 members').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Roadmap')).toBeInTheDocument();
+    expect(screen.getByText('3 open tasks')).toBeInTheDocument();
     expect(screen.getAllByText('OWNER').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -83,6 +100,7 @@ describe('WorkspaceDetailPage', () => {
           updatedAt: '2026-03-01T10:00:00',
         })
       )
+      .mockResolvedValueOnce(apiOk([]))
       .mockResolvedValueOnce(apiOk([]));
     mockPost.mockResolvedValue(
       apiOk({
@@ -119,5 +137,20 @@ describe('WorkspaceDetailPage', () => {
         description: 'Q2 roadmap',
       });
     });
+  });
+
+  it('shows dedicated error state when workspace detail loading fails', async () => {
+    mockGet.mockRejectedValueOnce(new Error('workspace load failed'));
+
+    render(
+      <MemoryRouter initialEntries={['/workspaces/1']}>
+        <Routes>
+          <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Failed to load workspace.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 });

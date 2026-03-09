@@ -4,6 +4,9 @@ import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.request.UpdateWorkspaceRequest;
+import com.taskflow.backend.domain.project.dto.request.CreateProjectRequest;
+import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
+import com.taskflow.backend.domain.project.service.ProjectService;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceMemberResponse;
@@ -33,6 +36,9 @@ class WorkspaceServiceIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
     private WorkspaceService workspaceService;
+
+    @Autowired
+    private ProjectService projectService;
 
     @Autowired
     private WorkspaceRepository workspaceRepository;
@@ -143,6 +149,45 @@ class WorkspaceServiceIntegrationTest extends IntegrationTestContainerSupport {
         assertThat(detail.name()).isEqualTo("trimmed-workspace");
         assertThat(detail.description()).isEqualTo("trimmed description");
         assertThat(detail.updatedAt()).isAfter(updatedAtBefore);
+    }
+
+    @Test
+    void getWorkspaceProjectsReturnsAccessibleProjectsInUpdatedOrder() {
+        User owner = saveActiveUser("ws-owner");
+        User memberOnly = saveActiveUser("ws-member");
+
+        WorkspaceSummaryResponse workspaceSummary = workspaceService.createWorkspace(
+                owner.getId(),
+                new CreateWorkspaceRequest("projects-workspace", "projects description")
+        );
+        Workspace workspace = workspaceRepository.findById(workspaceSummary.workspaceId()).orElseThrow();
+        workspaceMemberRepository.save(WorkspaceMember.create(
+                workspace,
+                memberOnly,
+                WorkspaceRole.MEMBER,
+                LocalDateTime.now()
+        ));
+
+        projectService.createProject(
+                owner.getId(),
+                new CreateProjectRequest(workspaceSummary.workspaceId(), "alpha-project", "alpha")
+        );
+        projectService.createProject(
+                owner.getId(),
+                new CreateProjectRequest(workspaceSummary.workspaceId(), "beta-project", "beta")
+        );
+
+        List<ProjectListItemResponse> ownerProjects =
+                workspaceService.getWorkspaceProjects(owner.getId(), workspaceSummary.workspaceId());
+        List<ProjectListItemResponse> memberOnlyProjects =
+                workspaceService.getWorkspaceProjects(memberOnly.getId(), workspaceSummary.workspaceId());
+
+        assertThat(ownerProjects).hasSize(2);
+        assertThat(ownerProjects.get(0).name()).isEqualTo("beta-project");
+        assertThat(ownerProjects.get(1).name()).isEqualTo("alpha-project");
+        assertThat(ownerProjects.get(0).role()).isEqualTo(com.taskflow.backend.global.common.enums.ProjectRole.OWNER);
+        assertThat(ownerProjects.get(0).memberCount()).isEqualTo(1L);
+        assertThat(memberOnlyProjects).isEmpty();
     }
 
     private User saveActiveUser(String nicknamePrefix) {

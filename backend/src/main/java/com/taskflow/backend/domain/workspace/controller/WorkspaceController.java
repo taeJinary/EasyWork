@@ -2,6 +2,7 @@ package com.taskflow.backend.domain.workspace.controller;
 
 import com.taskflow.backend.domain.workspace.dto.request.CreateWorkspaceRequest;
 import com.taskflow.backend.domain.workspace.dto.request.UpdateWorkspaceRequest;
+import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceDetailResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceListResponse;
 import com.taskflow.backend.domain.workspace.dto.response.WorkspaceMemberResponse;
@@ -71,6 +72,16 @@ public class WorkspaceController {
     ) {
         List<WorkspaceMemberResponse> response =
                 workspaceService.getWorkspaceMembers(extractUserId(authentication), workspaceId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping(WorkspaceHttpContract.PROJECTS_PATH)
+    public ResponseEntity<ApiResponse<List<ProjectListItemResponse>>> getWorkspaceProjects(
+            Authentication authentication,
+            @PathVariable Long workspaceId
+    ) {
+        List<ProjectListItemResponse> response =
+                workspaceService.getWorkspaceProjects(extractUserId(authentication), workspaceId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
