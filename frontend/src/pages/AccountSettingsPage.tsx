@@ -25,7 +25,6 @@ export default function AccountSettingsPage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
 
-  // Password change
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [pwSubmitting, setPwSubmitting] = useState(false);
@@ -33,7 +32,6 @@ export default function AccountSettingsPage() {
   const [pwSuccess, setPwSuccess] = useState<string | null>(null);
   const [pwValidation, setPwValidation] = useState<string | null>(null);
 
-  // Withdraw
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawPassword, setWithdrawPassword] = useState('');
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
@@ -162,7 +160,6 @@ export default function AccountSettingsPage() {
   };
 
   const handleUnregisterPushToken = async (token: string) => {
-
     setPushSubmitting(true);
     setPushError(null);
     setPushSuccess(null);
@@ -193,14 +190,12 @@ export default function AccountSettingsPage() {
       <PageHeader title="계정 설정" description="비밀번호 변경 및 계정 관리" />
 
       <div className="mt-[var(--spacing-lg)] max-w-[480px] space-y-[var(--spacing-xl)]">
-        {/* ── Password Change Section ── */}
         <section>
           <h2 className="text-[var(--text-base)] font-bold text-[var(--color-text-primary)] m-0 mb-[var(--spacing-base)] flex items-center gap-[var(--spacing-sm)]">
             <Lock size={16} />
             비밀번호 변경
           </h2>
 
-          {/* Error / Success */}
           {pwError && (
             <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
               <AlertCircle size={14} className="shrink-0" />
@@ -401,7 +396,7 @@ export default function AccountSettingsPage() {
         </section>
 
         {/* ── Danger Zone ── */}
-        <section className="border-t border-[var(--color-border)] pt-[var(--spacing-lg)]">
+         <section className="border-t border-[var(--color-border)] pt-[var(--spacing-lg)]">
           <h2 className="text-[var(--text-base)] font-bold text-[var(--color-danger)] m-0 mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)]">
             <AlertTriangle size={16} />
             위험 영역
@@ -423,7 +418,6 @@ export default function AccountSettingsPage() {
         </section>
       </div>
 
-      {/* ── Withdraw Confirmation Modal ── */}
       {showWithdrawModal && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => { setShowWithdrawModal(false); setWithdrawError(null); setWithdrawPassword(''); }} />

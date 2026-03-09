@@ -19,7 +19,6 @@ vi.mock('@/api/client', () => ({
   },
 }));
 
-// Mock authStore — capture logout calls
 const mockLogout = vi.fn();
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: () => ({
@@ -27,7 +26,6 @@ vi.mock('@/stores/authStore', () => ({
   }),
 }));
 
-// Mock navigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -51,23 +49,22 @@ describe('AccountSettingsPage', () => {
     mockGet.mockResolvedValue(apiOk([]));
   });
 
-  // 1. Renders password change form
-  it('renders password change form fields', () => {
+  it('renders password change form fields', async () => {
     renderPage();
     expect(screen.getByLabelText('현재 비밀번호')).toBeInTheDocument();
     expect(screen.getByLabelText('새 비밀번호')).toBeInTheDocument();
-    // "비밀번호 변경" appears in both h2 title and button — use getByRole for the button
     expect(screen.getByRole('button', { name: '비밀번호 변경' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith('/notifications/push-tokens');
+    });
   });
 
-  // 2. Empty fields → change button disabled
   it('disables change button when fields are empty', () => {
     renderPage();
     const changeBtn = screen.getByRole('button', { name: '비밀번호 변경' });
     expect(changeBtn).toBeDisabled();
   });
 
-  // 3. Invalid new password (no special char) → error
   it('shows error when new password has no special character', async () => {
     renderPage();
     const user = userEvent.setup();
@@ -76,12 +73,10 @@ describe('AccountSettingsPage', () => {
     await user.type(screen.getByLabelText('새 비밀번호'), 'NewPass123');
 
     await waitFor(() => {
-      // Validation error text is more specific than the hint text
       expect(screen.getByText(/모두 포함해야/)).toBeInTheDocument();
     });
   });
 
-  // 4. New password < 8 chars → error
   it('shows error when new password is less than 8 chars', async () => {
     renderPage();
     const user = userEvent.setup();
@@ -94,7 +89,6 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  // 5. Valid password → change success
   it('successfully changes password with valid input', async () => {
     mockPatch.mockResolvedValue(apiOk(null, '비밀번호가 변경되었습니다.'));
     renderPage();
@@ -116,7 +110,6 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  // 6. Password change API failure → error banner
   it('shows error on password change failure', async () => {
     mockPatch.mockRejectedValue({ response: { data: { message: '현재 비밀번호가 틀렸습니다.' } } });
     renderPage();
@@ -131,7 +124,6 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  // 7. Withdraw button → shows confirmation modal
   it('shows withdraw confirmation modal on button click', async () => {
     renderPage();
     const user = userEvent.setup();
@@ -144,7 +136,6 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  // 8. Withdraw success → logout + redirect
   it('successfully withdraws, logs out, and redirects to login', async () => {
     mockDelete.mockResolvedValue(apiOk(null, '회원 탈퇴가 완료되었습니다.'));
     renderPage();
@@ -169,7 +160,6 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  // 9. Withdraw API failure → error
   it('shows error on withdraw failure', async () => {
     mockDelete.mockRejectedValue(new Error('Network Error'));
     renderPage();
@@ -189,7 +179,6 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  // 10. Cancel withdraw modal → modal closes
   it('closes withdraw modal on cancel', async () => {
     renderPage();
     const user = userEvent.setup();
