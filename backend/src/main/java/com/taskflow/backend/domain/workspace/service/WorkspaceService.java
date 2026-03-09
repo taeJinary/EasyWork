@@ -3,8 +3,10 @@ package com.taskflow.backend.domain.workspace.service;
 import com.taskflow.backend.domain.project.dto.response.ProjectListItemResponse;
 import com.taskflow.backend.domain.project.entity.Project;
 import com.taskflow.backend.domain.project.entity.ProjectMember;
+import com.taskflow.backend.domain.project.repository.ProjectMemberCountProjection;
 import com.taskflow.backend.domain.project.repository.ProjectRepository;
 import com.taskflow.backend.domain.project.repository.ProjectMemberRepository;
+import com.taskflow.backend.domain.task.repository.ProjectTaskCountProjection;
 import com.taskflow.backend.domain.task.repository.TaskRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
@@ -29,6 +31,7 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -135,12 +138,23 @@ public class WorkspaceService {
         findWorkspace(workspaceId);
         findWorkspaceMembership(workspaceId, userId);
 
-        return projectRepository.findAllByWorkspaceIdAndDeletedAtIsNull(workspaceId).stream()
-                .sorted(Comparator.comparing(Project::getUpdatedAt).reversed())
-                .map(project -> projectMemberRepository.findByProjectIdAndUserId(project.getId(), userId)
-                        .map(membership -> toProjectListItem(project, membership))
-                        .orElse(null))
-                .filter(java.util.Objects::nonNull)
+        List<ProjectMember> memberships =
+                projectMemberRepository.findAllActiveByWorkspaceIdAndUserIdOrderByProjectUpdatedAtDesc(
+                        workspaceId,
+                        userId
+                );
+        Map<Long, Long> memberCounts = loadProjectMemberCounts(memberships);
+        Map<Long, Long> taskCounts = loadTaskCounts(memberships);
+        Map<Long, Long> doneTaskCounts = loadDoneTaskCounts(memberships);
+
+        return memberships.stream()
+                .map(membership -> toProjectListItem(
+                        membership.getProject(),
+                        membership,
+                        memberCounts,
+                        taskCounts,
+                        doneTaskCounts
+                ))
                 .toList();
     }
 
@@ -198,10 +212,16 @@ public class WorkspaceService {
         );
     }
 
-    private ProjectListItemResponse toProjectListItem(Project project, ProjectMember membership) {
-        long memberCount = projectMemberRepository.countByProjectId(project.getId());
-        long taskCount = taskRepository.countByProjectIdAndDeletedAtIsNull(project.getId());
-        long doneTaskCount = taskRepository.countByProjectIdAndStatusAndDeletedAtIsNull(project.getId(), TaskStatus.DONE);
+    private ProjectListItemResponse toProjectListItem(
+            Project project,
+            ProjectMember membership,
+            Map<Long, Long> memberCounts,
+            Map<Long, Long> taskCounts,
+            Map<Long, Long> doneTaskCounts
+    ) {
+        long memberCount = memberCounts.getOrDefault(project.getId(), 0L);
+        long taskCount = taskCounts.getOrDefault(project.getId(), 0L);
+        long doneTaskCount = doneTaskCounts.getOrDefault(project.getId(), 0L);
 
         return new ProjectListItemResponse(
                 project.getId(),
@@ -214,6 +234,49 @@ public class WorkspaceService {
                 calculateProgressRate(taskCount, doneTaskCount),
                 project.getUpdatedAt()
         );
+    }
+
+    private Map<Long, Long> loadProjectMemberCounts(List<ProjectMember> memberships) {
+        Set<Long> projectIds = extractProjectIds(memberships);
+        if (projectIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return projectMemberRepository.countMembersByProjectIds(projectIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ProjectMemberCountProjection::getProjectId,
+                        ProjectMemberCountProjection::getMemberCount
+                ));
+    }
+
+    private Map<Long, Long> loadTaskCounts(List<ProjectMember> memberships) {
+        Set<Long> projectIds = extractProjectIds(memberships);
+        if (projectIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return taskRepository.countTasksByProjectIds(projectIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ProjectTaskCountProjection::getProjectId,
+                        ProjectTaskCountProjection::getTaskCount
+                ));
+    }
+
+    private Map<Long, Long> loadDoneTaskCounts(List<ProjectMember> memberships) {
+        Set<Long> projectIds = extractProjectIds(memberships);
+        if (projectIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return taskRepository.countTasksByProjectIdsAndStatus(projectIds, TaskStatus.DONE).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ProjectTaskCountProjection::getProjectId,
+                        ProjectTaskCountProjection::getTaskCount
+                ));
+    }
+
+    private Set<Long> extractProjectIds(List<ProjectMember> memberships) {
+        return memberships.stream()
+                .map(ProjectMember::getProject)
+                .map(Project::getId)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     private Map<Long, Long> loadMemberCounts(List<WorkspaceMember> memberships) {
