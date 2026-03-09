@@ -8,6 +8,7 @@ import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.global.common.enums.PushPlatform;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,14 @@ public class NotificationPushTokenService {
                     return true;
                 })
                 .orElse(false);
+    }
+
+    public List<NotificationPushTokenResponse> getActivePushTokens(Long userId) {
+        findActiveUser(userId);
+
+        return notificationPushTokenRepository.findAllByUserIdAndIsActiveTrueOrderByIdDesc(userId).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private User findActiveUser(Long userId) {

@@ -37,6 +37,7 @@ export default function AccountSettingsPage() {
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
+  // Push token
   const [pushToken, setPushToken] = useState('');
   const [pushPlatform, setPushPlatform] = useState<PushPlatform>('WEB');
   const [pushSubmitting, setPushSubmitting] = useState(false);
@@ -394,7 +395,8 @@ export default function AccountSettingsPage() {
           )}
         </section>
 
-        <section className="border-t border-[var(--color-border)] pt-[var(--spacing-lg)]">
+        {/* ── Danger Zone ── */}
+         <section className="border-t border-[var(--color-border)] pt-[var(--spacing-lg)]">
           <h2 className="text-[var(--text-base)] font-bold text-[var(--color-danger)] m-0 mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)]">
             <AlertTriangle size={16} />
             위험 영역
