@@ -4,7 +4,13 @@ import { Lock, AlertTriangle, AlertCircle, CheckCircle, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
-import type { ApiResponse } from '@/types';
+import type {
+  ApiResponse,
+  NotificationPushTokenResponse,
+  NotificationPushTokenUnregisterResponse,
+  PushPlatform,
+  PushTokenRegistrationState,
+} from '@/types';
 
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,20}$/;
 
@@ -33,6 +39,14 @@ export default function AccountSettingsPage() {
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
+  // Push token
+  const [pushToken, setPushToken] = useState('');
+  const [pushPlatform, setPushPlatform] = useState<PushPlatform>('WEB');
+  const [pushSubmitting, setPushSubmitting] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushSuccess, setPushSuccess] = useState<string | null>(null);
+  const [registeredDevice, setRegisteredDevice] = useState<PushTokenRegistrationState | null>(null);
+
   const handleNewPasswordChange = (value: string) => {
     setNewPassword(value);
     setPwSuccess(null);
@@ -41,6 +55,7 @@ export default function AccountSettingsPage() {
   };
 
   const canChangePassword = currentPassword.trim().length > 0 && newPassword.trim().length > 0 && !pwValidation && !pwSubmitting;
+  const canRegisterDevice = pushToken.trim().length > 0 && !pushSubmitting;
 
   const handleChangePassword = async () => {
     const err = validateNewPassword(newPassword);
@@ -83,6 +98,70 @@ export default function AccountSettingsPage() {
       console.error('Failed to withdraw:', err);
     } finally {
       setWithdrawSubmitting(false);
+    }
+  };
+
+  const handleRegisterPushToken = async () => {
+    const normalizedToken = pushToken.trim();
+    if (!normalizedToken) {
+      setPushError('푸시 토큰을 입력해주세요.');
+      return;
+    }
+
+    setPushSubmitting(true);
+    setPushError(null);
+    setPushSuccess(null);
+
+    try {
+      const response = await apiClient.post<ApiResponse<NotificationPushTokenResponse>>(
+        '/notifications/push-tokens',
+        {
+          token: normalizedToken,
+          platform: pushPlatform,
+        }
+      );
+
+      setRegisteredDevice({
+        token: response.data.data.token,
+        platform: response.data.data.platform,
+        active: response.data.data.active,
+      });
+      setPushToken('');
+      setPushSuccess('활성 디바이스가 등록되었습니다.');
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setPushError(message || '디바이스 등록에 실패했습니다.');
+      console.error('Failed to register push token:', err);
+    } finally {
+      setPushSubmitting(false);
+    }
+  };
+
+  const handleUnregisterPushToken = async () => {
+    if (!registeredDevice) return;
+
+    setPushSubmitting(true);
+    setPushError(null);
+    setPushSuccess(null);
+
+    try {
+      const response = await apiClient.delete<ApiResponse<NotificationPushTokenUnregisterResponse>>(
+        '/notifications/push-tokens',
+        {
+          params: { token: registeredDevice.token },
+        }
+      );
+
+      if (response.data.data.removed) {
+        setRegisteredDevice(null);
+        setPushSuccess('디바이스 등록이 해제되었습니다.');
+      }
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setPushError(message || '디바이스 해제에 실패했습니다.');
+      console.error('Failed to unregister push token:', err);
+    } finally {
+      setPushSubmitting(false);
     }
   };
 
@@ -173,6 +252,118 @@ export default function AccountSettingsPage() {
               {pwSubmitting ? '변경 중...' : '비밀번호 변경'}
             </button>
           </div>
+        </section>
+
+        <section className="border-t border-[var(--color-border)] pt-[var(--spacing-lg)]">
+          <h2 className="text-[var(--text-base)] font-bold text-[var(--color-text-primary)] m-0 mb-[var(--spacing-base)]">
+            알림 디바이스
+          </h2>
+
+          {pushError && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
+              <AlertCircle size={14} className="shrink-0" />
+              {pushError}
+            </div>
+          )}
+          {pushSuccess && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-green-50 border border-[var(--color-success)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-success)]">
+              <CheckCircle size={14} className="shrink-0" />
+              {pushSuccess}
+            </div>
+          )}
+
+          <div className="space-y-[var(--spacing-md)]">
+            <div>
+              <label htmlFor="pushToken" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+                푸시 토큰
+              </label>
+              <input
+                id="pushToken"
+                type="text"
+                value={pushToken}
+                onChange={(e) => {
+                  setPushToken(e.target.value);
+                  setPushError(null);
+                  setPushSuccess(null);
+                }}
+                placeholder="device token"
+                className="
+                  w-full h-[36px] px-[var(--spacing-sm)]
+                  border border-[var(--color-border)] rounded-[var(--radius-sm)]
+                  bg-[var(--color-surface)] text-[var(--text-sm)]
+                  focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                "
+              />
+            </div>
+
+            <div>
+              <label htmlFor="pushPlatform" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+                플랫폼
+              </label>
+              <select
+                id="pushPlatform"
+                value={pushPlatform}
+                onChange={(e) => {
+                  setPushPlatform(e.target.value as PushPlatform);
+                  setPushError(null);
+                  setPushSuccess(null);
+                }}
+                className="
+                  w-full h-[36px] px-[var(--spacing-sm)]
+                  border border-[var(--color-border)] rounded-[var(--radius-sm)]
+                  bg-[var(--color-surface)] text-[var(--text-sm)]
+                  focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                "
+              >
+                <option value="WEB">WEB</option>
+                <option value="ANDROID">ANDROID</option>
+                <option value="IOS">IOS</option>
+              </select>
+            </div>
+
+            <div className="flex gap-[var(--spacing-sm)]">
+              <button
+                onClick={handleRegisterPushToken}
+                disabled={!canRegisterDevice}
+                className="
+                  h-[36px] px-[var(--spacing-lg)]
+                  bg-[var(--color-primary)] text-white rounded-[var(--radius-sm)]
+                  text-[var(--text-sm)] font-medium border-none cursor-pointer
+                  hover:bg-[var(--color-primary-hover)]
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                "
+              >
+                {pushSubmitting ? '처리 중...' : '디바이스 등록'}
+              </button>
+              {registeredDevice && (
+                <button
+                  onClick={handleUnregisterPushToken}
+                  disabled={pushSubmitting}
+                  className="
+                    h-[36px] px-[var(--spacing-lg)]
+                    bg-transparent border border-[var(--color-border)] text-[var(--color-text-secondary)]
+                    rounded-[var(--radius-sm)] text-[var(--text-sm)] font-medium cursor-pointer
+                    hover:bg-[var(--color-surface-muted)]
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  "
+                >
+                  디바이스 해제
+                </button>
+              )}
+            </div>
+          </div>
+
+          {registeredDevice && (
+            <div className="mt-[var(--spacing-lg)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]">
+              <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
+                등록된 디바이스
+              </h3>
+              <div className="space-y-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+                <p className="m-0">{registeredDevice.platform}</p>
+                <p className="m-0 break-all">{registeredDevice.token}</p>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ── Danger Zone ── */}
