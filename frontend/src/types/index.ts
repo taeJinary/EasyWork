@@ -58,6 +58,29 @@ export interface ReissueResponse {
   expiresIn: number;
 }
 
+export type PushPlatform = 'WEB' | 'ANDROID' | 'IOS';
+
+export interface RegisterNotificationPushTokenRequest {
+  token: string;
+  platform: PushPlatform;
+}
+
+export interface NotificationPushTokenResponse {
+  token: string;
+  platform: PushPlatform;
+  active: boolean;
+}
+
+export interface NotificationPushTokenUnregisterResponse {
+  removed: boolean;
+}
+
+export interface PushTokenRegistrationState {
+  token: string;
+  platform: PushPlatform;
+  active: boolean;
+}
+
 export interface WorkspaceSummary {
   id: number;
   name: string;
