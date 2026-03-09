@@ -46,6 +46,47 @@ function makeListResponse(items: InvitationListItem[]): InvitationListResponse {
   };
 }
 
+function makeWorkspaceInvitation(
+  overrides: Partial<{
+    invitationId: number;
+    workspaceId: number;
+    workspaceName: string;
+    inviterUserId: number;
+    inviterNickname: string;
+    role: 'OWNER' | 'MEMBER';
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELED' | 'EXPIRED';
+    expiresAt: string;
+    createdAt: string;
+  }> = {}
+) {
+  return {
+    invitationId: 5,
+    workspaceId: 20,
+    workspaceName: 'Alpha Workspace',
+    inviterUserId: 101,
+    inviterNickname: 'Owner',
+    role: 'MEMBER' as const,
+    status: 'PENDING' as const,
+    expiresAt: '2026-04-01T00:00:00',
+    createdAt: '2026-03-07T10:00:00',
+    ...overrides,
+  };
+}
+
+function makeWorkspaceListResponse(
+  items: ReturnType<typeof makeWorkspaceInvitation>[]
+) {
+  return {
+    content: items,
+    page: 0,
+    size: 20,
+    totalElements: items.length,
+    totalPages: 1,
+    first: true,
+    last: true,
+  };
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -79,7 +120,7 @@ describe('InvitationsPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('받은 초대가 없습니다.')).toBeInTheDocument();
+      expect(screen.getByText('받은 프로젝트 초대가 없습니다.')).toBeInTheDocument();
     });
   });
 
@@ -178,6 +219,36 @@ describe('InvitationsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('초대 수락에 실패했습니다.')).toBeInTheDocument();
+    });
+  });
+
+  it('renders workspace invitations and accepts them from the workspace tab', async () => {
+    mockGet
+      .mockResolvedValueOnce(apiOk(makeListResponse([])))
+      .mockResolvedValueOnce(apiOk(makeWorkspaceListResponse([makeWorkspaceInvitation()])));
+    mockPost.mockResolvedValue(
+      apiOk({
+        invitationId: 5,
+        workspaceId: 20,
+        memberId: 1,
+        role: 'MEMBER',
+        status: 'ACCEPTED',
+      })
+    );
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Workspace Invitations' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Alpha Workspace')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: '수락' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/workspace-invitations/5/accept');
     });
   });
 });

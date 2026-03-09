@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WorkspaceDetailPage from '@/pages/WorkspaceDetailPage';
@@ -152,5 +152,59 @@ describe('WorkspaceDetailPage', () => {
 
     expect(await screen.findByText('Failed to load workspace.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('opens workspace invite modal and submits invitation with workspace contract', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        apiOk({
+          workspaceId: 1,
+          name: 'Alpha Workspace',
+          description: 'Main workspace',
+          myRole: 'OWNER',
+          memberCount: 2,
+          updatedAt: '2026-03-01T10:00:00',
+        })
+      )
+      .mockResolvedValueOnce(apiOk([]))
+      .mockResolvedValueOnce(apiOk([]));
+    mockPost.mockResolvedValue(
+      apiOk({
+        invitationId: 31,
+        workspaceId: 1,
+        inviteeUserId: 7,
+        inviteeEmail: 'member@example.com',
+        inviteeNickname: 'Member',
+        role: 'MEMBER',
+        status: 'PENDING',
+        expiresAt: '2026-03-20T10:00:00',
+      })
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/workspaces/1']}>
+        <Routes>
+          <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Alpha Workspace' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+
+    expect(await screen.findByRole('heading', { name: 'Invite Workspace Member' })).toBeInTheDocument();
+    const dialogQueries = within(screen.getByRole('dialog'));
+
+    fireEvent.change(dialogQueries.getByLabelText('Email'), { target: { value: 'member@example.com' } });
+    fireEvent.change(dialogQueries.getByLabelText('Role'), { target: { value: 'MEMBER' } });
+    fireEvent.click(dialogQueries.getByRole('button', { name: 'Invite' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/workspaces/1/invitations', {
+        email: 'member@example.com',
+        role: 'MEMBER',
+      });
+    });
   });
 });
