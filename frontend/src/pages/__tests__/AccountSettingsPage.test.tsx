@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
@@ -7,11 +7,13 @@ import { apiOk } from '@/test/helpers';
 
 const mockPatch = vi.fn();
 const mockDelete = vi.fn();
+const mockGet = vi.fn();
+const mockPost = vi.fn();
 
 vi.mock('@/api/client', () => ({
   default: {
-    get: vi.fn(),
-    post: vi.fn(),
+    get: (...args: unknown[]) => mockGet(...args),
+    post: (...args: unknown[]) => mockPost(...args),
     patch: (...args: unknown[]) => mockPatch(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
   },
@@ -46,6 +48,7 @@ function renderPage() {
 describe('AccountSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGet.mockResolvedValue(apiOk([]));
   });
 
   // 1. Renders password change form
@@ -202,5 +205,104 @@ describe('AccountSettingsPage', () => {
     await waitFor(() => {
       expect(screen.queryByText(/정말 탈퇴/)).not.toBeInTheDocument();
     });
+  });
+
+  it('registers a push token and shows registered device info', async () => {
+    mockGet.mockResolvedValueOnce(apiOk([]));
+    mockPost.mockResolvedValue(
+      apiOk({
+        token: 'web-token-123',
+        platform: 'WEB',
+        active: true,
+      })
+    );
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-123');
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'WEB');
+    await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/notifications/push-tokens', {
+        token: 'web-token-123',
+        platform: 'WEB',
+      });
+    });
+
+    expect(await screen.findByText('활성 디바이스가 등록되었습니다.')).toBeInTheDocument();
+    const registeredSection = screen.getByTestId('registered-device-list');
+    expect(within(registeredSection).getByText('WEB')).toBeInTheDocument();
+    expect(within(registeredSection).getByText('web-token-123')).toBeInTheDocument();
+  });
+
+  it('unregisters the currently registered push token', async () => {
+    mockGet.mockResolvedValueOnce(apiOk([]));
+    mockPost.mockResolvedValue(
+      apiOk({
+        token: 'android-token-9',
+        platform: 'ANDROID',
+        active: true,
+      })
+    );
+    mockDelete.mockResolvedValue(apiOk({ removed: true }));
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-9');
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'ANDROID');
+    await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
+
+    expect(await screen.findByText('등록된 디바이스')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '디바이스 해제 android-token-9' }));
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith('/notifications/push-tokens', {
+        params: { token: 'android-token-9' },
+      });
+    });
+
+    expect(await screen.findByText('디바이스 등록이 해제되었습니다.')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 디바이스')).not.toBeInTheDocument();
+  });
+
+  it('loads registered devices on page open', async () => {
+    mockGet.mockResolvedValueOnce(apiOk([
+      { token: 'web-token-1', platform: 'WEB', active: true },
+      { token: 'ios-token-2', platform: 'IOS', active: true },
+    ]));
+
+    renderPage();
+
+    expect(await screen.findByText('등록된 디바이스')).toBeInTheDocument();
+    const registeredSection = screen.getByTestId('registered-device-list');
+    expect(within(registeredSection).getByText('web-token-1')).toBeInTheDocument();
+    expect(within(registeredSection).getByText('ios-token-2')).toBeInTheDocument();
+  });
+
+  it('keeps multiple registered devices visible and unregisters only the selected token', async () => {
+    mockGet.mockResolvedValueOnce(apiOk([
+      { token: 'web-token-1', platform: 'WEB', active: true },
+      { token: 'android-token-2', platform: 'ANDROID', active: true },
+    ]));
+    mockDelete.mockResolvedValue(apiOk({ removed: true }));
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('등록된 디바이스')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '디바이스 해제 web-token-1' }));
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith('/notifications/push-tokens', {
+        params: { token: 'web-token-1' },
+      });
+    });
+
+    expect(screen.queryByText('web-token-1')).not.toBeInTheDocument();
+    expect(screen.getByText('android-token-2')).toBeInTheDocument();
   });
 });
