@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
 import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.notification.dto.response.NotificationCreatedEventPayload;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListItemResponse;
@@ -155,6 +156,44 @@ public class NotificationService {
         publishNotificationCreatedEvent(
                 saved,
                 invitation.getProject().getId(),
+                invitation.getInvitee()
+        );
+    }
+
+    @Transactional
+    public void createWorkspaceInvitationNotification(WorkspaceInvitation invitation) {
+        Notification notification = Notification.create(
+                invitation.getInvitee(),
+                NotificationType.PROJECT_INVITED,
+                "Workspace invitation",
+                invitation.getInviter().getNickname() + " invited you to workspace " + invitation.getWorkspace().getName(),
+                NotificationReferenceType.INVITATION,
+                invitation.getId()
+        );
+        Notification saved = notificationRepository.save(notification);
+        publishNotificationCreatedEvent(
+                saved,
+                null,
+                invitation.getInviter()
+        );
+    }
+
+    @Transactional
+    public void createWorkspaceInvitationAcceptedNotification(WorkspaceInvitation invitation) {
+        Notification notification = Notification.create(
+                invitation.getInviter(),
+                NotificationType.INVITATION_ACCEPTED,
+                "Workspace invitation accepted",
+                invitation.getInvitee().getNickname()
+                        + " accepted invitation to workspace "
+                        + invitation.getWorkspace().getName(),
+                NotificationReferenceType.INVITATION,
+                invitation.getId()
+        );
+        Notification saved = notificationRepository.save(notification);
+        publishNotificationCreatedEvent(
+                saved,
+                null,
                 invitation.getInvitee()
         );
     }
