@@ -11,9 +11,11 @@ import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.security.ApiRateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,6 +44,16 @@ public class NotificationPushTokenController {
                 request.token(),
                 request.platform()
         );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<NotificationPushTokenResponse>>> getActivePushTokens(
+            Authentication authentication
+    ) {
+        List<NotificationPushTokenResponse> response =
+                notificationPushTokenService.getActivePushTokens(extractUserId(authentication));
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }

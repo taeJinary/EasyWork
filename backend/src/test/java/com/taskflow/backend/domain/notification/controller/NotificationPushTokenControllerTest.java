@@ -24,6 +24,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -107,6 +108,26 @@ class NotificationPushTokenControllerTest {
                 .andExpect(jsonPath("$.data.removed").value(true));
 
         then(notificationPushTokenService).should().unregisterPushToken(1L, "token-1");
+    }
+
+    @Test
+    void getPushTokensReturnsActiveTokenList() throws Exception {
+        given(notificationPushTokenService.getActivePushTokens(1L)).willReturn(java.util.List.of(
+                new NotificationPushTokenResponse("token-2", PushPlatform.ANDROID, true),
+                new NotificationPushTokenResponse("token-1", PushPlatform.WEB, true)
+        ));
+
+        mockMvc.perform(get(NotificationPushTokenHttpContract.BASE_PATH)
+                        .principal(principalAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].token").value("token-2"))
+                .andExpect(jsonPath("$.data[0].platform").value("ANDROID"))
+                .andExpect(jsonPath("$.data[1].token").value("token-1"))
+                .andExpect(jsonPath("$.data[1].platform").value("WEB"));
+
+        then(notificationPushTokenService).should().getActivePushTokens(1L);
     }
 
     private UsernamePasswordAuthenticationToken principalAuth() {

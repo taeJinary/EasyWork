@@ -68,6 +68,24 @@ class NotificationPushTokenServiceIntegrationTest extends IntegrationTestContain
         assertThat(removed).isFalse();
     }
 
+    @Test
+    void getActivePushTokensReturnsOnlyCurrentUsersActiveTokens() {
+        User user = saveActiveUser("push-list-user");
+        User otherUser = saveActiveUser("push-list-other");
+
+        notificationPushTokenService.registerPushToken(user.getId(), "token-1", PushPlatform.WEB);
+        notificationPushTokenService.registerPushToken(user.getId(), "token-2", PushPlatform.ANDROID);
+        notificationPushTokenService.registerPushToken(otherUser.getId(), "token-3", PushPlatform.IOS);
+        notificationPushTokenService.unregisterPushToken(user.getId(), "token-1");
+
+        List<NotificationPushTokenResponse> response = notificationPushTokenService.getActivePushTokens(user.getId());
+
+        assertThat(response).hasSize(1);
+        assertThat(response.getFirst().token()).isEqualTo("token-2");
+        assertThat(response.getFirst().platform()).isEqualTo(PushPlatform.ANDROID);
+        assertThat(response.getFirst().active()).isTrue();
+    }
+
     private User saveActiveUser(String nicknamePrefix) {
         return userRepository.save(User.builder()
                 .email(nicknamePrefix + "-" + System.nanoTime() + "@example.com")

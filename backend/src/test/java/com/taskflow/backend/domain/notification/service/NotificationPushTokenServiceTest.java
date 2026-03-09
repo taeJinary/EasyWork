@@ -170,6 +170,24 @@ class NotificationPushTokenServiceTest {
                 .isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
 
+    @Test
+    void getActivePushTokensReturnsOnlyActiveOwnedTokensOrderedByLatest() {
+        User user = activeUser(1L, "member@example.com", "member");
+        NotificationPushToken oldToken = NotificationPushToken.create(user, "token-1", PushPlatform.WEB);
+        NotificationPushToken newToken = NotificationPushToken.create(user, "token-2", PushPlatform.ANDROID);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(notificationPushTokenRepository.findAllByUserIdAndIsActiveTrueOrderByIdDesc(1L))
+                .willReturn(java.util.List.of(newToken, oldToken));
+
+        java.util.List<NotificationPushTokenResponse> response = notificationPushTokenService.getActivePushTokens(1L);
+
+        assertThat(response).extracting(NotificationPushTokenResponse::token)
+                .containsExactly("token-2", "token-1");
+        assertThat(response).extracting(NotificationPushTokenResponse::platform)
+                .containsExactly(PushPlatform.ANDROID, PushPlatform.WEB);
+        verify(notificationPushTokenRepository).findAllByUserIdAndIsActiveTrueOrderByIdDesc(1L);
+    }
+
     private User activeUser(Long id, String email, String nickname) {
         return User.builder()
                 .id(id)
