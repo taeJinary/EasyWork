@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -122,8 +123,9 @@ class WorkspaceProjectListingRepositoryTest extends IntegrationTestContainerSupp
     }
 
     private User persistUser(String nicknamePrefix) {
+        String uniqueEmail = nicknamePrefix + "-" + UUID.randomUUID() + "@example.com";
         return userRepository.save(User.builder()
-                .email(nicknamePrefix + "-" + System.nanoTime() + "@example.com")
+                .email(uniqueEmail)
                 .password("encoded")
                 .nickname(trimNickname(nicknamePrefix))
                 .provider("LOCAL")
