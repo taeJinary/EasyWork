@@ -161,7 +161,7 @@ class InvitationServiceTest {
                 invitee,
                 ProjectRole.MEMBER,
                 InvitationStatus.PENDING,
-                LocalDateTime.of(2026, 3, 8, 10, 30)
+                LocalDateTime.now().plusDays(1)
         );
 
         given(projectRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(project));
@@ -244,7 +244,7 @@ class InvitationServiceTest {
                 invitee,
                 ProjectRole.MEMBER,
                 InvitationStatus.PENDING,
-                LocalDateTime.of(2026, 3, 8, 10, 30)
+                LocalDateTime.now().plusDays(1)
         );
 
         given(userRepository.findById(2L)).willReturn(Optional.of(invitee));
