@@ -6,7 +6,6 @@ import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationLi
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
 import com.taskflow.backend.domain.invitation.repository.WorkspaceInvitationRepository;
-import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.workspace.entity.Workspace;
@@ -52,9 +51,6 @@ class WorkspaceInvitationServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private NotificationService notificationService;
-
     @InjectMocks
     private WorkspaceInvitationService workspaceInvitationService;
 
@@ -84,7 +80,6 @@ class WorkspaceInvitationServiceTest {
         assertThat(response.inviteeUserId()).isEqualTo(2L);
         assertThat(response.status()).isEqualTo(InvitationStatus.PENDING);
         assertThat(workspace.getUpdatedAt()).isAfter(beforeUpdatedAt);
-        verify(notificationService).createWorkspaceInvitationNotification(any(WorkspaceInvitation.class));
     }
 
     @Test
@@ -180,7 +175,6 @@ class WorkspaceInvitationServiceTest {
         assertThat(response.status()).isEqualTo(InvitationStatus.ACCEPTED);
         assertThat(invitation.getStatus()).isEqualTo(InvitationStatus.ACCEPTED);
         assertThat(workspace.getUpdatedAt()).isAfter(beforeUpdatedAt);
-        verify(notificationService).createWorkspaceInvitationAcceptedNotification(invitation);
     }
 
     @Test
