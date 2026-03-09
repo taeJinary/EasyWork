@@ -123,11 +123,13 @@ class WorkspaceProjectListingRepositoryTest extends IntegrationTestContainerSupp
     }
 
     private User persistUser(String nicknamePrefix) {
-        String uniqueEmail = nicknamePrefix + "-" + UUID.randomUUID() + "@example.com";
+        String uniqueSuffix = UUID.randomUUID().toString().replace("-", "");
+        String uniqueEmail = nicknamePrefix + "-" + uniqueSuffix + "@example.com";
+        String uniqueNickname = trimNickname(nicknamePrefix + uniqueSuffix.substring(0, 8));
         return userRepository.save(User.builder()
                 .email(uniqueEmail)
                 .password("encoded")
-                .nickname(trimNickname(nicknamePrefix))
+                .nickname(uniqueNickname)
                 .provider("LOCAL")
                 .role(Role.ROLE_USER)
                 .status(UserStatus.ACTIVE)
