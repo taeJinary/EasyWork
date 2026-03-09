@@ -28,6 +28,7 @@ public enum ErrorCode {
     PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "프로젝트를 찾을 수 없습니다."),
     PROJECT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "프로젝트 생성 한도를 초과했습니다."),
     MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 프로젝트 멤버입니다."),
+    WORKSPACE_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 워크스페이스 멤버입니다."),
     MEMBER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "멤버 초대 한도를 초과했습니다."),
     NOT_PROJECT_MEMBER(HttpStatus.FORBIDDEN, "프로젝트 멤버가 아닙니다."),
     ONLY_OWNER_ALLOWED(HttpStatus.FORBIDDEN, "OWNER만 가능한 작업입니다."),
@@ -35,6 +36,7 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "프로젝트 멤버를 찾을 수 없습니다."),
     INVITEE_NOT_FOUND(HttpStatus.NOT_FOUND, "초대 대상 사용자를 찾을 수 없습니다."),
     INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "초대를 찾을 수 없습니다."),
+    WORKSPACE_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스 초대를 찾을 수 없습니다."),
     INVITATION_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 초대입니다."),
     INSUFFICIENT_PERMISSION(HttpStatus.FORBIDDEN, "권한이 부족합니다."),
 
