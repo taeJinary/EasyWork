@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FolderKanban, Plus, Settings, UserPlus, Users } from 'lucide-react';
 import Badge from '@/components/Badge';
 import ProjectCreateModal from '@/components/ProjectCreateModal';
 import apiClient from '@/api/client';
+import { toProjectSummary } from '@/utils/projectMappers';
 import type {
   ApiResponse,
+  ProjectListItemResponse,
+  ProjectSummary,
   WorkspaceDetail,
   WorkspaceDetailResponse,
   WorkspaceMember,
@@ -51,31 +54,41 @@ export default function WorkspaceDetailPage() {
   const navigate = useNavigate();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showProjectModal, setShowProjectModal] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const [workspaceResponse, membersResponse] = await Promise.all([
-          apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
-          apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
-        ]);
-        setWorkspace(toWorkspaceDetail(workspaceResponse.data.data));
-        setMembers(membersResponse.data.data.map(toWorkspaceMember));
-      } catch {
-        // TODO: add dedicated error view.
-      } finally {
-        setLoading(false);
-      }
+  const loadWorkspaceData = useCallback(async () => {
+    if (!workspaceId) {
+      return;
     }
 
-    if (workspaceId) {
-      void fetchData();
+    try {
+      setLoading(true);
+      setError('');
+      const [workspaceResponse, membersResponse, projectsResponse] = await Promise.all([
+        apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
+        apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
+        apiClient.get<ApiResponse<ProjectListItemResponse[]>>(`/workspaces/${workspaceId}/projects`),
+      ]);
+      setWorkspace(toWorkspaceDetail(workspaceResponse.data.data));
+      setMembers(membersResponse.data.data.map(toWorkspaceMember));
+      setProjects(projectsResponse.data.data.map(toProjectSummary));
+    } catch {
+      setWorkspace(null);
+      setMembers([]);
+      setProjects([]);
+      setError('Failed to load workspace.');
+    } finally {
+      setLoading(false);
     }
   }, [workspaceId]);
+
+  useEffect(() => {
+    void loadWorkspaceData();
+  }, [loadWorkspaceData]);
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'overview', label: 'Overview' },
@@ -90,6 +103,25 @@ export default function WorkspaceDetailPage() {
         <div className="mb-2 h-6 w-48 rounded bg-[var(--color-surface-muted)]" />
         <div className="mb-4 h-4 w-96 rounded bg-[var(--color-surface-muted)]" />
         <div className="h-8 w-full rounded bg-[var(--color-surface-muted)]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-lg)]">
+        <p className="m-0 text-[var(--text-sm)] text-[var(--color-danger)]">{error}</p>
+        <button
+          type="button"
+          onClick={() => void loadWorkspaceData()}
+          className="
+            mt-[var(--spacing-md)] flex h-[32px] items-center rounded-[var(--radius-sm)] border border-[var(--color-danger)]
+            bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-danger)]
+            hover:bg-[var(--color-surface-muted)]
+          "
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -180,9 +212,42 @@ export default function WorkspaceDetailPage() {
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
-            <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-              No projects yet. Create the first project in this workspace.
-            </div>
+            {projects.length === 0 ? (
+              <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                No projects yet. Create the first project in this workspace.
+              </div>
+            ) : (
+              projects.map((project, index) => (
+                <div
+                  key={project.id}
+                  onClick={() => navigate(`/projects/${project.id}/board`)}
+                  className={`
+                    flex cursor-pointer items-center px-[var(--spacing-base)] py-[var(--spacing-md)] transition-colors hover:bg-[var(--color-surface-muted)]
+                    ${index < projects.length - 1 ? 'border-b border-[var(--color-border)]' : ''}
+                  `}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-[var(--spacing-sm)]">
+                      <span className="text-[var(--text-sm)] font-semibold text-[var(--color-primary)]">{project.name}</span>
+                      <Badge variant={project.myRole === 'OWNER' ? 'warning' : 'default'} size="sm">
+                        {project.myRole}
+                      </Badge>
+                    </div>
+                    {project.description && (
+                      <div className="mt-[2px] truncate text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                        {project.description}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                    <span>{project.memberCount} members</span>
+                    <span>{project.openTaskCount} open tasks</span>
+                    <span>Updated {formatTimeAgo(project.updatedAt)}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
