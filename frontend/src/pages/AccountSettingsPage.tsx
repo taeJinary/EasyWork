@@ -64,6 +64,11 @@ export default function AccountSettingsPage() {
   const [pushDevicesLoading, setPushDevicesLoading] = useState(true);
   const [pushDevicesLoadError, setPushDevicesLoadError] = useState<string | null>(null);
   const pushEnvironment = readPushEnvironmentState();
+  const isWebPushBlocked =
+    pushPlatform === 'WEB' &&
+    (!pushEnvironment.notificationsSupported ||
+      !pushEnvironment.serviceWorkerSupported ||
+      pushEnvironment.notificationPermission === 'denied');
 
   const handleNewPasswordChange = (value: string) => {
     setNewPassword(value);
@@ -73,7 +78,7 @@ export default function AccountSettingsPage() {
   };
 
   const canChangePassword = currentPassword.trim().length > 0 && newPassword.trim().length > 0 && !pwValidation && !pwSubmitting;
-  const canRegisterDevice = pushToken.trim().length > 0 && !pushSubmitting;
+  const canRegisterDevice = pushToken.trim().length > 0 && !pushSubmitting && !isWebPushBlocked;
 
   const loadRegisteredDevices = async () => {
     setPushDevicesLoading(true);
@@ -401,6 +406,12 @@ export default function AccountSettingsPage() {
                 {pushSubmitting ? '처리 중...' : '디바이스 등록'}
               </button>
             </div>
+
+            {isWebPushBlocked && (
+              <p className="m-0 text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                현재 환경에서는 WEB 디바이스 등록이 비활성화됩니다. 권한 또는 브라우저 지원 상태를 먼저 해결하세요.
+              </p>
+            )}
           </div>
 
           {pushDevicesLoadError && (
