@@ -188,7 +188,7 @@ export default function GlobalHeader() {
                 Profile
               </Link>
               <Link
-                to="/settings/profile"
+                to="/settings/account"
                 onClick={() => setProfileOpen(false)}
                 className="
                   flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-base)] py-[var(--spacing-sm)]
