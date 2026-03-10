@@ -152,6 +152,8 @@ export interface WorkspaceMember {
   joinedAt: string;
 }
 
+export type WorkspaceRole = 'OWNER' | 'MEMBER';
+
 export interface ProjectSummary {
   id: number;
   name: string;
@@ -447,6 +449,47 @@ export interface InvitationSummary {
   inviteeEmail: string;
   inviteeNickname: string;
   role: ProjectRole;
+  status: InvitationStatus;
+  expiresAt: string;
+}
+
+export interface WorkspaceInvitationListItem {
+  invitationId: number;
+  workspaceId: number;
+  workspaceName: string;
+  inviterUserId: number;
+  inviterNickname: string;
+  role: WorkspaceRole;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface WorkspaceInvitationListResponse {
+  content: WorkspaceInvitationListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface WorkspaceInvitationAction {
+  invitationId: number;
+  workspaceId: number;
+  memberId: number | null;
+  role: WorkspaceRole;
+  status: InvitationStatus;
+}
+
+export interface WorkspaceInvitationSummary {
+  invitationId: number;
+  workspaceId: number;
+  inviteeUserId: number;
+  inviteeEmail: string;
+  inviteeNickname: string;
+  role: WorkspaceRole;
   status: InvitationStatus;
   expiresAt: string;
 }

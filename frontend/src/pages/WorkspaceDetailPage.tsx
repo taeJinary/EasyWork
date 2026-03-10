@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FolderKanban, Plus, Settings, UserPlus, Users } from 'lucide-react';
+import { AlertCircle, FolderKanban, Plus, Settings, UserPlus, Users, X } from 'lucide-react';
 import Badge from '@/components/Badge';
 import ProjectCreateModal from '@/components/ProjectCreateModal';
 import apiClient from '@/api/client';
@@ -11,8 +11,10 @@ import type {
   ProjectSummary,
   WorkspaceDetail,
   WorkspaceDetailResponse,
+  WorkspaceInvitationSummary,
   WorkspaceMember,
   WorkspaceMemberResponse,
+  WorkspaceRole,
 } from '@/types';
 
 type TabType = 'overview' | 'projects' | 'members' | 'settings';
@@ -59,6 +61,11 @@ export default function WorkspaceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<WorkspaceRole>('MEMBER');
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const loadWorkspaceData = useCallback(async () => {
     if (!workspaceId) {
@@ -89,6 +96,37 @@ export default function WorkspaceDetailPage() {
   useEffect(() => {
     void loadWorkspaceData();
   }, [loadWorkspaceData]);
+
+  const closeInviteModal = useCallback(() => {
+    setShowInviteModal(false);
+    setInviteEmail('');
+    setInviteRole('MEMBER');
+    setInviteError(null);
+  }, []);
+
+  const handleInvite = useCallback(async () => {
+    if (!workspaceId || !inviteEmail.trim()) {
+      return;
+    }
+
+    setInviteSubmitting(true);
+    setInviteError(null);
+
+    try {
+      await apiClient.post<ApiResponse<WorkspaceInvitationSummary>>(`/workspaces/${workspaceId}/invitations`, {
+        email: inviteEmail.trim(),
+        role: inviteRole,
+      });
+      closeInviteModal();
+      setActiveTab('members');
+    } catch (caughtError: unknown) {
+      const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setInviteError(message || 'Failed to invite workspace member.');
+      console.error('Failed to invite workspace member:', caughtError);
+    } finally {
+      setInviteSubmitting(false);
+    }
+  }, [closeInviteModal, inviteEmail, inviteRole, workspaceId]);
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'overview', label: 'Overview' },
@@ -157,7 +195,10 @@ export default function WorkspaceDetailPage() {
               bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-primary)]
               hover:bg-[var(--color-surface-muted)]
             "
-            onClick={() => setActiveTab('members')}
+            onClick={() => {
+              setActiveTab('members');
+              setShowInviteModal(true);
+            }}
           >
             <UserPlus size={14} />
             Invite
@@ -183,6 +224,100 @@ export default function WorkspaceDetailPage() {
         onClose={() => setShowProjectModal(false)}
         onCreated={(project) => navigate(`/projects/${project.projectId}/board`)}
       />
+
+      {showInviteModal && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeInviteModal} />
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-[var(--spacing-base)]"
+            onClick={closeInviteModal}
+          >
+            <div
+              className="w-full max-w-[420px] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-lg)] shadow-lg"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="workspace-invite-dialog-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-[var(--spacing-base)] flex items-center justify-between">
+                <h3
+                  id="workspace-invite-dialog-title"
+                  className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]"
+                >
+                  Invite Workspace Member
+                </h3>
+                <button
+                  type="button"
+                  onClick={closeInviteModal}
+                  className="border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {inviteError && (
+                <div className="mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
+                  <AlertCircle size={14} />
+                  {inviteError}
+                </div>
+              )}
+
+              <div className="space-y-[var(--spacing-md)]">
+                <div>
+                  <label
+                    htmlFor="workspace-invite-email"
+                    className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="workspace-invite-email"
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="user@example.com"
+                    className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="workspace-invite-role"
+                    className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
+                  >
+                    Role
+                  </label>
+                  <select
+                    id="workspace-invite-role"
+                    value={inviteRole}
+                    onChange={(event) => setInviteRole(event.target.value as WorkspaceRole)}
+                    className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
+                  >
+                    <option value="MEMBER">MEMBER</option>
+                    <option value="OWNER">OWNER</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-[var(--spacing-sm)] pt-[var(--spacing-sm)]">
+                  <button
+                    type="button"
+                    onClick={closeInviteModal}
+                    className="h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleInvite()}
+                    disabled={!inviteEmail.trim() || inviteSubmitting}
+                    className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:opacity-50"
+                  >
+                    {inviteSubmitting ? 'Sending...' : 'Invite'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
