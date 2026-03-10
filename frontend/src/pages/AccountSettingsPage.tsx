@@ -44,6 +44,8 @@ export default function AccountSettingsPage() {
   const [pushError, setPushError] = useState<string | null>(null);
   const [pushSuccess, setPushSuccess] = useState<string | null>(null);
   const [registeredDevices, setRegisteredDevices] = useState<PushTokenRegistrationState[]>([]);
+  const [pushDevicesLoading, setPushDevicesLoading] = useState(true);
+  const [pushDevicesLoadError, setPushDevicesLoadError] = useState<string | null>(null);
 
   const handleNewPasswordChange = (value: string) => {
     setNewPassword(value);
@@ -56,6 +58,8 @@ export default function AccountSettingsPage() {
   const canRegisterDevice = pushToken.trim().length > 0 && !pushSubmitting;
 
   const loadRegisteredDevices = async () => {
+    setPushDevicesLoading(true);
+    setPushDevicesLoadError(null);
     try {
       const response = await apiClient.get<ApiResponse<NotificationPushTokenResponse[]>>('/notifications/push-tokens');
       setRegisteredDevices(response.data.data.map((device) => ({
@@ -65,7 +69,10 @@ export default function AccountSettingsPage() {
       })));
     } catch (err) {
       setRegisteredDevices([]);
+      setPushDevicesLoadError('등록된 디바이스 목록을 불러오지 못했습니다.');
       console.error('Failed to load push tokens:', err);
+    } finally {
+      setPushDevicesLoading(false);
     }
   };
 
@@ -148,6 +155,7 @@ export default function AccountSettingsPage() {
           ...next,
         ];
       });
+      setPushDevicesLoadError(null);
       setPushToken('');
       setPushSuccess('활성 디바이스가 등록되었습니다.');
     } catch (err: unknown) {
@@ -356,7 +364,38 @@ export default function AccountSettingsPage() {
             </div>
           </div>
 
-          {registeredDevices.length > 0 && (
+          {pushDevicesLoadError && (
+            <div className="mt-[var(--spacing-lg)] rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-base)]">
+              <div className="flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
+                <AlertCircle size={14} className="shrink-0" />
+                {pushDevicesLoadError}
+              </div>
+              <button
+                onClick={() => void loadRegisteredDevices()}
+                className="
+                  mt-[var(--spacing-sm)] h-[32px] px-[var(--spacing-md)]
+                  border border-[var(--color-danger)] rounded-[var(--radius-sm)]
+                  bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-danger)]
+                  cursor-pointer hover:bg-[var(--color-surface-muted)]
+                "
+              >
+                다시 시도
+              </button>
+            </div>
+          )}
+
+          {!pushDevicesLoadError && !pushDevicesLoading && registeredDevices.length === 0 && (
+            <div className="mt-[var(--spacing-lg)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]">
+              <h3 className="m-0 mb-[var(--spacing-xs)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
+                등록된 디바이스가 없습니다.
+              </h3>
+              <p className="m-0 text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+                새 토큰을 등록하면 이 기기에서 알림을 받을 수 있습니다.
+              </p>
+            </div>
+          )}
+
+          {!pushDevicesLoadError && registeredDevices.length > 0 && (
             <div
               data-testid="registered-device-list"
               className="mt-[var(--spacing-lg)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]"
