@@ -84,4 +84,34 @@ describe('GlobalHeader', () => {
       expect(screen.getByText('3')).toBeInTheDocument();
     });
   });
+
+  it('navigates to account settings from the profile menu settings link', async () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <GlobalHeader />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'N' }));
+    await user.click(screen.getByRole('link', { name: 'Settings' }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/settings/account');
+  });
+
+  it('navigates to profile settings from the profile menu profile link', async () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <GlobalHeader />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'N' }));
+    await user.click(screen.getByRole('link', { name: 'Profile' }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/settings/profile');
+  });
 });
