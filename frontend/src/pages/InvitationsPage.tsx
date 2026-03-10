@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Mail,
@@ -96,6 +96,7 @@ function toWorkspaceInvitation(invitation: WorkspaceInvitationListItem): Invitat
 
 export default function InvitationsPage() {
   const navigate = useNavigate();
+  const requestIdRef = useRef(0);
   const [activeKind, setActiveKind] = useState<InvitationKind>('project');
   const [invitations, setInvitations] = useState<InvitationViewItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +107,8 @@ export default function InvitationsPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const fetchInvitations = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     try {
       setLoading(true);
       setError(null);
@@ -114,21 +117,31 @@ export default function InvitationsPage() {
 
       if (activeKind === 'project') {
         const res = await apiClient.get<ApiResponse<InvitationListResponse>>('/invitations/me', { params });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
         setInvitations(res.data.data.content.map(toProjectInvitation));
         setTotalPages(res.data.data.totalPages);
+        setLoading(false);
       } else {
         const res = await apiClient.get<ApiResponse<WorkspaceInvitationListResponse>>('/workspace-invitations/me', {
           params,
         });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
         setInvitations(res.data.data.content.map(toWorkspaceInvitation));
         setTotalPages(res.data.data.totalPages);
+        setLoading(false);
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setError(activeKind === 'project'
         ? '프로젝트 초대 목록을 불러오는 데 실패했습니다.'
         : '워크스페이스 초대 목록을 불러오는 데 실패했습니다.');
       console.error('Failed to fetch invitations:', err);
-    } finally {
       setLoading(false);
     }
   }, [activeKind, page, statusFilter]);
@@ -137,12 +150,19 @@ export default function InvitationsPage() {
     void fetchInvitations();
   }, [fetchInvitations]);
 
-  useEffect(() => {
+  const handleKindChange = (nextKind: InvitationKind) => {
+    if (nextKind === activeKind) {
+      return;
+    }
+
+    requestIdRef.current += 1;
+    setActiveKind(nextKind);
     setPage(0);
     setInvitations([]);
     setTotalPages(0);
     setError(null);
-  }, [activeKind]);
+    setLoading(true);
+  };
 
   const handleAccept = async (invitation: InvitationViewItem) => {
     setActionLoading(invitation.invitationId);
@@ -217,7 +237,7 @@ export default function InvitationsPage() {
       <div className="mt-[var(--spacing-base)] flex border-b border-[var(--color-border)]">
         <button
           type="button"
-          onClick={() => setActiveKind('project')}
+          onClick={() => handleKindChange('project')}
           className={`border-b-2 bg-transparent px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--text-sm)] ${
             activeKind === 'project'
               ? 'border-[var(--color-primary)] font-semibold text-[var(--color-text-primary)]'
@@ -228,7 +248,7 @@ export default function InvitationsPage() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveKind('workspace')}
+          onClick={() => handleKindChange('workspace')}
           className={`border-b-2 bg-transparent px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--text-sm)] ${
             activeKind === 'workspace'
               ? 'border-[var(--color-primary)] font-semibold text-[var(--color-text-primary)]'

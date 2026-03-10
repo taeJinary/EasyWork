@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import InvitationsPage from '@/pages/InvitationsPage';
 import { apiOk } from '@/test/helpers';
-import type { InvitationListItem, InvitationListResponse } from '@/types';
+import type {
+  InvitationListItem,
+  InvitationListResponse,
+  WorkspaceInvitationListResponse,
+} from '@/types';
 
 // Mock apiClient
 const mockGet = vi.fn();
@@ -93,6 +97,17 @@ function renderPage() {
       <InvitationsPage />
     </MemoryRouter>
   );
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
 }
 
 describe('InvitationsPage', () => {
@@ -250,5 +265,69 @@ describe('InvitationsPage', () => {
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/workspace-invitations/5/accept');
     });
+  });
+
+  it('ignores stale paged response when switching invitation tabs', async () => {
+    const projectPage0 = deferred<ReturnType<typeof apiOk<InvitationListResponse>>>();
+    const projectPage1 = deferred<ReturnType<typeof apiOk<InvitationListResponse>>>();
+    const workspacePage0 = deferred<ReturnType<typeof apiOk<WorkspaceInvitationListResponse>>>();
+
+    mockGet.mockImplementation((path: string, config?: { params?: Record<string, unknown> }) => {
+      const page = (config?.params?.page ?? 0) as number;
+      if (path === '/invitations/me' && page === 0) {
+        return projectPage0.promise;
+      }
+      if (path === '/invitations/me' && page === 1) {
+        return projectPage1.promise;
+      }
+      if (path === '/workspace-invitations/me' && page === 0) {
+        return workspacePage0.promise;
+      }
+      throw new Error(`Unexpected request: ${path} page=${page}`);
+    });
+
+    renderPage();
+    const user = userEvent.setup();
+
+    projectPage0.resolve(
+      apiOk({
+        content: [makeInvitation({ invitationId: 1, projectName: 'Project Page 1' })],
+        page: 0,
+        size: 20,
+        totalElements: 25,
+        totalPages: 2,
+        first: true,
+        last: false,
+      })
+    );
+
+    expect(await screen.findByText('Project Page 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await user.click(screen.getByRole('button', { name: 'Workspace Invitations' }));
+
+    workspacePage0.resolve(
+      apiOk(makeWorkspaceListResponse([makeWorkspaceInvitation({ workspaceName: 'Workspace Current' })]))
+    );
+
+    expect(await screen.findByText('Workspace Current')).toBeInTheDocument();
+
+    projectPage1.resolve(
+      apiOk({
+        content: [makeInvitation({ invitationId: 2, projectName: 'Project Page 2' })],
+        page: 1,
+        size: 20,
+        totalElements: 25,
+        totalPages: 2,
+        first: false,
+        last: true,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Workspace Current')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Project Page 2')).not.toBeInTheDocument();
   });
 });
