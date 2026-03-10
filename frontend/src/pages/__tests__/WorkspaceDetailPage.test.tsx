@@ -103,6 +103,45 @@ describe('WorkspaceDetailPage', () => {
     expect(screen.getByText('Invitee')).toBeInTheDocument();
   });
 
+  it('skips sent invitation fetch for non-owner members', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        apiOk({
+          workspaceId: 2,
+          name: 'Member Workspace',
+          description: 'Shared workspace',
+          myRole: 'MEMBER',
+          memberCount: 3,
+          updatedAt: '2026-03-01T10:00:00',
+        })
+      )
+      .mockResolvedValueOnce(
+        apiOk([
+          {
+            memberId: 21,
+            userId: 2,
+            email: 'member@example.com',
+            nickname: 'Member',
+            role: 'MEMBER',
+            joinedAt: '2026-03-01T11:00:00',
+          },
+        ])
+      )
+      .mockResolvedValueOnce(apiOk([]));
+
+    render(
+      <MemoryRouter initialEntries={['/workspaces/2']}>
+        <Routes>
+          <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Member Workspace' })).toBeInTheDocument();
+    expect(screen.queryByText('Pending Invites')).not.toBeInTheDocument();
+    expect(mockGet).not.toHaveBeenCalledWith('/workspaces/2/invitations', { params: { status: 'PENDING' } });
+  });
+
   it('opens new project modal and creates a project in the current workspace', async () => {
     mockGet
       .mockResolvedValueOnce(

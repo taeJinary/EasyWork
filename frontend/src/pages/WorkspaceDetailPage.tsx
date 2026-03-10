@@ -86,15 +86,20 @@ export default function WorkspaceDetailPage() {
       setLoading(true);
       setError('');
       setInviteListError(null);
-      const [workspaceResponse, membersResponse, projectsResponse, invitationsResponse] = await Promise.all([
-        apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
+      const workspaceResponse =
+        await apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`);
+      const workspaceDetail = toWorkspaceDetail(workspaceResponse.data.data);
+
+      const [membersResponse, projectsResponse, invitationsResponse] = await Promise.all([
         apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
         apiClient.get<ApiResponse<ProjectListItemResponse[]>>(`/workspaces/${workspaceId}/projects`),
-        apiClient.get<ApiResponse<WorkspaceSentInvitationListItem[]>>(`/workspaces/${workspaceId}/invitations`, {
-          params: { status: 'PENDING' },
-        }),
+        workspaceDetail.myRole === 'OWNER'
+          ? apiClient.get<ApiResponse<WorkspaceSentInvitationListItem[]>>(`/workspaces/${workspaceId}/invitations`, {
+              params: { status: 'PENDING' },
+            })
+          : Promise.resolve({ data: { data: [] as WorkspaceSentInvitationListItem[] } }),
       ]);
-      setWorkspace(toWorkspaceDetail(workspaceResponse.data.data));
+      setWorkspace(workspaceDetail);
       setMembers(membersResponse.data.data.map(toWorkspaceMember));
       setProjects(projectsResponse.data.data.map(toProjectSummary));
       setSentInvitations(invitationsResponse.data.data);
