@@ -4,6 +4,7 @@ import com.taskflow.backend.domain.invitation.dto.request.CreateWorkspaceInvitat
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationListResponse;
+import com.taskflow.backend.domain.invitation.dto.response.WorkspaceSentInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
 import com.taskflow.backend.domain.invitation.repository.WorkspaceInvitationRepository;
@@ -144,6 +145,34 @@ public class WorkspaceInvitationService {
         );
     }
 
+    public List<WorkspaceSentInvitationListItemResponse> getSentInvitations(
+            Long userId,
+            Long workspaceId,
+            InvitationStatus status
+    ) {
+        findWorkspace(workspaceId);
+        WorkspaceMember membership = findWorkspaceMembership(workspaceId, userId);
+        ensureOwner(membership);
+
+        LocalDateTime now = LocalDateTime.now();
+        List<WorkspaceInvitation> pendingInvitations =
+                workspaceInvitationRepository.findAllByWorkspaceIdAndStatusOrderByCreatedAtDesc(
+                        workspaceId,
+                        InvitationStatus.PENDING
+                );
+        normalizeExpiredPendingInvitations(pendingInvitations, now);
+
+        List<WorkspaceInvitation> invitations = status == null
+                ? workspaceInvitationRepository.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId)
+                : status == InvitationStatus.PENDING
+                ? pendingInvitations.stream().filter(WorkspaceInvitation::isPending).toList()
+                : workspaceInvitationRepository.findAllByWorkspaceIdAndStatusOrderByCreatedAtDesc(workspaceId, status);
+
+        return invitations.stream()
+                .map(this::toSentListItem)
+                .toList();
+    }
+
     @Transactional
     public WorkspaceInvitationActionResponse acceptInvitation(Long userId, Long invitationId) {
         WorkspaceInvitation invitation = findInvitation(invitationId);
@@ -224,6 +253,20 @@ public class WorkspaceInvitationService {
                 invitation.getWorkspace().getName(),
                 invitation.getInviter().getId(),
                 invitation.getInviter().getNickname(),
+                invitation.getRole(),
+                invitation.getStatus(),
+                invitation.getExpiresAt(),
+                invitation.getCreatedAt()
+        );
+    }
+
+    private WorkspaceSentInvitationListItemResponse toSentListItem(WorkspaceInvitation invitation) {
+        return new WorkspaceSentInvitationListItemResponse(
+                invitation.getId(),
+                invitation.getWorkspace().getId(),
+                invitation.getInvitee().getId(),
+                invitation.getInvitee().getEmail(),
+                invitation.getInvitee().getNickname(),
                 invitation.getRole(),
                 invitation.getStatus(),
                 invitation.getExpiresAt(),

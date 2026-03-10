@@ -77,6 +77,41 @@ class WorkspaceInvitationServiceIntegrationTest extends IntegrationTestContainer
                 .isPresent();
     }
 
+    @Test
+    void ownerCanListAndCancelSentWorkspaceInvitations() {
+        User owner = saveActiveUser("ws-owner");
+        User invitee = saveActiveUser("ws-invitee");
+
+        WorkspaceSummaryResponse summary = workspaceService.createWorkspace(
+                owner.getId(),
+                new CreateWorkspaceRequest("workspace-sent", "desc")
+        );
+        Workspace workspace = workspaceRepository.findById(summary.workspaceId()).orElseThrow();
+
+        workspaceInvitationService.createInvitation(
+                owner.getId(),
+                workspace.getId(),
+                new CreateWorkspaceInvitationRequest(invitee.getEmail(), WorkspaceRole.MEMBER)
+        );
+
+        var sentInvitations = workspaceInvitationService.getSentInvitations(
+                owner.getId(),
+                workspace.getId(),
+                InvitationStatus.PENDING
+        );
+
+        assertThat(sentInvitations).hasSize(1);
+        Long invitationId = sentInvitations.getFirst().invitationId();
+        assertThat(sentInvitations.getFirst().inviteeEmail()).isEqualTo(invitee.getEmail());
+
+        WorkspaceInvitationActionResponse canceled =
+                workspaceInvitationService.cancelInvitation(owner.getId(), workspace.getId(), invitationId);
+
+        assertThat(canceled.status()).isEqualTo(InvitationStatus.CANCELED);
+        assertThat(workspaceInvitationService.getSentInvitations(owner.getId(), workspace.getId(), InvitationStatus.PENDING))
+                .isEmpty();
+    }
+
     private User saveActiveUser(String nicknamePrefix) {
         String suffix = Long.toUnsignedString(System.nanoTime(), 36);
         return userRepository.save(User.builder()

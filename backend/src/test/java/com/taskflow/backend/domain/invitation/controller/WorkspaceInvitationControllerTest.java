@@ -5,6 +5,7 @@ import com.taskflow.backend.domain.invitation.dto.request.CreateWorkspaceInvitat
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationListResponse;
+import com.taskflow.backend.domain.invitation.dto.response.WorkspaceSentInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.service.WorkspaceInvitationService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -116,6 +117,32 @@ class WorkspaceInvitationControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].workspaceId").value(10L))
                 .andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
+    }
+
+    @Test
+    void getSentWorkspaceInvitationsReturnsResponse() throws Exception {
+        WorkspaceSentInvitationListItemResponse item = new WorkspaceSentInvitationListItemResponse(
+                31L,
+                10L,
+                2L,
+                "member@example.com",
+                "member",
+                WorkspaceRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.of(2026, 3, 12, 12, 0),
+                LocalDateTime.of(2026, 3, 9, 12, 0)
+        );
+        given(workspaceInvitationService.getSentInvitations(1L, 10L, InvitationStatus.PENDING))
+                .willReturn(List.of(item));
+
+        mockMvc.perform(get(WorkspaceInvitationHttpContract.workspaceInvitationsPath(10L))
+                        .principal(principalAuth())
+                        .param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].workspaceId").value(10L))
+                .andExpect(jsonPath("$.data[0].inviteeEmail").value("member@example.com"))
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"));
     }
 
     @Test
