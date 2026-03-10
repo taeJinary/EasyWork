@@ -1,15 +1,13 @@
-﻿version: "3.9"
-
 services:
   mysql:
     image: mysql:8.0
     container_name: easywork-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: easywork
-      MYSQL_USER: easywork
-      MYSQL_PASSWORD: easywork
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-easywork}
+      MYSQL_USER: ${MYSQL_USER:-easywork}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-easywork}
     ports:
       - "3306:3306"
     volumes:
