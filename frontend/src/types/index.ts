@@ -494,6 +494,18 @@ export interface WorkspaceInvitationSummary {
   expiresAt: string;
 }
 
+export interface WorkspaceSentInvitationListItem {
+  invitationId: number;
+  workspaceId: number;
+  inviteeUserId: number;
+  inviteeEmail: string;
+  inviteeNickname: string;
+  role: WorkspaceRole;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export type NotificationType =
   | 'PROJECT_INVITED'
   | 'INVITATION_ACCEPTED'

@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.invitation.service;
 import com.taskflow.backend.domain.invitation.dto.request.CreateWorkspaceInvitationRequest;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationListResponse;
+import com.taskflow.backend.domain.invitation.dto.response.WorkspaceSentInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
 import com.taskflow.backend.domain.invitation.repository.WorkspaceInvitationRepository;
@@ -136,6 +137,34 @@ class WorkspaceInvitationServiceTest {
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst().workspaceId()).isEqualTo(10L);
         assertThat(response.content().getFirst().workspaceName()).isEqualTo("TaskFlow Team");
+    }
+
+    @Test
+    void getSentInvitationsReturnsWorkspacePendingInvitationsForOwner() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User invitee = activeUser(2L, "member@example.com", "member");
+        Workspace workspace = workspace(10L, owner);
+        WorkspaceMember ownerMembership = ownerMembership(100L, workspace, owner);
+        WorkspaceInvitation invitation = WorkspaceInvitation.create(
+                workspace,
+                owner,
+                invitee,
+                WorkspaceRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(1)
+        );
+
+        given(workspaceRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(10L, 1L)).willReturn(Optional.of(ownerMembership));
+        given(workspaceInvitationRepository.findAllByWorkspaceIdAndStatusOrderByCreatedAtDesc(10L, InvitationStatus.PENDING))
+                .willReturn(List.of(invitation));
+
+        List<WorkspaceSentInvitationListItemResponse> response =
+                workspaceInvitationService.getSentInvitations(1L, 10L, InvitationStatus.PENDING);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.getFirst().inviteeEmail()).isEqualTo("member@example.com");
+        assertThat(response.getFirst().workspaceId()).isEqualTo(10L);
     }
 
     @Test

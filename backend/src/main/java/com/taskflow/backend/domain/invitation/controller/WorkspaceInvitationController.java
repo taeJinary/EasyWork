@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.invitation.controller;
 import com.taskflow.backend.domain.invitation.dto.request.CreateWorkspaceInvitationRequest;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationActionResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationListResponse;
+import com.taskflow.backend.domain.invitation.dto.response.WorkspaceSentInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.service.WorkspaceInvitationService;
 import com.taskflow.backend.global.auth.CustomUserDetails;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping
@@ -57,6 +59,17 @@ public class WorkspaceInvitationController {
     ) {
         WorkspaceInvitationListResponse response =
                 workspaceInvitationService.getMyInvitations(extractUserId(authentication), status, page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping(WorkspaceInvitationHttpContract.WORKSPACE_INVITATIONS_PATH)
+    public ResponseEntity<ApiResponse<List<WorkspaceSentInvitationListItemResponse>>> getSentInvitations(
+            Authentication authentication,
+            @PathVariable Long workspaceId,
+            @RequestParam(required = false) InvitationStatus status
+    ) {
+        List<WorkspaceSentInvitationListItemResponse> response =
+                workspaceInvitationService.getSentInvitations(extractUserId(authentication), workspaceId, status);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

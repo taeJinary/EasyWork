@@ -65,7 +65,20 @@ describe('WorkspaceDetailPage', () => {
             updatedAt: '2026-03-01T12:00:00',
           },
         ])
-      );
+      )
+      .mockResolvedValueOnce(apiOk([
+        {
+          invitationId: 31,
+          workspaceId: 1,
+          inviteeUserId: 7,
+          inviteeEmail: 'invitee@example.com',
+          inviteeNickname: 'Invitee',
+          role: 'MEMBER',
+          status: 'PENDING',
+          expiresAt: '2026-03-20T10:00:00',
+          createdAt: '2026-03-09T10:00:00',
+        },
+      ]));
 
     render(
       <MemoryRouter initialEntries={['/workspaces/1']}>
@@ -86,6 +99,8 @@ describe('WorkspaceDetailPage', () => {
     expect(screen.getByText('Roadmap')).toBeInTheDocument();
     expect(screen.getByText('3 open tasks')).toBeInTheDocument();
     expect(screen.getAllByText('OWNER').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Pending Invites')).toBeInTheDocument();
+    expect(screen.getByText('Invitee')).toBeInTheDocument();
   });
 
   it('opens new project modal and creates a project in the current workspace', async () => {
@@ -100,6 +115,7 @@ describe('WorkspaceDetailPage', () => {
           updatedAt: '2026-03-01T10:00:00',
         })
       )
+      .mockResolvedValueOnce(apiOk([]))
       .mockResolvedValueOnce(apiOk([]))
       .mockResolvedValueOnce(apiOk([]));
     mockPost.mockResolvedValue(
@@ -167,6 +183,7 @@ describe('WorkspaceDetailPage', () => {
         })
       )
       .mockResolvedValueOnce(apiOk([]))
+      .mockResolvedValueOnce(apiOk([]))
       .mockResolvedValueOnce(apiOk([]));
     mockPost.mockResolvedValue(
       apiOk({
@@ -205,6 +222,66 @@ describe('WorkspaceDetailPage', () => {
         email: 'member@example.com',
         role: 'MEMBER',
       });
+    });
+  });
+
+  it('renders sent workspace invites and cancels a pending invite', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        apiOk({
+          workspaceId: 1,
+          name: 'Alpha Workspace',
+          description: 'Main workspace',
+          myRole: 'OWNER',
+          memberCount: 2,
+          updatedAt: '2026-03-01T10:00:00',
+        })
+      )
+      .mockResolvedValueOnce(apiOk([]))
+      .mockResolvedValueOnce(apiOk([]))
+      .mockResolvedValueOnce(
+        apiOk([
+          {
+            invitationId: 31,
+            workspaceId: 1,
+            inviteeUserId: 7,
+            inviteeEmail: 'invitee@example.com',
+            inviteeNickname: 'Invitee',
+            role: 'MEMBER',
+            status: 'PENDING',
+            expiresAt: '2026-03-20T10:00:00',
+            createdAt: '2026-03-09T10:00:00',
+          },
+        ])
+      );
+    mockPost.mockResolvedValueOnce(
+      apiOk({
+        invitationId: 31,
+        workspaceId: 1,
+        memberId: null,
+        role: 'MEMBER',
+        status: 'CANCELED',
+      })
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/workspaces/1']}>
+        <Routes>
+          <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Invitee')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/workspaces/1/invitations/31/cancel');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Invitee')).not.toBeInTheDocument();
     });
   });
 });

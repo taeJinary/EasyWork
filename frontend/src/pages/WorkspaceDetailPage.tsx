@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, FolderKanban, Plus, Settings, UserPlus, Users, X } from 'lucide-react';
+import { AlertCircle, FolderKanban, Mail, Plus, Settings, UserPlus, Users, X } from 'lucide-react';
 import Badge from '@/components/Badge';
 import ProjectCreateModal from '@/components/ProjectCreateModal';
 import apiClient from '@/api/client';
@@ -11,6 +11,8 @@ import type {
   ProjectSummary,
   WorkspaceDetail,
   WorkspaceDetailResponse,
+  WorkspaceInvitationAction,
+  WorkspaceSentInvitationListItem,
   WorkspaceInvitationSummary,
   WorkspaceMember,
   WorkspaceMemberResponse,
@@ -27,6 +29,11 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.substring(0, 10).split('-');
+  return `${y}.${m}.${d}`;
 }
 
 function toWorkspaceDetail(workspace: WorkspaceDetailResponse): WorkspaceDetail {
@@ -66,6 +73,9 @@ export default function WorkspaceDetailPage() {
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>('MEMBER');
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteListError, setInviteListError] = useState<string | null>(null);
+  const [sentInvitations, setSentInvitations] = useState<WorkspaceSentInvitationListItem[]>([]);
+  const [cancelingInvitationId, setCancelingInvitationId] = useState<number | null>(null);
 
   const loadWorkspaceData = useCallback(async () => {
     if (!workspaceId) {
@@ -75,18 +85,24 @@ export default function WorkspaceDetailPage() {
     try {
       setLoading(true);
       setError('');
-      const [workspaceResponse, membersResponse, projectsResponse] = await Promise.all([
+      setInviteListError(null);
+      const [workspaceResponse, membersResponse, projectsResponse, invitationsResponse] = await Promise.all([
         apiClient.get<ApiResponse<WorkspaceDetailResponse>>(`/workspaces/${workspaceId}`),
         apiClient.get<ApiResponse<WorkspaceMemberResponse[]>>(`/workspaces/${workspaceId}/members`),
         apiClient.get<ApiResponse<ProjectListItemResponse[]>>(`/workspaces/${workspaceId}/projects`),
+        apiClient.get<ApiResponse<WorkspaceSentInvitationListItem[]>>(`/workspaces/${workspaceId}/invitations`, {
+          params: { status: 'PENDING' },
+        }),
       ]);
       setWorkspace(toWorkspaceDetail(workspaceResponse.data.data));
       setMembers(membersResponse.data.data.map(toWorkspaceMember));
       setProjects(projectsResponse.data.data.map(toProjectSummary));
+      setSentInvitations(invitationsResponse.data.data);
     } catch {
       setWorkspace(null);
       setMembers([]);
       setProjects([]);
+      setSentInvitations([]);
       setError('Failed to load workspace.');
     } finally {
       setLoading(false);
@@ -113,10 +129,24 @@ export default function WorkspaceDetailPage() {
     setInviteError(null);
 
     try {
-      await apiClient.post<ApiResponse<WorkspaceInvitationSummary>>(`/workspaces/${workspaceId}/invitations`, {
+      const response = await apiClient.post<ApiResponse<WorkspaceInvitationSummary>>(`/workspaces/${workspaceId}/invitations`, {
         email: inviteEmail.trim(),
         role: inviteRole,
       });
+      setSentInvitations((current) => [
+        {
+          invitationId: response.data.data.invitationId,
+          workspaceId: response.data.data.workspaceId,
+          inviteeUserId: response.data.data.inviteeUserId,
+          inviteeEmail: response.data.data.inviteeEmail,
+          inviteeNickname: response.data.data.inviteeNickname,
+          role: response.data.data.role,
+          status: response.data.data.status,
+          expiresAt: response.data.data.expiresAt,
+          createdAt: new Date().toISOString(),
+        },
+        ...current,
+      ]);
       closeInviteModal();
       setActiveTab('members');
     } catch (caughtError: unknown) {
@@ -127,6 +157,32 @@ export default function WorkspaceDetailPage() {
       setInviteSubmitting(false);
     }
   }, [closeInviteModal, inviteEmail, inviteRole, workspaceId]);
+
+  const handleCancelInvitation = useCallback(async (invitation: WorkspaceSentInvitationListItem) => {
+    if (!workspaceId) {
+      return;
+    }
+
+    setCancelingInvitationId(invitation.invitationId);
+    setInviteListError(null);
+
+    try {
+      const response = await apiClient.post<ApiResponse<WorkspaceInvitationAction>>(
+        `/workspaces/${workspaceId}/invitations/${invitation.invitationId}/cancel`
+      );
+      setSentInvitations((current) =>
+        current.filter((item) =>
+          item.invitationId !== response.data.data.invitationId
+        )
+      );
+    } catch (caughtError: unknown) {
+      const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setInviteListError(message || 'Failed to cancel workspace invitation.');
+      console.error('Failed to cancel workspace invitation:', caughtError);
+    } finally {
+      setCancelingInvitationId(null);
+    }
+  }, [workspaceId]);
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'overview', label: 'Overview' },
@@ -426,6 +482,61 @@ export default function WorkspaceDetailPage() {
               )}
             </div>
           </div>
+
+          {workspace?.myRole === 'OWNER' && (
+            <div className="mb-[var(--spacing-lg)]">
+              <h3 className="m-0 mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
+                <Mail size={14} />
+                Pending Invites
+                <span className="font-normal text-[var(--color-text-muted)]">({sentInvitations.length})</span>
+              </h3>
+              {inviteListError && (
+                <div className="mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
+                  <AlertCircle size={14} />
+                  {inviteListError}
+                </div>
+              )}
+              <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
+                {sentInvitations.length === 0 ? (
+                  <div className="p-[var(--spacing-base)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
+                    No pending invitations
+                  </div>
+                ) : (
+                  sentInvitations.map((invitation, index) => (
+                    <div
+                      key={invitation.invitationId}
+                      className={`px-[var(--spacing-md)] py-[var(--spacing-sm)] ${index < sentInvitations.length - 1 ? 'border-b border-[var(--color-border)]' : ''}`}
+                    >
+                      <div className="flex items-center justify-between gap-[var(--spacing-sm)]">
+                        <div className="min-w-0">
+                          <div className="truncate text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
+                            {invitation.inviteeNickname}
+                          </div>
+                          <div className="truncate text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                            {invitation.inviteeEmail}
+                          </div>
+                        </div>
+                        <Badge variant={invitation.role === 'OWNER' ? 'warning' : 'default'} size="sm">
+                          {invitation.role}
+                        </Badge>
+                      </div>
+                      <div className="mt-[var(--spacing-xs)] flex items-center justify-between gap-[var(--spacing-sm)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                        <span>Expires {formatDate(invitation.expiresAt)}</span>
+                        <button
+                          type="button"
+                          onClick={() => void handleCancelInvitation(invitation)}
+                          disabled={cancelingInvitationId === invitation.invitationId}
+                          className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-[var(--color-accent-red)] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           <div>
             <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
