@@ -294,4 +294,29 @@ describe('AccountSettingsPage', () => {
     expect(screen.queryByText('web-token-1')).not.toBeInTheDocument();
     expect(screen.getByText('android-token-2')).toBeInTheDocument();
   });
+
+  it('shows empty state when there are no registered devices', async () => {
+    mockGet.mockResolvedValueOnce(apiOk([]));
+
+    renderPage();
+
+    expect(await screen.findByText('등록된 디바이스가 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('새 토큰을 등록하면 이 기기에서 알림을 받을 수 있습니다.')).toBeInTheDocument();
+  });
+
+  it('shows retry action when loading registered devices fails', async () => {
+    mockGet
+      .mockRejectedValueOnce(new Error('load failed'))
+      .mockResolvedValueOnce(apiOk([{ token: 'web-token-1', platform: 'WEB', active: true }]));
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('등록된 디바이스 목록을 불러오지 못했습니다.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(await screen.findByText('등록된 디바이스')).toBeInTheDocument();
+    expect(screen.getByText('web-token-1')).toBeInTheDocument();
+  });
 });
