@@ -319,4 +319,29 @@ describe('AccountSettingsPage', () => {
     expect(await screen.findByText('등록된 디바이스')).toBeInTheDocument();
     expect(screen.getByText('web-token-1')).toBeInTheDocument();
   });
+
+  it('shows newly registered device even when initial device load failed', async () => {
+    mockGet.mockRejectedValueOnce(new Error('load failed'));
+    mockPost.mockResolvedValue(
+      apiOk({
+        token: 'web-token-9',
+        platform: 'WEB',
+        active: true,
+      })
+    );
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('등록된 디바이스 목록을 불러오지 못했습니다.')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-9');
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'WEB');
+    await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
+
+    expect(await screen.findByText('활성 디바이스가 등록되었습니다.')).toBeInTheDocument();
+    expect(screen.getByText('등록된 디바이스')).toBeInTheDocument();
+    expect(screen.getByText('web-token-9')).toBeInTheDocument();
+    expect(screen.queryByText('등록된 디바이스 목록을 불러오지 못했습니다.')).not.toBeInTheDocument();
+  });
 });

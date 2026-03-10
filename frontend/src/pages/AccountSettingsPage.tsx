@@ -155,6 +155,7 @@ export default function AccountSettingsPage() {
           ...next,
         ];
       });
+      setPushDevicesLoadError(null);
       setPushToken('');
       setPushSuccess('활성 디바이스가 등록되었습니다.');
     } catch (err: unknown) {
