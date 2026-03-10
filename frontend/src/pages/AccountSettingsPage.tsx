@@ -14,11 +14,28 @@ import type {
 
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,20}$/;
 
+type PushEnvironmentState = {
+  notificationsSupported: boolean;
+  serviceWorkerSupported: boolean;
+  notificationPermission: NotificationPermission | 'unsupported';
+};
+
 function validateNewPassword(value: string): string | null {
   if (value.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
   if (value.length > 20) return '비밀번호는 20자 이하여야 합니다.';
   if (!PASSWORD_REGEX.test(value)) return '비밀번호는 영문, 숫자, 특수문자(@$!%*#?&)를 모두 포함해야 합니다.';
   return null;
+}
+
+function readPushEnvironmentState(): PushEnvironmentState {
+  const notificationsSupported = typeof window !== 'undefined' && 'Notification' in window;
+  const serviceWorkerSupported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+
+  return {
+    notificationsSupported,
+    serviceWorkerSupported,
+    notificationPermission: notificationsSupported ? window.Notification.permission : 'unsupported',
+  };
 }
 
 export default function AccountSettingsPage() {
@@ -46,6 +63,7 @@ export default function AccountSettingsPage() {
   const [registeredDevices, setRegisteredDevices] = useState<PushTokenRegistrationState[]>([]);
   const [pushDevicesLoading, setPushDevicesLoading] = useState(true);
   const [pushDevicesLoadError, setPushDevicesLoadError] = useState<string | null>(null);
+  const pushEnvironment = readPushEnvironmentState();
 
   const handleNewPasswordChange = (value: string) => {
     setNewPassword(value);
@@ -284,6 +302,27 @@ export default function AccountSettingsPage() {
           <h2 className="text-[var(--text-base)] font-bold text-[var(--color-text-primary)] m-0 mb-[var(--spacing-base)]">
             알림 디바이스
           </h2>
+
+          {pushPlatform === 'WEB' && (!pushEnvironment.notificationsSupported || !pushEnvironment.serviceWorkerSupported) && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+              <AlertTriangle size={14} className="shrink-0" />
+              현재 브라우저는 웹 푸시 수신 환경을 완전히 지원하지 않을 수 있습니다. 토큰 등록 전 브라우저와 서비스 워커 설정을 확인하세요.
+            </div>
+          )}
+
+          {pushPlatform === 'WEB' && pushEnvironment.notificationPermission === 'default' && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+              <AlertCircle size={14} className="shrink-0" />
+              브라우저 알림 권한이 아직 허용되지 않았습니다. 권한을 허용하지 않으면 웹 푸시를 받을 수 없습니다.
+            </div>
+          )}
+
+          {pushPlatform === 'WEB' && pushEnvironment.notificationPermission === 'denied' && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
+              <AlertCircle size={14} className="shrink-0" />
+              브라우저 알림 권한이 차단되어 있습니다. 권한을 다시 허용하기 전까지 웹 푸시를 받을 수 없습니다.
+            </div>
+          )}
 
           {pushError && (
             <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">

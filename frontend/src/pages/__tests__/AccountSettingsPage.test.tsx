@@ -43,10 +43,33 @@ function renderPage() {
   );
 }
 
+function setNotificationPermission(permission: NotificationPermission) {
+  Object.defineProperty(window, 'Notification', {
+    configurable: true,
+    writable: true,
+    value: { permission },
+  });
+}
+
+function setServiceWorkerSupport(supported: boolean) {
+  if (supported) {
+    Object.defineProperty(window.navigator, 'serviceWorker', {
+      configurable: true,
+      writable: true,
+      value: {},
+    });
+    return;
+  }
+
+  Reflect.deleteProperty(window.navigator, 'serviceWorker');
+}
+
 describe('AccountSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockResolvedValue(apiOk([]));
+    setNotificationPermission('granted');
+    setServiceWorkerSupport(true);
   });
 
   it('renders password change form fields', async () => {
@@ -343,5 +366,25 @@ describe('AccountSettingsPage', () => {
     expect(screen.getByText('등록된 디바이스')).toBeInTheDocument();
     expect(screen.getByText('web-token-9')).toBeInTheDocument();
     expect(screen.queryByText('등록된 디바이스 목록을 불러오지 못했습니다.')).not.toBeInTheDocument();
+  });
+
+  it('shows permission guidance when web notification permission is not granted', async () => {
+    setNotificationPermission('default');
+
+    renderPage();
+
+    expect(
+      await screen.findByText('브라우저 알림 권한이 아직 허용되지 않았습니다. 권한을 허용하지 않으면 웹 푸시를 받을 수 없습니다.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows support guidance when service worker support is missing for web push', async () => {
+    setServiceWorkerSupport(false);
+
+    renderPage();
+
+    expect(
+      await screen.findByText('현재 브라우저는 웹 푸시 수신 환경을 완전히 지원하지 않을 수 있습니다. 토큰 등록 전 브라우저와 서비스 워커 설정을 확인하세요.')
+    ).toBeInTheDocument();
   });
 });
