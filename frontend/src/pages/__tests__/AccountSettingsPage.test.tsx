@@ -378,6 +378,20 @@ describe('AccountSettingsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('disables web registration when notification permission is denied', async () => {
+    setNotificationPermission('denied');
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-guarded');
+
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
+    expect(
+      await screen.findByText('현재 환경에서는 WEB 디바이스 등록이 비활성화됩니다. 권한 또는 브라우저 지원 상태를 먼저 해결하세요.')
+    ).toBeInTheDocument();
+  });
+
   it('shows support guidance when service worker support is missing for web push', async () => {
     setServiceWorkerSupport(false);
 
@@ -386,5 +400,31 @@ describe('AccountSettingsPage', () => {
     expect(
       await screen.findByText('현재 브라우저는 웹 푸시 수신 환경을 완전히 지원하지 않을 수 있습니다. 토큰 등록 전 브라우저와 서비스 워커 설정을 확인하세요.')
     ).toBeInTheDocument();
+  });
+
+  it('disables web registration when service worker support is missing', async () => {
+    setServiceWorkerSupport(false);
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-unsupported');
+
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
+    expect(
+      await screen.findByText('현재 환경에서는 WEB 디바이스 등록이 비활성화됩니다. 권한 또는 브라우저 지원 상태를 먼저 해결하세요.')
+    ).toBeInTheDocument();
+  });
+
+  it('keeps non-web registration available even when web permission is denied', async () => {
+    setNotificationPermission('denied');
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'ANDROID');
+    await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-1');
+
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeEnabled();
   });
 });
