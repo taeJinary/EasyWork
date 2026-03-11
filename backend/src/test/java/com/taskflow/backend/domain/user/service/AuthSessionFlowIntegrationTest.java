@@ -168,12 +168,14 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
     @Test
     void resendEmailVerificationReturnsTooManyRequestsWhenCooldownIsActive() throws Exception {
         String email = "auth-resend-" + System.nanoTime() + "@example.com";
+        String initialToken = "initial-email-token-" + System.nanoTime();
+        String resendToken = "resend-email-token-" + System.nanoTime();
         org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate())
-                .willReturn("resend-email-token");
+                .willReturn(resendToken);
         org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
 
         User user = saveUnverifiedLocalUser(email, "authresend");
-        saveActiveEmailVerificationToken(user, "initial-email-token");
+        saveActiveEmailVerificationToken(user, initialToken);
 
         mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
                         + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
@@ -203,16 +205,18 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
     @Test
     void resendEmailVerificationPreservesExistingTokenWhenMailSendFails() {
         String email = "auth-resend-fail-" + System.nanoTime() + "@example.com";
+        String initialToken = "initial-email-token-" + System.nanoTime();
+        String resendToken = "resend-email-token-" + System.nanoTime();
         org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate())
-                .willReturn("resend-email-token");
+                .willReturn(resendToken);
         org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
 
         User user = saveUnverifiedLocalUser(email, "authresendfail");
-        saveActiveEmailVerificationToken(user, "initial-email-token");
+        saveActiveEmailVerificationToken(user, initialToken);
 
         org.mockito.BDDMockito.willThrow(new RuntimeException("smtp down"))
                 .given(emailVerificationMailService)
-                .sendVerificationEmail(email, "resend-email-token");
+                .sendVerificationEmail(email, resendToken);
 
         authService.resendEmailVerification(email);
 
@@ -221,7 +225,7 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
         assertThat(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId))
                 .hasSize(1);
 
-        authService.verifyEmail("initial-email-token");
+        authService.verifyEmail(initialToken);
 
         assertThat(userRepository.findByEmail(email).orElseThrow().isEmailVerified()).isTrue();
     }
