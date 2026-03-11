@@ -240,9 +240,25 @@ public class AuthService {
                 .filter(User::isLocalAccount)
                 .filter(user -> !user.isEmailVerified())
                 .ifPresent(user -> {
-                    enforceEmailVerificationResendRateLimit(user);
-                    reissueEmailVerificationToken(user);
-                    recordEmailVerificationResend(user);
+                    String cooldownKey = emailVerificationResendCooldownKey(user.getId());
+                    String countKey = emailVerificationResendCountKey(user.getId());
+                    boolean reserved = redisService.tryAcquireEmailVerificationResendSlot(
+                            cooldownKey,
+                            countKey,
+                            EMAIL_VERIFICATION_RESEND_COOLDOWN,
+                            EMAIL_VERIFICATION_RESEND_WINDOW,
+                            MAX_EMAIL_VERIFICATION_RESENDS_PER_WINDOW
+                    );
+                    if (!reserved) {
+                        throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
+                    }
+
+                    try {
+                        reissueEmailVerificationToken(user);
+                    } catch (RuntimeException exception) {
+                        redisService.rollbackEmailVerificationResendSlot(cooldownKey, countKey);
+                        throw exception;
+                    }
                 });
     }
 
@@ -390,34 +406,6 @@ public class AuthService {
         issueEmailVerificationToken(user);
     }
 
-    private void enforceEmailVerificationResendRateLimit(User user) {
-        if (redisService.hasKey(emailVerificationResendCooldownKey(user.getId()))) {
-            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
-        }
-
-        long resendCount = redisService.getValue(emailVerificationResendCountKey(user.getId()))
-                .map(this::parseRedisCounter)
-                .orElse(0L);
-
-        if (resendCount >= MAX_EMAIL_VERIFICATION_RESENDS_PER_WINDOW) {
-            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
-        }
-    }
-
-    private void recordEmailVerificationResend(User user) {
-        String resendCountKey = emailVerificationResendCountKey(user.getId());
-        Long updatedCount = redisService.increment(resendCountKey);
-        if (updatedCount != null && updatedCount == 1L) {
-            redisService.expire(resendCountKey, EMAIL_VERIFICATION_RESEND_WINDOW);
-        }
-
-        redisService.setValue(
-                emailVerificationResendCooldownKey(user.getId()),
-                "1",
-                EMAIL_VERIFICATION_RESEND_COOLDOWN
-        );
-    }
-
     private void revokeActiveEmailVerificationTokens(Long userId, EmailVerificationToken tokenToKeep) {
         LocalDateTime now = LocalDateTime.now();
         emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId)
@@ -459,12 +447,5 @@ public class AuthService {
         }
     }
 
-    private long parseRedisCounter(String rawValue) {
-        try {
-            return Long.parseLong(rawValue);
-        } catch (NumberFormatException exception) {
-            return 0L;
-        }
-    }
 }
 

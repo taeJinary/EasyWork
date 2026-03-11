@@ -397,9 +397,13 @@ class AuthServiceTest {
 
         when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(redisService.hasKey("email-verification:resend:cooldown:" + user.getId())).thenReturn(false);
-        when(redisService.getValue("email-verification:resend:count:" + user.getId())).thenReturn(Optional.empty());
-        when(redisService.increment("email-verification:resend:count:" + user.getId())).thenReturn(1L);
+        when(redisService.tryAcquireEmailVerificationResendSlot(
+                "email-verification:resend:cooldown:" + user.getId(),
+                "email-verification:resend:count:" + user.getId(),
+                Duration.ofSeconds(60),
+                Duration.ofHours(1),
+                5L
+        )).thenReturn(true);
         when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
                 .thenReturn(java.util.List.of(existingToken));
         when(emailVerificationTokenGenerator.generate()).thenReturn("new-raw-token");
@@ -409,12 +413,6 @@ class AuthServiceTest {
         assertThat(existingToken.getRevokedAt()).isNotNull();
         verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
         verify(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
-        verify(redisService).expire("email-verification:resend:count:" + user.getId(), Duration.ofHours(1));
-        verify(redisService).setValue(
-                "email-verification:resend:cooldown:" + user.getId(),
-                "1",
-                Duration.ofSeconds(60)
-        );
     }
 
     @Test
@@ -423,7 +421,13 @@ class AuthServiceTest {
 
         when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(redisService.hasKey("email-verification:resend:cooldown:" + user.getId())).thenReturn(true);
+        when(redisService.tryAcquireEmailVerificationResendSlot(
+                "email-verification:resend:cooldown:" + user.getId(),
+                "email-verification:resend:count:" + user.getId(),
+                Duration.ofSeconds(60),
+                Duration.ofHours(1),
+                5L
+        )).thenReturn(false);
 
         assertThatThrownBy(() -> authService.resendEmailVerification(user.getEmail()))
                 .isInstanceOf(BusinessException.class)
@@ -440,8 +444,13 @@ class AuthServiceTest {
 
         when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(redisService.hasKey("email-verification:resend:cooldown:" + user.getId())).thenReturn(false);
-        when(redisService.getValue("email-verification:resend:count:" + user.getId())).thenReturn(Optional.of("5"));
+        when(redisService.tryAcquireEmailVerificationResendSlot(
+                "email-verification:resend:cooldown:" + user.getId(),
+                "email-verification:resend:count:" + user.getId(),
+                Duration.ofSeconds(60),
+                Duration.ofHours(1),
+                5L
+        )).thenReturn(false);
 
         assertThatThrownBy(() -> authService.resendEmailVerification(user.getEmail()))
                 .isInstanceOf(BusinessException.class)
@@ -450,6 +459,35 @@ class AuthServiceTest {
 
         verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
         verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
+    }
+
+    @Test
+    void resendEmailVerificationRollsBackReservedSlotWhenMailSendFails() {
+        User user = unverifiedLocalUser();
+        RuntimeException mailFailure = new RuntimeException("mail send failed");
+
+        when(emailVerificationMailService.isReady()).thenReturn(true);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(redisService.tryAcquireEmailVerificationResendSlot(
+                "email-verification:resend:cooldown:" + user.getId(),
+                "email-verification:resend:count:" + user.getId(),
+                Duration.ofSeconds(60),
+                Duration.ofHours(1),
+                5L
+        )).thenReturn(true);
+        when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
+                .thenReturn(java.util.List.of());
+        when(emailVerificationTokenGenerator.generate()).thenReturn("new-raw-token");
+        org.mockito.Mockito.doThrow(mailFailure)
+                .when(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
+
+        assertThatThrownBy(() -> authService.resendEmailVerification(user.getEmail()))
+                .isSameAs(mailFailure);
+
+        verify(redisService).rollbackEmailVerificationResendSlot(
+                "email-verification:resend:cooldown:" + user.getId(),
+                "email-verification:resend:count:" + user.getId()
+        );
     }
 
     @Test
