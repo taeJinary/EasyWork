@@ -90,6 +90,9 @@ class AuthServiceTest {
     @Mock
     private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
 
+    @Mock
+    private EmailVerificationMailService emailVerificationMailService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -128,6 +131,7 @@ class AuthServiceTest {
         assertThat(response.emailVerificationRequired()).isTrue();
         verify(passwordHistoryRepository).save(any(PasswordHistory.class));
         verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
+        verify(emailVerificationMailService).sendVerificationEmail("new@example.com", "raw-email-token");
     }
 
     @Test
@@ -398,6 +402,7 @@ class AuthServiceTest {
 
         assertThat(existingToken.getRevokedAt()).isNotNull();
         verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
+        verify(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
     }
 
     @Test

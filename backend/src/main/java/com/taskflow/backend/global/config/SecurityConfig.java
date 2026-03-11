@@ -64,7 +64,15 @@ public class SecurityConfig {
                                 referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/signup", "/auth/login", "/auth/oauth/login", "/auth/oauth/code/login", "/auth/token/reissue").permitAll()
+                        .requestMatchers(
+                                "/auth/signup",
+                                "/auth/login",
+                                "/auth/oauth/login",
+                                "/auth/oauth/code/login",
+                                "/auth/token/reissue",
+                                "/auth/email-verification/verify",
+                                "/auth/email-verification/resend"
+                        ).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(
                                 WebSocketContract.STOMP_ENDPOINT_PATH,

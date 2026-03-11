@@ -63,6 +63,7 @@ public class AuthService {
     private final OAuthAccessTokenExchanger oauthAccessTokenExchanger;
     private final OperationalMetricsService operationalMetricsService;
     private final EmailVerificationTokenGenerator emailVerificationTokenGenerator;
+    private final EmailVerificationMailService emailVerificationMailService;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -381,6 +382,7 @@ public class AuthService {
                 LocalDateTime.now().plusHours(24)
         );
         emailVerificationTokenRepository.save(token);
+        emailVerificationMailService.sendVerificationEmail(user.getEmail(), rawToken);
     }
 
     private String hashVerificationToken(String rawToken) {
