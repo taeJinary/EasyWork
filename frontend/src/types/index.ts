@@ -1,9 +1,15 @@
-﻿export interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
 }
 
+
+export interface ApiErrorResponse {
+  success: boolean;
+  errorCode: string;
+  message: string;
+}
 export interface PageInfo {
   page: number;
   size: number;
@@ -51,6 +57,7 @@ export interface SignupResponse {
   userId: number;
   email: string;
   nickname: string;
+  emailVerificationRequired: boolean;
 }
 
 export interface ReissueResponse {

@@ -1,20 +1,26 @@
 import { useState } from 'react';
+import type { AxiosError } from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
-import type { ApiResponse, LoginResponse } from '@/types';
+import type { ApiErrorResponse, ApiResponse, LoginResponse } from '@/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setInfo('');
+    setRequiresVerification(false);
     setLoading(true);
 
     try {
@@ -25,10 +31,36 @@ export default function LoginPage() {
       const { accessToken, user } = res.data.data;
       login(accessToken, user);
       navigate('/workspaces');
-    } catch {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      const errorCode = axiosError.response?.data?.errorCode;
+
+      if (errorCode === 'EMAIL_NOT_VERIFIED') {
+        setRequiresVerification(true);
+        setError('이메일 인증이 필요합니다. 인증 메일을 확인하거나 다시 보내세요.');
+      } else {
+        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setError('');
+    setInfo('');
+    setResending(true);
+
+    try {
+      const response = await apiClient.post<ApiResponse<void>>('/auth/email-verification/resend', {
+        email,
+      });
+      setInfo(response.data.message ?? '인증 메일을 다시 보냈습니다.');
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      setError(axiosError.response?.data?.message ?? '인증 메일 재발송에 실패했습니다.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -38,7 +70,6 @@ export default function LoginPage() {
         bg-[var(--color-surface)] border border-[var(--color-border)]
         rounded-[var(--radius-md)] p-[var(--spacing-lg)]
       ">
-        {/* Header */}
         <div className="text-center mb-[var(--spacing-lg)]">
           <h1 className="text-[var(--text-xl)] font-bold text-[var(--color-text-primary)] m-0">
             EasyWork
@@ -48,7 +79,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit}>
           {error && (
             <div className="
@@ -61,11 +91,23 @@ export default function LoginPage() {
             </div>
           )}
 
+          {info && (
+            <div className="
+              mb-[var(--spacing-base)] p-[var(--spacing-sm)]
+              bg-[var(--color-accent-green)]/15 text-[var(--color-success)]
+              text-[var(--text-sm)] rounded-[var(--radius-sm)]
+              border border-[var(--color-success)]/20
+            ">
+              {info}
+            </div>
+          )}
+
           <div className="mb-[var(--spacing-base)]">
-            <label className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+            <label htmlFor="login-email" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
               Email
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -80,10 +122,11 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-[var(--spacing-base)]">
-            <label className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+            <label htmlFor="login-password" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -110,16 +153,29 @@ export default function LoginPage() {
           >
             {loading ? '로그인 중...' : 'Sign in'}
           </button>
+
+          {requiresVerification && (
+            <button
+              type="button"
+              disabled={resending || !email}
+              onClick={handleResendVerification}
+              className="
+                mt-[var(--spacing-sm)] w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
+                bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                cursor-pointer hover:bg-[var(--color-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              {resending ? '전송 중...' : '인증 메일 다시 보내기'}
+            </button>
+          )}
         </form>
 
-        {/* Divider */}
         <div className="flex items-center gap-[var(--spacing-md)] my-[var(--spacing-lg)]">
           <div className="flex-1 h-px bg-[var(--color-border)]" />
           <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">OR</span>
           <div className="flex-1 h-px bg-[var(--color-border)]" />
         </div>
 
-        {/* OAuth Buttons */}
         <div className="flex flex-col gap-[var(--spacing-sm)]">
           <button className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
@@ -145,7 +201,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Sign up link */}
       <div className="
         mt-[var(--spacing-base)] text-center
         text-[var(--text-sm)] text-[var(--color-text-secondary)]

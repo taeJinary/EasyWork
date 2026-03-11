@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
 import type { ApiResponse, SignupResponse } from '@/types';
@@ -8,6 +8,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [verificationNotice, setVerificationNotice] = useState<SignupResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -17,11 +18,18 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await apiClient.post<ApiResponse<SignupResponse>>('/auth/signup', {
+      const response = await apiClient.post<ApiResponse<SignupResponse>>('/auth/signup', {
         nickname,
         email,
         password,
       });
+
+      const signup = response.data.data;
+      if (signup.emailVerificationRequired) {
+        setVerificationNotice(signup);
+        return;
+      }
+
       navigate('/login');
     } catch {
       setError('Failed to sign up. Please check your input.');
@@ -29,6 +37,34 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  if (verificationNotice) {
+    return (
+      <div className="w-full max-w-[440px]">
+        <div
+          className="
+            rounded-[var(--radius-md)] border border-[var(--color-border)]
+            bg-[var(--color-surface)] p-[var(--spacing-lg)]
+          "
+        >
+          <div className="text-center">
+            <h1 className="m-0 text-[var(--text-xl)] font-bold text-[var(--color-text-primary)]">
+              Check your email
+            </h1>
+            <p className="mt-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+              We sent a verification link to {verificationNotice.email}. Verify your email before signing in.
+            </p>
+          </div>
+
+          <div className="mt-[var(--spacing-lg)] text-center">
+            <Link to="/login" className="font-medium text-[var(--color-primary)]">
+              Back to login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[440px]">
