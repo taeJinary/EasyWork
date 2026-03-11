@@ -1,4 +1,4 @@
-﻿import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,7 +28,9 @@ describe('SignupPage', () => {
   });
 
   it('submits nickname field required by backend signup contract', async () => {
-    mockPost.mockResolvedValue(apiOk({ userId: 1, email: 'nick@example.com', nickname: 'Nick' }));
+    mockPost.mockResolvedValue(
+      apiOk({ userId: 1, email: 'nick@example.com', nickname: 'Nick', emailVerificationRequired: true })
+    );
 
     render(
       <MemoryRouter>
@@ -53,5 +55,27 @@ describe('SignupPage', () => {
         password: 'Password1!',
       });
     });
+  });
+
+  it('shows verification notice when signup requires email verification', async () => {
+    mockPost.mockResolvedValue(
+      apiOk({ userId: 1, email: 'nick@example.com', nickname: 'Nick', emailVerificationRequired: true })
+    );
+
+    render(
+      <MemoryRouter>
+        <SignupPage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Nickname'), 'Nick');
+    await user.type(screen.getByLabelText('Email'), 'nick@example.com');
+    await user.type(screen.getByLabelText('Password'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('Check your email')).toBeInTheDocument();
+    expect(screen.getByText(/We sent a verification link to nick@example.com/)).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
