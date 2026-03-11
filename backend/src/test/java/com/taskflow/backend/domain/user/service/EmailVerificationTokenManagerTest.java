@@ -3,10 +3,12 @@ package com.taskflow.backend.domain.user.service;
 import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
+import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -25,6 +27,9 @@ class EmailVerificationTokenManagerTest {
 
     @Mock
     private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
@@ -60,6 +65,7 @@ class EmailVerificationTokenManagerTest {
         );
 
         when(emailVerificationMailService.isReady()).thenReturn(true);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
                 .thenReturn(List.of(existingToken));
         when(emailVerificationTokenGenerator.generate()).thenReturn("next-token");

@@ -2,6 +2,10 @@ package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import com.jayway.jsonpath.JsonPath;
+import com.taskflow.backend.domain.user.dto.request.SignupRequest;
+import com.taskflow.backend.domain.user.repository.EmailVerificationRetryJobRepository;
+import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
+import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.EmailVerificationTokenGenerator;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import jakarta.servlet.http.Cookie;
@@ -30,6 +34,18 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Autowired
+    private EmailVerificationRetryJobRepository emailVerificationRetryJobRepository;
 
     @MockBean
     private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
@@ -186,6 +202,31 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                                 """.formatted(email)))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.errorCode").value("EMAIL_VERIFICATION_RESEND_TOO_FREQUENT"));
+    }
+
+    @Test
+    void resendEmailVerificationPreservesExistingTokenWhenMailSendFails() {
+        String email = "auth-resend-fail-" + System.nanoTime() + "@example.com";
+        org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate())
+                .willReturn("initial-email-token", "resend-email-token");
+        org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
+
+        authService.signup(new SignupRequest(email, "Pass123!", "authresendfail"));
+
+        org.mockito.BDDMockito.willThrow(new RuntimeException("smtp down"))
+                .given(emailVerificationMailService)
+                .sendVerificationEmail(email, "resend-email-token");
+
+        authService.resendEmailVerification(email);
+
+        Long userId = userRepository.findByEmail(email).orElseThrow().getId();
+        assertThat(emailVerificationRetryJobRepository.existsByUserIdAndCompletedAtIsNull(userId)).isTrue();
+        assertThat(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId))
+                .hasSize(1);
+
+        authService.verifyEmail("initial-email-token");
+
+        assertThat(userRepository.findByEmail(email).orElseThrow().isEmailVerified()).isTrue();
     }
 
     private String extractCookieValue(String setCookieHeader, String cookieName) {

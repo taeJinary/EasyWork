@@ -3,15 +3,19 @@ package com.taskflow.backend.domain.user.service;
 import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
+import com.taskflow.backend.domain.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationTokenManager {
 
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final UserRepository userRepository;
     private final EmailVerificationTokenGenerator emailVerificationTokenGenerator;
     private final EmailVerificationMailService emailVerificationMailService;
 
@@ -27,9 +31,11 @@ public class EmailVerificationTokenManager {
         emailVerificationMailService.sendVerificationEmail(user.getEmail(), rawToken);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void reissue(User user) {
-        revokeActiveTokens(user.getId(), null);
-        issue(user);
+        User managedUser = userRepository.findById(user.getId()).orElseThrow();
+        revokeActiveTokens(managedUser.getId(), null);
+        issue(managedUser);
     }
 
     public void revokeOtherActiveTokens(Long userId, EmailVerificationToken tokenToKeep) {
