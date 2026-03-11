@@ -36,18 +36,19 @@ import com.taskflow.backend.infra.redis.RedisService;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 class UnverifiedUserCleanupServiceIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
@@ -94,6 +95,16 @@ class UnverifiedUserCleanupServiceIntegrationTest extends IntegrationTestContain
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void setUp() {
+        resetPersistentState();
+    }
+
+    @AfterEach
+    void tearDown() {
+        resetPersistentState();
+    }
 
     @Test
     void cleanupDeletesExpiredUnverifiedLocalUserAndRelatedRows() {
@@ -254,5 +265,19 @@ class UnverifiedUserCleanupServiceIntegrationTest extends IntegrationTestContain
                 createdAt,
                 userId
         );
+    }
+
+    private void resetPersistentState() {
+        redisService.deleteByPattern("*");
+
+        jdbcTemplate.execute("set foreign_key_checks = 0");
+        List<String> tables = jdbcTemplate.queryForList("show tables", String.class);
+        for (String table : tables) {
+            if ("flyway_schema_history".equalsIgnoreCase(table)) {
+                continue;
+            }
+            jdbcTemplate.execute("truncate table " + table);
+        }
+        jdbcTemplate.execute("set foreign_key_checks = 1");
     }
 }
