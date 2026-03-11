@@ -49,8 +49,13 @@ public class AuthService {
     private static final String LOGIN_FAIL_KEY_PREFIX = "login:fail:";
     private static final String LOGIN_LOCK_KEY_PREFIX = "login:lock:";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
+    private static final String EMAIL_VERIFICATION_RESEND_COOLDOWN_KEY_PREFIX = "email-verification:resend:cooldown:";
+    private static final String EMAIL_VERIFICATION_RESEND_COUNT_KEY_PREFIX = "email-verification:resend:count:";
     private static final int MAX_LOGIN_ATTEMPTS = 5;
     private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(5);
+    private static final Duration EMAIL_VERIFICATION_RESEND_COOLDOWN = Duration.ofSeconds(60);
+    private static final Duration EMAIL_VERIFICATION_RESEND_WINDOW = Duration.ofHours(1);
+    private static final long MAX_EMAIL_VERIFICATION_RESENDS_PER_WINDOW = 5L;
 
     private final UserRepository userRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
@@ -234,7 +239,11 @@ public class AuthService {
         userRepository.findByEmail(email)
                 .filter(User::isLocalAccount)
                 .filter(user -> !user.isEmailVerified())
-                .ifPresent(this::reissueEmailVerificationToken);
+                .ifPresent(user -> {
+                    enforceEmailVerificationResendRateLimit(user);
+                    reissueEmailVerificationToken(user);
+                    recordEmailVerificationResend(user);
+                });
     }
 
     private void ensureNotLocked(String email) {
@@ -302,6 +311,14 @@ public class AuthService {
 
     private String blackListKey(String accessTokenId) {
         return BLACKLIST_KEY_PREFIX + accessTokenId;
+    }
+
+    private String emailVerificationResendCooldownKey(Long userId) {
+        return EMAIL_VERIFICATION_RESEND_COOLDOWN_KEY_PREFIX + userId;
+    }
+
+    private String emailVerificationResendCountKey(Long userId) {
+        return EMAIL_VERIFICATION_RESEND_COUNT_KEY_PREFIX + userId;
     }
 
     private String normalizeLoginKeyIdentifier(String email) {
@@ -373,6 +390,34 @@ public class AuthService {
         issueEmailVerificationToken(user);
     }
 
+    private void enforceEmailVerificationResendRateLimit(User user) {
+        if (redisService.hasKey(emailVerificationResendCooldownKey(user.getId()))) {
+            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
+        }
+
+        long resendCount = redisService.getValue(emailVerificationResendCountKey(user.getId()))
+                .map(this::parseRedisCounter)
+                .orElse(0L);
+
+        if (resendCount >= MAX_EMAIL_VERIFICATION_RESENDS_PER_WINDOW) {
+            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
+        }
+    }
+
+    private void recordEmailVerificationResend(User user) {
+        String resendCountKey = emailVerificationResendCountKey(user.getId());
+        Long updatedCount = redisService.increment(resendCountKey);
+        if (updatedCount != null && updatedCount == 1L) {
+            redisService.expire(resendCountKey, EMAIL_VERIFICATION_RESEND_WINDOW);
+        }
+
+        redisService.setValue(
+                emailVerificationResendCooldownKey(user.getId()),
+                "1",
+                EMAIL_VERIFICATION_RESEND_COOLDOWN
+        );
+    }
+
     private void revokeActiveEmailVerificationTokens(Long userId, EmailVerificationToken tokenToKeep) {
         LocalDateTime now = LocalDateTime.now();
         emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId)
@@ -411,6 +456,14 @@ public class AuthService {
             return builder.toString();
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
+        }
+    }
+
+    private long parseRedisCounter(String rawValue) {
+        try {
+            return Long.parseLong(rawValue);
+        } catch (NumberFormatException exception) {
+            return 0L;
         }
     }
 }

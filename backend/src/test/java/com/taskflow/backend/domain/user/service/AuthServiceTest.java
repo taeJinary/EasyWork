@@ -397,6 +397,9 @@ class AuthServiceTest {
 
         when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(redisService.hasKey("email-verification:resend:cooldown:" + user.getId())).thenReturn(false);
+        when(redisService.getValue("email-verification:resend:count:" + user.getId())).thenReturn(Optional.empty());
+        when(redisService.increment("email-verification:resend:count:" + user.getId())).thenReturn(1L);
         when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
                 .thenReturn(java.util.List.of(existingToken));
         when(emailVerificationTokenGenerator.generate()).thenReturn("new-raw-token");
@@ -406,6 +409,47 @@ class AuthServiceTest {
         assertThat(existingToken.getRevokedAt()).isNotNull();
         verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
         verify(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
+        verify(redisService).expire("email-verification:resend:count:" + user.getId(), Duration.ofHours(1));
+        verify(redisService).setValue(
+                "email-verification:resend:cooldown:" + user.getId(),
+                "1",
+                Duration.ofSeconds(60)
+        );
+    }
+
+    @Test
+    void resendEmailVerificationThrowsWhenCooldownIsActive() {
+        User user = unverifiedLocalUser();
+
+        when(emailVerificationMailService.isReady()).thenReturn(true);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(redisService.hasKey("email-verification:resend:cooldown:" + user.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.resendEmailVerification(user.getEmail()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
+
+        verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
+        verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
+    }
+
+    @Test
+    void resendEmailVerificationThrowsWhenHourlyLimitIsReached() {
+        User user = unverifiedLocalUser();
+
+        when(emailVerificationMailService.isReady()).thenReturn(true);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(redisService.hasKey("email-verification:resend:cooldown:" + user.getId())).thenReturn(false);
+        when(redisService.getValue("email-verification:resend:count:" + user.getId())).thenReturn(Optional.of("5"));
+
+        assertThatThrownBy(() -> authService.resendEmailVerification(user.getEmail()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
+
+        verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
+        verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
     }
 
     @Test
