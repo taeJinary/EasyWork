@@ -2,12 +2,14 @@ package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import com.jayway.jsonpath.JsonPath;
+import com.taskflow.backend.domain.user.service.EmailVerificationTokenGenerator;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,10 +31,18 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
     @Autowired
     private MockMvc mockMvc;
 
+    @MockBean
+    private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
+
+    @MockBean
+    private EmailVerificationMailService emailVerificationMailService;
+
     @Test
     void loginReissueLogoutBlocksReissueAndBlacklistedAccessTokenReuse() throws Exception {
         String email = "auth-flow-" + System.nanoTime() + "@example.com";
         String password = "Pass123!";
+        org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate()).willReturn("fixed-email-token");
+        org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
 
         mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -44,6 +54,29 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                                 }
                                 """.formatted(email, password)))
                 .andExpect(status().isCreated());
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s",
+                                  "password": "%s"
+                                }
+                                """.formatted(email, password)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("EMAIL_NOT_VERIFIED"));
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_VERIFY_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "fixed-email-token"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("이메일 인증이 완료되었습니다."));
 
         MvcResult loginResult = mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)

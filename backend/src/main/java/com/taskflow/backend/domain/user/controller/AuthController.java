@@ -1,6 +1,8 @@
 package com.taskflow.backend.domain.user.controller;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
+import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
@@ -62,6 +64,22 @@ public class AuthController {
         SignupResponse response = authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "회원가입이 완료되었습니다."));
+    }
+
+    @PostMapping(AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH + AuthHttpContract.EMAIL_VERIFICATION_VERIFY_PATH)
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @Valid @RequestBody EmailVerificationVerifyRequest request
+    ) {
+        authService.verifyEmail(request.token());
+        return ResponseEntity.ok(ApiResponse.success(null, "이메일 인증이 완료되었습니다."));
+    }
+
+    @PostMapping(AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH + AuthHttpContract.EMAIL_VERIFICATION_RESEND_PATH)
+    public ResponseEntity<ApiResponse<Void>> resendEmailVerification(
+            @Valid @RequestBody EmailVerificationResendRequest request
+    ) {
+        authService.resendEmailVerification(request.email());
+        return ResponseEntity.ok(ApiResponse.success(null, "인증 메일을 다시 보냈습니다."));
     }
 
     @PostMapping(AuthHttpContract.LOGIN_PATH)

@@ -2,6 +2,8 @@ package com.taskflow.backend.domain.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
+import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
@@ -58,7 +60,7 @@ class AuthControllerTest {
     @Test
     void signupReturnsCreatedResponse() throws Exception {
         SignupRequest request = new SignupRequest("user@example.com", "Pass123!", "tester");
-        SignupResponse response = new SignupResponse(1L, "user@example.com", "tester");
+        SignupResponse response = new SignupResponse(1L, "user@example.com", "tester", true);
 
         given(authService.signup(any(SignupRequest.class))).willReturn(response);
 
@@ -69,6 +71,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.userId").value(1L))
                 .andExpect(jsonPath("$.data.email").value("user@example.com"))
+                .andExpect(jsonPath("$.data.emailVerificationRequired").value(true))
                 .andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다."));
     }
 
@@ -113,6 +116,52 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.user.userId").value(1L));
 
         then(apiRateLimitService).should().checkAuthLogin(any(), eq("user@example.com"));
+    }
+
+    @Test
+    void loginReturnsUnauthorizedWhenEmailIsNotVerified() throws Exception {
+        LoginRequest request = new LoginRequest("user@example.com", "Pass123!");
+        given(authService.login(any(LoginRequest.class)))
+                .willThrow(new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED));
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("EMAIL_NOT_VERIFIED"));
+    }
+
+    @Test
+    void verifyEmailMarksAccountVerified() throws Exception {
+        EmailVerificationVerifyRequest request = new EmailVerificationVerifyRequest("raw-email-token");
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_VERIFY_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("이메일 인증이 완료되었습니다."));
+
+        then(authService).should().verifyEmail("raw-email-token");
+    }
+
+    @Test
+    void resendEmailVerificationReturnsOkResponse() throws Exception {
+        EmailVerificationResendRequest request = new EmailVerificationResendRequest("user@example.com");
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_RESEND_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("인증 메일을 다시 보냈습니다."));
+
+        then(authService).should().resendEmailVerification("user@example.com");
     }
 
     @Test

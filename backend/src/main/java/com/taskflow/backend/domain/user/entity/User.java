@@ -59,6 +59,8 @@ public class User extends BaseEntity {
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
+    private LocalDateTime emailVerifiedAt;
+
     private LocalDateTime deletedAt;
 
     public void updateProfile(String nickname, String profileImg) {
@@ -85,5 +87,17 @@ public class User extends BaseEntity {
 
     public boolean isLocked() {
         return this.status == UserStatus.LOCKED;
+    }
+
+    public boolean isEmailVerified() {
+        return this.emailVerifiedAt != null;
+    }
+
+    public boolean isLocalAccount() {
+        return "LOCAL".equalsIgnoreCase(this.provider);
+    }
+
+    public void markEmailVerified(LocalDateTime verifiedAt) {
+        this.emailVerifiedAt = verifiedAt;
     }
 }
