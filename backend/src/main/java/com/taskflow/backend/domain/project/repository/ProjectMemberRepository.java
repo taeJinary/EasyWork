@@ -21,6 +21,8 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             """)
     List<ProjectMember> findAllActiveByUserIdOrderByProjectUpdatedAtDesc(@Param("userId") Long userId);
 
+    boolean existsByUserId(Long userId);
+
     @Query("""
             select pm
             from ProjectMember pm

@@ -14,4 +14,6 @@ public interface NotificationPushTokenRepository extends JpaRepository<Notificat
     List<NotificationPushToken> findAllByUserIdAndIsActiveTrue(Long userId);
 
     List<NotificationPushToken> findAllByUserIdAndIsActiveTrueOrderByIdDesc(Long userId);
+
+    void deleteAllByUserId(Long userId);
 }

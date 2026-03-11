@@ -13,6 +13,8 @@ public interface EmailVerificationRetryJobRepository extends JpaRepository<Email
 
     boolean existsByUserIdAndCompletedAtIsNull(Long userId);
 
+    void deleteAllByUserId(Long userId);
+
     long countByCompletedAtIsNull();
 
     List<EmailVerificationRetryJob> findByCompletedAtIsNullAndNextRetryAtLessThanEqualOrderByIdAsc(

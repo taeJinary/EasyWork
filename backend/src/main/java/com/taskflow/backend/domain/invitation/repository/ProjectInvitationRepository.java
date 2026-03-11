@@ -22,5 +22,7 @@ public interface ProjectInvitationRepository extends JpaRepository<ProjectInvita
     long countByInviteeIdAndStatusAndExpiresAtAfter(Long inviteeId, InvitationStatus status, LocalDateTime expiresAt);
 
     long countByProjectIdAndStatusAndExpiresAtAfter(Long projectId, InvitationStatus status, LocalDateTime expiresAt);
+
+    void deleteAllByInviteeIdOrInviterId(Long inviteeId, Long inviterId);
 }
 
