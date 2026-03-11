@@ -27,9 +27,6 @@ import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Locale;
@@ -67,8 +64,9 @@ public class AuthService {
     private final OAuthClientRegistry oauthClientRegistry;
     private final OAuthAccessTokenExchanger oauthAccessTokenExchanger;
     private final OperationalMetricsService operationalMetricsService;
-    private final EmailVerificationTokenGenerator emailVerificationTokenGenerator;
     private final EmailVerificationMailService emailVerificationMailService;
+    private final EmailVerificationTokenManager emailVerificationTokenManager;
+    private final EmailVerificationRetryService emailVerificationRetryService;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -88,7 +86,11 @@ public class AuthService {
         User savedUser = userRepository.save(user);
         passwordHistoryRepository.save(PasswordHistory.create(savedUser, savedUser.getPassword()));
         if (shouldRequireEmailVerification(savedUser)) {
-            issueEmailVerificationToken(savedUser);
+            try {
+                emailVerificationTokenManager.issue(savedUser);
+            } catch (RuntimeException exception) {
+                emailVerificationRetryService.enqueueFailure(savedUser.getId(), exception.getMessage());
+            }
         }
         return SignupResponse.from(savedUser);
     }
@@ -254,10 +256,9 @@ public class AuthService {
                     }
 
                     try {
-                        reissueEmailVerificationToken(user);
+                        emailVerificationTokenManager.reissue(user);
                     } catch (RuntimeException exception) {
-                        redisService.rollbackEmailVerificationResendSlot(cooldownKey, countKey);
-                        throw exception;
+                        emailVerificationRetryService.enqueueFailure(user.getId(), exception.getMessage());
                     }
                 });
     }
@@ -401,28 +402,8 @@ public class AuthService {
         return trimmed;
     }
 
-    private void reissueEmailVerificationToken(User user) {
-        revokeActiveEmailVerificationTokens(user.getId(), null);
-        issueEmailVerificationToken(user);
-    }
-
     private void revokeActiveEmailVerificationTokens(Long userId, EmailVerificationToken tokenToKeep) {
-        LocalDateTime now = LocalDateTime.now();
-        emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId)
-                .stream()
-                .filter(token -> tokenToKeep == null || !token.getId().equals(tokenToKeep.getId()))
-                .forEach(token -> token.revoke(now));
-    }
-
-    private void issueEmailVerificationToken(User user) {
-        String rawToken = emailVerificationTokenGenerator.generate();
-        EmailVerificationToken token = EmailVerificationToken.create(
-                user,
-                hashVerificationToken(rawToken),
-                LocalDateTime.now().plusHours(24)
-        );
-        emailVerificationTokenRepository.save(token);
-        emailVerificationMailService.sendVerificationEmail(user.getEmail(), rawToken);
+        emailVerificationTokenManager.revokeOtherActiveTokens(userId, tokenToKeep);
     }
 
     private boolean shouldRequireEmailVerification(User user) {
@@ -434,17 +415,7 @@ public class AuthService {
     }
 
     private String hashVerificationToken(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            StringBuilder builder = new StringBuilder(hashed.length * 2);
-            for (byte value : hashed) {
-                builder.append(String.format("%02x", value));
-            }
-            return builder.toString();
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
-        }
+        return EmailVerificationTokenHashUtils.hash(rawToken);
     }
 
 }

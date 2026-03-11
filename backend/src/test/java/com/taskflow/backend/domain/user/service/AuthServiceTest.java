@@ -11,7 +11,6 @@ import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
 import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
-import com.taskflow.backend.domain.user.service.EmailVerificationTokenGenerator;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClient;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
 import com.taskflow.backend.domain.user.service.oauth.OAuthAccessTokenExchanger;
@@ -88,10 +87,13 @@ class AuthServiceTest {
     private OperationalMetricsService operationalMetricsService;
 
     @Mock
-    private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
+    private EmailVerificationTokenManager emailVerificationTokenManager;
 
     @Mock
     private EmailVerificationMailService emailVerificationMailService;
+
+    @Mock
+    private EmailVerificationRetryService emailVerificationRetryService;
 
     @InjectMocks
     private AuthService authService;
@@ -122,7 +124,6 @@ class AuthServiceTest {
                     .emailVerifiedAt(user.getEmailVerifiedAt())
                     .build();
         });
-        when(emailVerificationTokenGenerator.generate()).thenReturn("raw-email-token");
 
         SignupResponse response = authService.signup(request);
 
@@ -131,8 +132,7 @@ class AuthServiceTest {
         assertThat(response.nickname()).isEqualTo("newbie");
         assertThat(response.emailVerificationRequired()).isTrue();
         verify(passwordHistoryRepository).save(any(PasswordHistory.class));
-        verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
-        verify(emailVerificationMailService).sendVerificationEmail("new@example.com", "raw-email-token");
+        verify(emailVerificationTokenManager).issue(any(User.class));
     }
 
     @Test
@@ -144,6 +144,35 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+    }
+
+    @Test
+    void signupEnqueuesRetryWhenVerificationMailSendFails() {
+        SignupRequest request = new SignupRequest("mailfail@example.com", "Pass123!", "mailfail");
+
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(passwordEncoder.encode(request.password())).thenReturn("encoded-password");
+        when(emailVerificationMailService.isReady()).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return User.builder()
+                    .id(11L)
+                    .email(user.getEmail())
+                    .password(user.getPassword())
+                    .nickname(user.getNickname())
+                    .provider(user.getProvider())
+                    .role(user.getRole())
+                    .status(user.getStatus())
+                    .emailVerifiedAt(user.getEmailVerifiedAt())
+                    .build();
+        });
+        org.mockito.Mockito.doThrow(new RuntimeException("smtp down"))
+                .when(emailVerificationTokenManager).issue(any(User.class));
+
+        SignupResponse response = authService.signup(request);
+
+        assertThat(response.emailVerificationRequired()).isTrue();
+        verify(emailVerificationRetryService).enqueueFailure(11L, "smtp down");
     }
 
     @Test
@@ -389,11 +418,6 @@ class AuthServiceTest {
     @Test
     void resendEmailVerificationRevokesExistingTokensAndStoresNewToken() {
         User user = unverifiedLocalUser();
-        EmailVerificationToken existingToken = EmailVerificationToken.create(
-                user,
-                "old-hash",
-                LocalDateTime.now().plusHours(1)
-        );
 
         when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
@@ -404,15 +428,10 @@ class AuthServiceTest {
                 Duration.ofHours(1),
                 5L
         )).thenReturn(true);
-        when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
-                .thenReturn(java.util.List.of(existingToken));
-        when(emailVerificationTokenGenerator.generate()).thenReturn("new-raw-token");
 
         authService.resendEmailVerification(user.getEmail());
 
-        assertThat(existingToken.getRevokedAt()).isNotNull();
-        verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
-        verify(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
+        verify(emailVerificationTokenManager).reissue(user);
     }
 
     @Test
@@ -434,8 +453,7 @@ class AuthServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
 
-        verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
-        verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
+        verify(emailVerificationTokenManager, never()).reissue(any(User.class));
     }
 
     @Test
@@ -457,12 +475,11 @@ class AuthServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
 
-        verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
-        verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
+        verify(emailVerificationTokenManager, never()).reissue(any(User.class));
     }
 
     @Test
-    void resendEmailVerificationRollsBackReservedSlotWhenMailSendFails() {
+    void resendEmailVerificationEnqueuesRetryWhenMailSendFails() {
         User user = unverifiedLocalUser();
         RuntimeException mailFailure = new RuntimeException("mail send failed");
 
@@ -475,19 +492,12 @@ class AuthServiceTest {
                 Duration.ofHours(1),
                 5L
         )).thenReturn(true);
-        when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
-                .thenReturn(java.util.List.of());
-        when(emailVerificationTokenGenerator.generate()).thenReturn("new-raw-token");
         org.mockito.Mockito.doThrow(mailFailure)
-                .when(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
+                .when(emailVerificationTokenManager).reissue(user);
 
-        assertThatThrownBy(() -> authService.resendEmailVerification(user.getEmail()))
-                .isSameAs(mailFailure);
+        authService.resendEmailVerification(user.getEmail());
 
-        verify(redisService).rollbackEmailVerificationResendSlot(
-                "email-verification:resend:cooldown:" + user.getId(),
-                "email-verification:resend:count:" + user.getId()
-        );
+        verify(emailVerificationRetryService).enqueueFailure(user.getId(), "mail send failed");
     }
 
     @Test
@@ -502,8 +512,7 @@ class AuthServiceTest {
         SignupResponse response = authService.signup(request);
 
         assertThat(response.emailVerificationRequired()).isFalse();
-        verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
-        verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
+        verify(emailVerificationTokenManager, never()).issue(any(User.class));
     }
 
     @Test
