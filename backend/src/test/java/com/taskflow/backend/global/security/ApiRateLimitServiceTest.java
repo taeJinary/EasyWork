@@ -29,6 +29,7 @@ class ApiRateLimitServiceTest {
         apiRateLimitService = new ApiRateLimitService(
                 redisService,
                 3, 2, 60,
+                4, 2, 300,
                 5, 60,
                 5, 60,
                 5, 60,
@@ -64,6 +65,38 @@ class ApiRateLimitServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void checkAuthEmailVerificationResendIncrementsIpAndEmail() {
+        when(redisService.increment(anyString())).thenReturn(1L);
+
+        apiRateLimitService.checkAuthEmailVerificationResend(requestWithIp("203.0.113.11"), "USER@example.com");
+
+        verify(redisService).increment("rate-limit:auth:email-verification-resend:ip:203.0.113.11");
+        verify(redisService).increment("rate-limit:auth:email-verification-resend:email:user@example.com");
+        verify(redisService).expire(
+                "rate-limit:auth:email-verification-resend:ip:203.0.113.11",
+                Duration.ofSeconds(300)
+        );
+        verify(redisService).expire(
+                "rate-limit:auth:email-verification-resend:email:user@example.com",
+                Duration.ofSeconds(300)
+        );
+    }
+
+    @Test
+    void checkAuthEmailVerificationResendUsesDedicatedErrorCode() {
+        when(redisService.increment("rate-limit:auth:email-verification-resend:ip:203.0.113.11")).thenReturn(1L);
+        when(redisService.increment("rate-limit:auth:email-verification-resend:email:user@example.com")).thenReturn(3L);
+
+        assertThatThrownBy(() -> apiRateLimitService.checkAuthEmailVerificationResend(
+                requestWithIp("203.0.113.11"),
+                "user@example.com"
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
     }
 
     @Test
@@ -115,6 +148,7 @@ class ApiRateLimitServiceTest {
         ApiRateLimitService service = new ApiRateLimitService(
                 redisService,
                 3, 2, 60,
+                4, 2, 300,
                 5, 60,
                 5, 60,
                 5, 60,

@@ -133,6 +133,12 @@ app:
         email:
           max-attempts: 10
         window-seconds: 60
+      email-verification-resend:
+        ip:
+          max-attempts: 10
+        email:
+          max-attempts: 5
+        window-seconds: 300
       token-reissue:
         ip:
           max-attempts: 60

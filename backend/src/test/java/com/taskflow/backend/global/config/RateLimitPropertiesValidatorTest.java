@@ -74,11 +74,24 @@ class RateLimitPropertiesValidatorTest {
                 .hasMessageContaining("app.rate-limit.comment.create.ip.max-attempts");
     }
 
+    @Test
+    void nonPositiveEmailVerificationResendIpMaxAttemptsFailsValidation() {
+        Fixture fixture = validFixture();
+        fixture.authEmailVerificationResendIpMaxAttempts = 0;
+
+        assertThatThrownBy(createValidator(fixture)::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.rate-limit.auth.email-verification-resend.ip.max-attempts");
+    }
+
     private RateLimitPropertiesValidator createValidator(Fixture fixture) {
         return new RateLimitPropertiesValidator(
                 fixture.authLoginIpMaxAttempts,
                 fixture.authLoginEmailMaxAttempts,
                 fixture.authLoginWindowSeconds,
+                fixture.authEmailVerificationResendIpMaxAttempts,
+                fixture.authEmailVerificationResendEmailMaxAttempts,
+                fixture.authEmailVerificationResendWindowSeconds,
                 fixture.authTokenReissueIpMaxAttempts,
                 fixture.authTokenReissueWindowSeconds,
                 fixture.authOauthLoginIpMaxAttempts,
@@ -112,6 +125,9 @@ class RateLimitPropertiesValidatorTest {
         int authLoginIpMaxAttempts = 30;
         int authLoginEmailMaxAttempts = 10;
         long authLoginWindowSeconds = 60;
+        int authEmailVerificationResendIpMaxAttempts = 10;
+        int authEmailVerificationResendEmailMaxAttempts = 5;
+        long authEmailVerificationResendWindowSeconds = 300;
         int authTokenReissueIpMaxAttempts = 60;
         long authTokenReissueWindowSeconds = 60;
         int authOauthLoginIpMaxAttempts = 30;

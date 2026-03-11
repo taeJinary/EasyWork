@@ -23,6 +23,9 @@ public class ApiRateLimitService {
     private final int authLoginIpMaxAttempts;
     private final int authLoginEmailMaxAttempts;
     private final long authLoginWindowSeconds;
+    private final int authEmailVerificationResendIpMaxAttempts;
+    private final int authEmailVerificationResendEmailMaxAttempts;
+    private final long authEmailVerificationResendWindowSeconds;
     private final int authTokenReissueIpMaxAttempts;
     private final long authTokenReissueWindowSeconds;
     private final int authOauthLoginIpMaxAttempts;
@@ -51,6 +54,9 @@ public class ApiRateLimitService {
             @Value("${app.rate-limit.auth.login.ip.max-attempts:30}") int authLoginIpMaxAttempts,
             @Value("${app.rate-limit.auth.login.email.max-attempts:10}") int authLoginEmailMaxAttempts,
             @Value("${app.rate-limit.auth.login.window-seconds:60}") long authLoginWindowSeconds,
+            @Value("${app.rate-limit.auth.email-verification-resend.ip.max-attempts:10}") int authEmailVerificationResendIpMaxAttempts,
+            @Value("${app.rate-limit.auth.email-verification-resend.email.max-attempts:5}") int authEmailVerificationResendEmailMaxAttempts,
+            @Value("${app.rate-limit.auth.email-verification-resend.window-seconds:300}") long authEmailVerificationResendWindowSeconds,
             @Value("${app.rate-limit.auth.token-reissue.ip.max-attempts:60}") int authTokenReissueIpMaxAttempts,
             @Value("${app.rate-limit.auth.token-reissue.window-seconds:60}") long authTokenReissueWindowSeconds,
             @Value("${app.rate-limit.auth.oauth-login.ip.max-attempts:30}") int authOauthLoginIpMaxAttempts,
@@ -78,6 +84,9 @@ public class ApiRateLimitService {
         this.authLoginIpMaxAttempts = authLoginIpMaxAttempts;
         this.authLoginEmailMaxAttempts = authLoginEmailMaxAttempts;
         this.authLoginWindowSeconds = authLoginWindowSeconds;
+        this.authEmailVerificationResendIpMaxAttempts = authEmailVerificationResendIpMaxAttempts;
+        this.authEmailVerificationResendEmailMaxAttempts = authEmailVerificationResendEmailMaxAttempts;
+        this.authEmailVerificationResendWindowSeconds = authEmailVerificationResendWindowSeconds;
         this.authTokenReissueIpMaxAttempts = authTokenReissueIpMaxAttempts;
         this.authTokenReissueWindowSeconds = authTokenReissueWindowSeconds;
         this.authOauthLoginIpMaxAttempts = authOauthLoginIpMaxAttempts;
@@ -106,6 +115,23 @@ public class ApiRateLimitService {
         String clientIp = resolveClientIp(request);
         enforce("auth:login:ip", clientIp, authLoginIpMaxAttempts, authLoginWindowSeconds);
         enforce("auth:login:email", normalizeEmail(email), authLoginEmailMaxAttempts, authLoginWindowSeconds);
+    }
+
+    public void checkAuthEmailVerificationResend(HttpServletRequest request, String email) {
+        enforce(
+                "auth:email-verification-resend:ip",
+                resolveClientIp(request),
+                authEmailVerificationResendIpMaxAttempts,
+                authEmailVerificationResendWindowSeconds,
+                ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT
+        );
+        enforce(
+                "auth:email-verification-resend:email",
+                normalizeEmail(email),
+                authEmailVerificationResendEmailMaxAttempts,
+                authEmailVerificationResendWindowSeconds,
+                ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT
+        );
     }
 
     public void checkAuthTokenReissue(HttpServletRequest request) {
@@ -196,6 +222,16 @@ public class ApiRateLimitService {
     }
 
     private void enforce(String scope, String identifier, int maxAttempts, long windowSeconds) {
+        enforce(scope, identifier, maxAttempts, windowSeconds, ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    private void enforce(
+            String scope,
+            String identifier,
+            int maxAttempts,
+            long windowSeconds,
+            ErrorCode errorCode
+    ) {
         String key = KEY_PREFIX + ":" + scope + ":" + identifier;
         Long count = redisService.increment(key);
         if (count == null) {
@@ -206,7 +242,7 @@ public class ApiRateLimitService {
             redisService.expire(key, Duration.ofSeconds(windowSeconds));
         }
         if (count > maxAttempts) {
-            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
+            throw new BusinessException(errorCode);
         }
     }
 

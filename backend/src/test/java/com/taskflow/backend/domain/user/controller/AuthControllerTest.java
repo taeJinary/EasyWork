@@ -161,6 +161,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("인증 메일을 다시 보냈습니다."));
 
+        then(apiRateLimitService).should().checkAuthEmailVerificationResend(any(), eq("user@example.com"));
         then(authService).should().resendEmailVerification("user@example.com");
     }
 

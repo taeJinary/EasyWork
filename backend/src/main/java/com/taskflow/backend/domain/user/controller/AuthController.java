@@ -76,8 +76,10 @@ public class AuthController {
 
     @PostMapping(AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH + AuthHttpContract.EMAIL_VERIFICATION_RESEND_PATH)
     public ResponseEntity<ApiResponse<Void>> resendEmailVerification(
-            @Valid @RequestBody EmailVerificationResendRequest request
+            @Valid @RequestBody EmailVerificationResendRequest request,
+            HttpServletRequest httpServletRequest
     ) {
+        apiRateLimitService.checkAuthEmailVerificationResend(httpServletRequest, request.email());
         authService.resendEmailVerification(request.email());
         return ResponseEntity.ok(ApiResponse.success(null, "인증 메일을 다시 보냈습니다."));
     }
@@ -222,4 +224,3 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }
-
