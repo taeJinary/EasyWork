@@ -145,6 +145,49 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void resendEmailVerificationReturnsTooManyRequestsWhenCooldownIsActive() throws Exception {
+        String email = "auth-resend-" + System.nanoTime() + "@example.com";
+        org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate())
+                .willReturn("initial-email-token", "resend-email-token");
+        org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s",
+                                  "password": "Pass123!",
+                                  "nickname": "authresend"
+                                }
+                                """.formatted(email)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_RESEND_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s"
+                                }
+                                """.formatted(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("인증 메일을 다시 보냈습니다."));
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_RESEND_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s"
+                                }
+                                """.formatted(email)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.errorCode").value("EMAIL_VERIFICATION_RESEND_TOO_FREQUENT"));
+    }
+
     private String extractCookieValue(String setCookieHeader, String cookieName) {
         if (setCookieHeader == null || setCookieHeader.isBlank()) {
             return "";

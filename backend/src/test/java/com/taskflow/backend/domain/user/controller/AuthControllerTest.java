@@ -165,6 +165,22 @@ class AuthControllerTest {
     }
 
     @Test
+    void resendEmailVerificationReturnsTooManyRequestsWhenCooldownIsActive() throws Exception {
+        EmailVerificationResendRequest request = new EmailVerificationResendRequest("user@example.com");
+        doThrow(new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT))
+                .when(authService).resendEmailVerification("user@example.com");
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
+                        + AuthHttpContract.EMAIL_VERIFICATION_RESEND_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("EMAIL_VERIFICATION_RESEND_TOO_FREQUENT"));
+    }
+
+    @Test
     void reissueReturnsNewTokens() throws Exception {
         ReissueTokens tokens = new ReissueTokens("new-access", "new-refresh", 1800000L, 1209600000L);
 

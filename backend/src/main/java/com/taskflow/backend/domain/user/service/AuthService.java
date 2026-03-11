@@ -49,8 +49,13 @@ public class AuthService {
     private static final String LOGIN_FAIL_KEY_PREFIX = "login:fail:";
     private static final String LOGIN_LOCK_KEY_PREFIX = "login:lock:";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
+    private static final String EMAIL_VERIFICATION_RESEND_COOLDOWN_KEY_PREFIX = "email-verification:resend:cooldown:";
+    private static final String EMAIL_VERIFICATION_RESEND_COUNT_KEY_PREFIX = "email-verification:resend:count:";
     private static final int MAX_LOGIN_ATTEMPTS = 5;
     private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(5);
+    private static final Duration EMAIL_VERIFICATION_RESEND_COOLDOWN = Duration.ofSeconds(60);
+    private static final Duration EMAIL_VERIFICATION_RESEND_WINDOW = Duration.ofHours(1);
+    private static final long MAX_EMAIL_VERIFICATION_RESENDS_PER_WINDOW = 5L;
 
     private final UserRepository userRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
@@ -234,7 +239,27 @@ public class AuthService {
         userRepository.findByEmail(email)
                 .filter(User::isLocalAccount)
                 .filter(user -> !user.isEmailVerified())
-                .ifPresent(this::reissueEmailVerificationToken);
+                .ifPresent(user -> {
+                    String cooldownKey = emailVerificationResendCooldownKey(user.getId());
+                    String countKey = emailVerificationResendCountKey(user.getId());
+                    boolean reserved = redisService.tryAcquireEmailVerificationResendSlot(
+                            cooldownKey,
+                            countKey,
+                            EMAIL_VERIFICATION_RESEND_COOLDOWN,
+                            EMAIL_VERIFICATION_RESEND_WINDOW,
+                            MAX_EMAIL_VERIFICATION_RESENDS_PER_WINDOW
+                    );
+                    if (!reserved) {
+                        throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_RESEND_TOO_FREQUENT);
+                    }
+
+                    try {
+                        reissueEmailVerificationToken(user);
+                    } catch (RuntimeException exception) {
+                        redisService.rollbackEmailVerificationResendSlot(cooldownKey, countKey);
+                        throw exception;
+                    }
+                });
     }
 
     private void ensureNotLocked(String email) {
@@ -302,6 +327,14 @@ public class AuthService {
 
     private String blackListKey(String accessTokenId) {
         return BLACKLIST_KEY_PREFIX + accessTokenId;
+    }
+
+    private String emailVerificationResendCooldownKey(Long userId) {
+        return EMAIL_VERIFICATION_RESEND_COOLDOWN_KEY_PREFIX + userId;
+    }
+
+    private String emailVerificationResendCountKey(Long userId) {
+        return EMAIL_VERIFICATION_RESEND_COUNT_KEY_PREFIX + userId;
     }
 
     private String normalizeLoginKeyIdentifier(String email) {
@@ -413,5 +446,6 @@ public class AuthService {
             throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
         }
     }
+
 }
 
