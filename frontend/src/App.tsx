@@ -20,10 +20,11 @@ import ProjectSettingsPage from '@/pages/ProjectSettingsPage';
 export default function App() {
   return (
     <Routes>
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
       </Route>
 
       <Route element={<AppShell />}>
