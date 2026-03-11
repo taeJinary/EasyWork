@@ -76,6 +76,25 @@ class ApplicationConfigSecurityPolicyTest {
     }
 
     @Test
+    void applicationYmlDefinesEmailVerificationCleanupPolicy() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("email-verification:");
+        assertThat(content).contains("cleanup:");
+        assertThat(content).contains("retention-hours:");
+        assertThat(content).contains("batch-size:");
+    }
+
+    @Test
+    void applicationTestYmlDisablesEmailVerificationCleanupScheduler() throws IOException {
+        String content = read("src/main/resources/application-test.yml");
+
+        assertThat(content).contains("email-verification:");
+        assertThat(content).contains("cleanup:");
+        assertThat(content).contains("enabled: false");
+    }
+
+    @Test
     void cleanupJobMigrationSqlDefinesRequiredTableAndAuditColumns() throws IOException {
         String content = read("src/main/resources/db/migration/V20260303_01__create_task_attachment_cleanup_jobs.sql");
 

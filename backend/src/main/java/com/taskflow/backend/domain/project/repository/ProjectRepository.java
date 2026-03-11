@@ -10,5 +10,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     Optional<Project> findByIdAndDeletedAtIsNull(Long projectId);
 
     List<Project> findAllByWorkspaceIdAndDeletedAtIsNull(Long workspaceId);
+
+    boolean existsByOwnerIdAndDeletedAtIsNull(Long ownerId);
 }
 

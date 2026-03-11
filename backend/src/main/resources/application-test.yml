@@ -57,6 +57,12 @@ app:
         max-attempts: 10
         max-delay-seconds: 3600
         batch-size: 50
+  email-verification:
+    cleanup:
+      enabled: false
+      interval-ms: 3600000
+      retention-hours: 24
+      batch-size: 100
   oauth:
     google:
       user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
