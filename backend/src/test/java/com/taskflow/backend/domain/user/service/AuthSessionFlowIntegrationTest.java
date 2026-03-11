@@ -168,16 +168,7 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                 .willReturn("initial-email-token", "resend-email-token");
         org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
 
-        mockMvc.perform(post("/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "%s",
-                                  "password": "Pass123!",
-                                  "nickname": "authresend"
-                                }
-                                """.formatted(email)))
-                .andExpect(status().isCreated());
+        authService.signup(new SignupRequest(email, "Pass123!", "authresend"));
 
         mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
                         + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
