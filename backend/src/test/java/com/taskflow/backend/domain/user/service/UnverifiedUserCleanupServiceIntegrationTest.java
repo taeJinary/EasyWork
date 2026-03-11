@@ -198,6 +198,26 @@ class UnverifiedUserCleanupServiceIntegrationTest extends IntegrationTestContain
                 .hasSize(1);
     }
 
+    @Test
+    void cleanupContinuesPastSkippedCandidatesWithinSingleBatchRun() {
+        User owner = saveActiveUser("cleanup-owner-paging");
+        User skipped = saveUnverifiedLocalUser("cleanup-skipped");
+        User deletable = saveUnverifiedLocalUser("cleanup-deletable");
+
+        Workspace workspace = workspaceRepository.save(Workspace.create(owner, "paging workspace", null));
+        workspaceMemberRepository.save(WorkspaceMember.create(workspace, owner, WorkspaceRole.OWNER, LocalDateTime.now()));
+        workspaceMemberRepository.save(WorkspaceMember.create(workspace, skipped, WorkspaceRole.MEMBER, LocalDateTime.now()));
+
+        ageUser(skipped.getId(), LocalDateTime.now().minusHours(25));
+        ageUser(deletable.getId(), LocalDateTime.now().minusHours(25));
+
+        int deletedCount = unverifiedUserCleanupService.cleanupExpiredUnverifiedUsers(1);
+
+        assertThat(deletedCount).isEqualTo(1);
+        assertThat(userRepository.findById(skipped.getId())).isPresent();
+        assertThat(userRepository.findById(deletable.getId())).isEmpty();
+    }
+
     private User saveActiveUser(String nicknamePrefix) {
         return userRepository.save(User.builder()
                 .email(nicknamePrefix + "-" + System.nanoTime() + "@example.com")
