@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AxiosError } from 'axios';
 import { Link, useSearchParams } from 'react-router-dom';
-import apiClient from '@/api/client';
-import type { ApiErrorResponse, ApiResponse } from '@/types';
+import type { ApiErrorResponse } from '@/types';
+import { requestEmailVerification } from '@/pages/verifyEmailRequestCache';
 
 type VerifyState = 'loading' | 'success' | 'error';
 
@@ -23,10 +23,10 @@ export default function VerifyEmailPage() {
       }
 
       try {
-        const response = await apiClient.post<ApiResponse<void>>('/auth/email-verification/verify', { token });
+        const result = await requestEmailVerification(token);
         if (!cancelled) {
           setState('success');
-          setMessage(response.data.message ?? '이메일 인증이 완료되었습니다.');
+          setMessage(result.message);
         }
       } catch (error) {
         if (cancelled) {
