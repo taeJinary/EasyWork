@@ -2,9 +2,17 @@ package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.controller.AuthHttpContract;
 import com.jayway.jsonpath.JsonPath;
+import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
+import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.repository.EmailVerificationRetryJobRepository;
+import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
+import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.EmailVerificationTokenGenerator;
 import com.taskflow.backend.support.IntegrationTestContainerSupport;
+import com.taskflow.backend.global.common.enums.Role;
+import com.taskflow.backend.global.common.enums.UserStatus;
 import jakarta.servlet.http.Cookie;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -30,6 +38,18 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Autowired
+    private EmailVerificationRetryJobRepository emailVerificationRetryJobRepository;
 
     @MockBean
     private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
@@ -148,20 +168,14 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
     @Test
     void resendEmailVerificationReturnsTooManyRequestsWhenCooldownIsActive() throws Exception {
         String email = "auth-resend-" + System.nanoTime() + "@example.com";
+        String initialToken = "initial-email-token-" + System.nanoTime();
+        String resendToken = "resend-email-token-" + System.nanoTime();
         org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate())
-                .willReturn("initial-email-token", "resend-email-token");
+                .willReturn(resendToken);
         org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
 
-        mockMvc.perform(post("/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "%s",
-                                  "password": "Pass123!",
-                                  "nickname": "authresend"
-                                }
-                                """.formatted(email)))
-                .andExpect(status().isCreated());
+        User user = saveUnverifiedLocalUser(email, "authresend");
+        saveActiveEmailVerificationToken(user, initialToken);
 
         mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH
                         + AuthHttpContract.EMAIL_VERIFICATION_BASE_PATH
@@ -186,6 +200,53 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
                                 """.formatted(email)))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.errorCode").value("EMAIL_VERIFICATION_RESEND_TOO_FREQUENT"));
+    }
+
+    @Test
+    void resendEmailVerificationPreservesExistingTokenWhenMailSendFails() {
+        String email = "auth-resend-fail-" + System.nanoTime() + "@example.com";
+        String initialToken = "initial-email-token-" + System.nanoTime();
+        String resendToken = "resend-email-token-" + System.nanoTime();
+        org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate())
+                .willReturn(resendToken);
+        org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
+
+        User user = saveUnverifiedLocalUser(email, "authresendfail");
+        saveActiveEmailVerificationToken(user, initialToken);
+
+        org.mockito.BDDMockito.willThrow(new RuntimeException("smtp down"))
+                .given(emailVerificationMailService)
+                .sendVerificationEmail(email, resendToken);
+
+        authService.resendEmailVerification(email);
+
+        Long userId = userRepository.findByEmail(email).orElseThrow().getId();
+        assertThat(emailVerificationRetryJobRepository.existsByUserIdAndCompletedAtIsNull(userId)).isTrue();
+        assertThat(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId))
+                .hasSize(1);
+
+        authService.verifyEmail(initialToken);
+
+        assertThat(userRepository.findByEmail(email).orElseThrow().isEmailVerified()).isTrue();
+    }
+
+    private User saveUnverifiedLocalUser(String email, String nickname) {
+        return userRepository.save(User.builder()
+                .email(email)
+                .password("encoded-password")
+                .nickname(nickname)
+                .provider("LOCAL")
+                .role(Role.ROLE_USER)
+                .status(UserStatus.ACTIVE)
+                .build());
+    }
+
+    private void saveActiveEmailVerificationToken(User user, String rawToken) {
+        emailVerificationTokenRepository.save(EmailVerificationToken.create(
+                user,
+                EmailVerificationTokenHashUtils.hash(rawToken),
+                LocalDateTime.now().plusHours(1)
+        ));
     }
 
     private String extractCookieValue(String setCookieHeader, String cookieName) {

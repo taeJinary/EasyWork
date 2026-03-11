@@ -3,6 +3,7 @@ package com.taskflow.backend.global.ops;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
 import com.taskflow.backend.domain.invitation.repository.InvitationEmailRetryJobRepository;
 import com.taskflow.backend.domain.notification.repository.NotificationPushRetryJobRepository;
+import com.taskflow.backend.domain.user.repository.EmailVerificationRetryJobRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,9 @@ class RetryQueueMaintenanceServiceTest {
     private TaskAttachmentCleanupJobRepository taskAttachmentCleanupJobRepository;
 
     @Mock
+    private EmailVerificationRetryJobRepository emailVerificationRetryJobRepository;
+
+    @Mock
     private OperationalMetricsService operationalMetricsService;
 
     @InjectMocks
@@ -47,10 +51,13 @@ class RetryQueueMaintenanceServiceTest {
         ReflectionTestUtils.setField(retryQueueMaintenanceService, "deleteBatchSize", 250);
 
         given(invitationEmailRetryJobRepository.countByCompletedAtIsNull()).willReturn(2L);
+        given(emailVerificationRetryJobRepository.countByCompletedAtIsNull()).willReturn(4L);
         given(notificationPushRetryJobRepository.countByCompletedAtIsNull()).willReturn(3L);
         given(taskAttachmentCleanupJobRepository.countByCompletedAtIsNull()).willReturn(1L);
         given(invitationEmailRetryJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250)))
                 .willReturn(4);
+        given(emailVerificationRetryJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250)))
+                .willReturn(7);
         given(notificationPushRetryJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250)))
                 .willReturn(5);
         given(taskAttachmentCleanupJobRepository.deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250)))
@@ -59,13 +66,15 @@ class RetryQueueMaintenanceServiceTest {
         retryQueueMaintenanceService.maintain();
 
         verify(invitationEmailRetryJobRepository).countByCompletedAtIsNull();
+        verify(emailVerificationRetryJobRepository).countByCompletedAtIsNull();
         verify(notificationPushRetryJobRepository).countByCompletedAtIsNull();
         verify(taskAttachmentCleanupJobRepository).countByCompletedAtIsNull();
-        verify(operationalMetricsService).updateRetryQueueBacklog(2L, 3L, 1L);
+        verify(operationalMetricsService).updateRetryQueueBacklog(2L, 4L, 3L, 1L);
         verify(invitationEmailRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
+        verify(emailVerificationRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(notificationPushRetryJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
         verify(taskAttachmentCleanupJobRepository).deleteCompletedHistoryBefore(any(LocalDateTime.class), eq(250));
-        verify(operationalMetricsService).recordRetryQueueHistoryDeleted(4L, 5L, 6L);
+        verify(operationalMetricsService).recordRetryQueueHistoryDeleted(4L, 7L, 5L, 6L);
         verify(operationalMetricsService, never()).incrementRetryQueueMaintenanceExecutionFailure();
     }
 
@@ -76,10 +85,13 @@ class RetryQueueMaintenanceServiceTest {
         retryQueueMaintenanceService.maintain();
 
         verify(invitationEmailRetryJobRepository, never()).countByCompletedAtIsNull();
+        verify(emailVerificationRetryJobRepository, never()).countByCompletedAtIsNull();
         verify(notificationPushRetryJobRepository, never()).countByCompletedAtIsNull();
         verify(taskAttachmentCleanupJobRepository, never()).countByCompletedAtIsNull();
-        verify(operationalMetricsService, never()).updateRetryQueueBacklog(anyLong(), anyLong(), anyLong());
+        verify(operationalMetricsService, never()).updateRetryQueueBacklog(anyLong(), anyLong(), anyLong(), anyLong());
         verify(invitationEmailRetryJobRepository, never())
+                .deleteCompletedHistoryBefore(any(LocalDateTime.class), anyInt());
+        verify(emailVerificationRetryJobRepository, never())
                 .deleteCompletedHistoryBefore(any(LocalDateTime.class), anyInt());
         verify(operationalMetricsService, never()).incrementRetryQueueMaintenanceExecutionFailure();
     }
@@ -97,6 +109,6 @@ class RetryQueueMaintenanceServiceTest {
                 .hasMessageContaining("db unavailable");
 
         verify(operationalMetricsService).incrementRetryQueueMaintenanceExecutionFailure();
-        verify(operationalMetricsService, never()).recordRetryQueueHistoryDeleted(anyLong(), anyLong(), anyLong());
+        verify(operationalMetricsService, never()).recordRetryQueueHistoryDeleted(anyLong(), anyLong(), anyLong(), anyLong());
     }
 }

@@ -3,6 +3,7 @@ package com.taskflow.backend.global.ops;
 import com.taskflow.backend.domain.attachment.repository.TaskAttachmentCleanupJobRepository;
 import com.taskflow.backend.domain.invitation.repository.InvitationEmailRetryJobRepository;
 import com.taskflow.backend.domain.notification.repository.NotificationPushRetryJobRepository;
+import com.taskflow.backend.domain.user.repository.EmailVerificationRetryJobRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RetryQueueMaintenanceService {
 
     private final InvitationEmailRetryJobRepository invitationEmailRetryJobRepository;
+    private final EmailVerificationRetryJobRepository emailVerificationRetryJobRepository;
     private final NotificationPushRetryJobRepository notificationPushRetryJobRepository;
     private final TaskAttachmentCleanupJobRepository taskAttachmentCleanupJobRepository;
     private final OperationalMetricsService operationalMetricsService;
@@ -42,23 +44,31 @@ public class RetryQueueMaintenanceService {
 
         try {
             long invitationPending = invitationEmailRetryJobRepository.countByCompletedAtIsNull();
+            long emailVerificationPending = emailVerificationRetryJobRepository.countByCompletedAtIsNull();
             long notificationPending = notificationPushRetryJobRepository.countByCompletedAtIsNull();
             long attachmentPending = taskAttachmentCleanupJobRepository.countByCompletedAtIsNull();
-            long totalPending = invitationPending + notificationPending + attachmentPending;
-            operationalMetricsService.updateRetryQueueBacklog(invitationPending, notificationPending, attachmentPending);
+            long totalPending = invitationPending + emailVerificationPending + notificationPending + attachmentPending;
+            operationalMetricsService.updateRetryQueueBacklog(
+                    invitationPending,
+                    emailVerificationPending,
+                    notificationPending,
+                    attachmentPending
+            );
 
             if (totalPending > 0L && totalPending >= pendingWarnThreshold) {
                 log.warn(
-                        "Retry queue backlog is high. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
+                        "Retry queue backlog is high. invitationPending={}, emailVerificationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
                         invitationPending,
+                        emailVerificationPending,
                         notificationPending,
                         attachmentPending,
                         totalPending
                 );
             } else if (totalPending > 0L) {
                 log.info(
-                        "Retry queue backlog snapshot. invitationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
+                        "Retry queue backlog snapshot. invitationPending={}, emailVerificationPending={}, notificationPending={}, attachmentPending={}, totalPending={}",
                         invitationPending,
+                        emailVerificationPending,
                         notificationPending,
                         attachmentPending,
                         totalPending
@@ -70,21 +80,25 @@ public class RetryQueueMaintenanceService {
             LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
             long deletedInvitation = invitationEmailRetryJobRepository
                     .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
+            long deletedEmailVerification = emailVerificationRetryJobRepository
+                    .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
             long deletedNotification = notificationPushRetryJobRepository
                     .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
             long deletedAttachment = taskAttachmentCleanupJobRepository
                     .deleteCompletedHistoryBefore(cutoff, deleteBatchSize);
             operationalMetricsService.recordRetryQueueHistoryDeleted(
                     deletedInvitation,
+                    deletedEmailVerification,
                     deletedNotification,
                     deletedAttachment
             );
-            long totalDeleted = deletedInvitation + deletedNotification + deletedAttachment;
+            long totalDeleted = deletedInvitation + deletedEmailVerification + deletedNotification + deletedAttachment;
 
             if (totalDeleted > 0L) {
                 log.info(
-                        "Deleted expired retry queue history. invitationDeleted={}, notificationDeleted={}, attachmentDeleted={}, totalDeleted={}",
+                        "Deleted expired retry queue history. invitationDeleted={}, emailVerificationDeleted={}, notificationDeleted={}, attachmentDeleted={}, totalDeleted={}",
                         deletedInvitation,
+                        deletedEmailVerification,
                         deletedNotification,
                         deletedAttachment,
                         totalDeleted

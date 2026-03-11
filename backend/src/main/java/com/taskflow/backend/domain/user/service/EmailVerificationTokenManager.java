@@ -1,0 +1,58 @@
+package com.taskflow.backend.domain.user.service;
+
+import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
+import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
+import com.taskflow.backend.domain.user.repository.UserRepository;
+import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class EmailVerificationTokenManager {
+
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final UserRepository userRepository;
+    private final EmailVerificationTokenGenerator emailVerificationTokenGenerator;
+    private final EmailVerificationMailService emailVerificationMailService;
+
+    public void issue(User user) {
+        ensureMailServiceReady();
+        String rawToken = emailVerificationTokenGenerator.generate();
+        EmailVerificationToken token = EmailVerificationToken.create(
+                user,
+                EmailVerificationTokenHashUtils.hash(rawToken),
+                LocalDateTime.now().plusHours(24)
+        );
+        emailVerificationTokenRepository.save(token);
+        emailVerificationMailService.sendVerificationEmail(user.getEmail(), rawToken);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void reissue(User user) {
+        User managedUser = userRepository.findById(user.getId()).orElseThrow();
+        revokeActiveTokens(managedUser.getId(), null);
+        issue(managedUser);
+    }
+
+    public void revokeOtherActiveTokens(Long userId, EmailVerificationToken tokenToKeep) {
+        revokeActiveTokens(userId, tokenToKeep);
+    }
+
+    private void revokeActiveTokens(Long userId, EmailVerificationToken tokenToKeep) {
+        LocalDateTime now = LocalDateTime.now();
+        emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId)
+                .stream()
+                .filter(token -> tokenToKeep == null || !token.getId().equals(tokenToKeep.getId()))
+                .forEach(token -> token.revoke(now));
+    }
+
+    private void ensureMailServiceReady() {
+        if (!emailVerificationMailService.isReady()) {
+            throw new IllegalStateException("Email verification mail service is not ready.");
+        }
+    }
+}
