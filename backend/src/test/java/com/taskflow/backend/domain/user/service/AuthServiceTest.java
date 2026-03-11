@@ -5,10 +5,13 @@ import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
+import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
 import com.taskflow.backend.domain.user.entity.PasswordHistory;
 import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
 import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
+import com.taskflow.backend.domain.user.service.EmailVerificationTokenGenerator;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClient;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
 import com.taskflow.backend.domain.user.service.oauth.OAuthAccessTokenExchanger;
@@ -25,6 +28,10 @@ import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +61,9 @@ class AuthServiceTest {
     private PasswordHistoryRepository passwordHistoryRepository;
 
     @Mock
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -77,6 +87,9 @@ class AuthServiceTest {
     @Mock
     private OperationalMetricsService operationalMetricsService;
 
+    @Mock
+    private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
+
     @InjectMocks
     private AuthService authService;
 
@@ -99,17 +112,22 @@ class AuthServiceTest {
                     .email(user.getEmail())
                     .password(user.getPassword())
                     .nickname(user.getNickname())
+                    .provider(user.getProvider())
                     .role(user.getRole())
                     .status(user.getStatus())
+                    .emailVerifiedAt(user.getEmailVerifiedAt())
                     .build();
         });
+        when(emailVerificationTokenGenerator.generate()).thenReturn("raw-email-token");
 
         SignupResponse response = authService.signup(request);
 
         assertThat(response.userId()).isEqualTo(1L);
         assertThat(response.email()).isEqualTo("new@example.com");
         assertThat(response.nickname()).isEqualTo("newbie");
+        assertThat(response.emailVerificationRequired()).isTrue();
         verify(passwordHistoryRepository).save(any(PasswordHistory.class));
+        verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
     }
 
     @Test
@@ -153,6 +171,22 @@ class AuthServiceTest {
         assertThat(refreshKeyCaptor.getValue()).startsWith("refresh:" + user.getId() + ":");
         verify(redisService).delete("login:fail:" + user.getEmail());
         verify(redisService).delete("login:lock:" + user.getEmail());
+    }
+
+    @Test
+    void loginThrowsWhenLocalEmailIsNotVerified() {
+        User user = unverifiedLocalUser();
+        LoginRequest request = new LoginRequest(user.getEmail(), "Pass123!");
+
+        when(redisService.hasKey("login:lock:" + user.getEmail())).thenReturn(false);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED);
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
     @Test
@@ -311,6 +345,7 @@ class AuthServiceTest {
                     .providerId(user.getProviderId())
                     .role(user.getRole())
                     .status(user.getStatus())
+                    .emailVerifiedAt(user.getEmailVerifiedAt())
                     .build();
         });
         when(jwtTokenProvider.generateAccessToken(2L, "oauth@example.com", Role.ROLE_USER))
@@ -324,6 +359,45 @@ class AuthServiceTest {
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
         assertThat(response.user().email()).isEqualTo("oauth@example.com");
         verify(passwordHistoryRepository, never()).save(any(PasswordHistory.class));
+    }
+
+    @Test
+    void verifyEmailMarksUserAsVerifiedAndConsumesToken() {
+        User user = unverifiedLocalUser();
+        String rawToken = "raw-email-token";
+        String hashedToken = hash(rawToken);
+        EmailVerificationToken token = EmailVerificationToken.create(
+                user,
+                hashedToken,
+                LocalDateTime.now().plusHours(1)
+        );
+
+        when(emailVerificationTokenRepository.findByTokenHash(hashedToken)).thenReturn(Optional.of(token));
+
+        authService.verifyEmail(rawToken);
+
+        assertThat(user.getEmailVerifiedAt()).isNotNull();
+        assertThat(token.getConsumedAt()).isNotNull();
+    }
+
+    @Test
+    void resendEmailVerificationRevokesExistingTokensAndStoresNewToken() {
+        User user = unverifiedLocalUser();
+        EmailVerificationToken existingToken = EmailVerificationToken.create(
+                user,
+                "old-hash",
+                LocalDateTime.now().plusHours(1)
+        );
+
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
+                .thenReturn(java.util.List.of(existingToken));
+        when(emailVerificationTokenGenerator.generate()).thenReturn("new-raw-token");
+
+        authService.resendEmailVerification(user.getEmail());
+
+        assertThat(existingToken.getRevokedAt()).isNotNull();
+        verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
     }
 
     @Test
@@ -399,6 +473,34 @@ class AuthServiceTest {
                 .nickname("tester")
                 .role(Role.ROLE_USER)
                 .status(UserStatus.ACTIVE)
+                .emailVerifiedAt(LocalDateTime.now())
                 .build();
+    }
+
+    private User unverifiedLocalUser() {
+        return User.builder()
+                .id(1L)
+                .email("user@example.com")
+                .password("encoded-password")
+                .nickname("tester")
+                .provider("LOCAL")
+                .role(Role.ROLE_USER)
+                .status(UserStatus.ACTIVE)
+                .emailVerifiedAt(null)
+                .build();
+    }
+
+    private String hash(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hashed.length * 2);
+            for (byte value : hashed) {
+                builder.append(String.format("%02x", value));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 }

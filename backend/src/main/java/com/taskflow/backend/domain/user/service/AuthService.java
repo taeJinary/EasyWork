@@ -8,6 +8,8 @@ import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.entity.PasswordHistory;
 import com.taskflow.backend.domain.user.entity.User;
+import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
+import com.taskflow.backend.domain.user.repository.EmailVerificationTokenRepository;
 import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
@@ -25,7 +27,11 @@ import com.taskflow.backend.global.ops.OperationalMetricsService;
 import com.taskflow.backend.infra.redis.RedisService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +54,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
@@ -55,6 +62,7 @@ public class AuthService {
     private final OAuthClientRegistry oauthClientRegistry;
     private final OAuthAccessTokenExchanger oauthAccessTokenExchanger;
     private final OperationalMetricsService operationalMetricsService;
+    private final EmailVerificationTokenGenerator emailVerificationTokenGenerator;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -72,6 +80,7 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         passwordHistoryRepository.save(PasswordHistory.create(savedUser, savedUser.getPassword()));
+        issueEmailVerificationToken(savedUser);
         return SignupResponse.from(savedUser);
     }
 
@@ -89,6 +98,10 @@ public class AuthService {
 
         if (user.isLocked()) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
+        if (user.isLocalAccount() && !user.isEmailVerified()) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
@@ -187,6 +200,33 @@ public class AuthService {
         Long userId = extractUserIdFromToken(refreshToken);
         String sessionId = extractSessionIdFromRefreshToken(refreshToken);
         redisService.delete(refreshTokenKey(userId, sessionId));
+    }
+
+    @Transactional
+    public void verifyEmail(String rawToken) {
+        String tokenHash = hashVerificationToken(rawToken);
+        EmailVerificationToken token = emailVerificationTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID));
+
+        if (token.isConsumed() || token.isRevoked()) {
+            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID);
+        }
+
+        if (token.isExpired(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_TOKEN_EXPIRED);
+        }
+
+        token.getUser().markEmailVerified(LocalDateTime.now());
+        token.consume(LocalDateTime.now());
+        revokeActiveEmailVerificationTokens(token.getUser().getId(), token);
+    }
+
+    @Transactional
+    public void resendEmailVerification(String email) {
+        userRepository.findByEmail(email)
+                .filter(User::isLocalAccount)
+                .filter(user -> !user.isEmailVerified())
+                .ifPresent(this::reissueEmailVerificationToken);
     }
 
     private void ensureNotLocked(String email) {
@@ -295,6 +335,7 @@ public class AuthService {
                 .provider(provider.name())
                 .providerId(profile.providerId())
                 .role(Role.ROLE_USER)
+                .emailVerifiedAt(LocalDateTime.now())
                 .build();
         return userRepository.save(user);
     }
@@ -317,6 +358,43 @@ public class AuthService {
             return trimmed.substring(0, 20);
         }
         return trimmed;
+    }
+
+    private void reissueEmailVerificationToken(User user) {
+        revokeActiveEmailVerificationTokens(user.getId(), null);
+        issueEmailVerificationToken(user);
+    }
+
+    private void revokeActiveEmailVerificationTokens(Long userId, EmailVerificationToken tokenToKeep) {
+        LocalDateTime now = LocalDateTime.now();
+        emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(userId)
+                .stream()
+                .filter(token -> tokenToKeep == null || !token.getId().equals(tokenToKeep.getId()))
+                .forEach(token -> token.revoke(now));
+    }
+
+    private void issueEmailVerificationToken(User user) {
+        String rawToken = emailVerificationTokenGenerator.generate();
+        EmailVerificationToken token = EmailVerificationToken.create(
+                user,
+                hashVerificationToken(rawToken),
+                LocalDateTime.now().plusHours(24)
+        );
+        emailVerificationTokenRepository.save(token);
+    }
+
+    private String hashVerificationToken(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hashed.length * 2);
+            for (byte value : hashed) {
+                builder.append(String.format("%02x", value));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
+        }
     }
 }
 
