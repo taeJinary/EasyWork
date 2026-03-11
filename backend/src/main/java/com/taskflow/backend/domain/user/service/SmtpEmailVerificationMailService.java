@@ -32,15 +32,17 @@ public class SmtpEmailVerificationMailService implements EmailVerificationMailSe
     private String verifyBaseUrl;
 
     @Override
+    public boolean isReady() {
+        return emailEnabled && javaMailSenderProvider.getIfAvailable() != null;
+    }
+
+    @Override
     public void sendVerificationEmail(String recipientEmail, String rawToken) {
-        if (!emailEnabled) {
+        if (!isReady()) {
             return;
         }
 
         JavaMailSender javaMailSender = javaMailSenderProvider.getIfAvailable();
-        if (javaMailSender == null) {
-            return;
-        }
 
         if (!StringUtils.hasText(recipientEmail) || !StringUtils.hasText(rawToken)) {
             return;

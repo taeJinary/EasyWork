@@ -76,12 +76,15 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
                 .provider("LOCAL")
+                .emailVerifiedAt(resolveInitialEmailVerifiedAt())
                 .role(Role.ROLE_USER)
                 .build();
 
         User savedUser = userRepository.save(user);
         passwordHistoryRepository.save(PasswordHistory.create(savedUser, savedUser.getPassword()));
-        issueEmailVerificationToken(savedUser);
+        if (shouldRequireEmailVerification(savedUser)) {
+            issueEmailVerificationToken(savedUser);
+        }
         return SignupResponse.from(savedUser);
     }
 
@@ -101,7 +104,7 @@ public class AuthService {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
 
-        if (user.isLocalAccount() && !user.isEmailVerified()) {
+        if (shouldRequireEmailVerification(user) && !user.isEmailVerified()) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
@@ -224,6 +227,10 @@ public class AuthService {
 
     @Transactional
     public void resendEmailVerification(String email) {
+        if (!emailVerificationMailService.isReady()) {
+            return;
+        }
+
         userRepository.findByEmail(email)
                 .filter(User::isLocalAccount)
                 .filter(user -> !user.isEmailVerified())
@@ -383,6 +390,14 @@ public class AuthService {
         );
         emailVerificationTokenRepository.save(token);
         emailVerificationMailService.sendVerificationEmail(user.getEmail(), rawToken);
+    }
+
+    private boolean shouldRequireEmailVerification(User user) {
+        return user.isLocalAccount() && emailVerificationMailService.isReady();
+    }
+
+    private LocalDateTime resolveInitialEmailVerifiedAt() {
+        return emailVerificationMailService.isReady() ? null : LocalDateTime.now();
     }
 
     private String hashVerificationToken(String rawToken) {

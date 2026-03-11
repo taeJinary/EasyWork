@@ -34,11 +34,15 @@ class AuthSessionFlowIntegrationTest extends IntegrationTestContainerSupport {
     @MockBean
     private EmailVerificationTokenGenerator emailVerificationTokenGenerator;
 
+    @MockBean
+    private EmailVerificationMailService emailVerificationMailService;
+
     @Test
     void loginReissueLogoutBlocksReissueAndBlacklistedAccessTokenReuse() throws Exception {
         String email = "auth-flow-" + System.nanoTime() + "@example.com";
         String password = "Pass123!";
         org.mockito.BDDMockito.given(emailVerificationTokenGenerator.generate()).willReturn("fixed-email-token");
+        org.mockito.BDDMockito.given(emailVerificationMailService.isReady()).willReturn(true);
 
         mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)

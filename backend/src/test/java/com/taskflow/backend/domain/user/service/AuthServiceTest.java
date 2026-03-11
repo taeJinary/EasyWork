@@ -108,6 +108,7 @@ class AuthServiceTest {
 
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
         when(passwordEncoder.encode(request.password())).thenReturn("encoded-password");
+        when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             return User.builder()
@@ -182,6 +183,7 @@ class AuthServiceTest {
         User user = unverifiedLocalUser();
         LoginRequest request = new LoginRequest(user.getEmail(), "Pass123!");
 
+        when(emailVerificationMailService.isReady()).thenReturn(true);
         when(redisService.hasKey("login:lock:" + user.getEmail())).thenReturn(false);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
 
@@ -393,6 +395,7 @@ class AuthServiceTest {
                 LocalDateTime.now().plusHours(1)
         );
 
+        when(emailVerificationMailService.isReady()).thenReturn(true);
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(emailVerificationTokenRepository.findAllByUserIdAndConsumedAtIsNullAndRevokedAtIsNull(user.getId()))
                 .thenReturn(java.util.List.of(existingToken));
@@ -403,6 +406,42 @@ class AuthServiceTest {
         assertThat(existingToken.getRevokedAt()).isNotNull();
         verify(emailVerificationTokenRepository).save(any(EmailVerificationToken.class));
         verify(emailVerificationMailService).sendVerificationEmail(user.getEmail(), "new-raw-token");
+    }
+
+    @Test
+    void signupMarksLocalUserVerifiedWhenEmailVerificationIsNotReady() {
+        SignupRequest request = new SignupRequest("ready-off@example.com", "Pass123!", "readyoff");
+
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(passwordEncoder.encode(request.password())).thenReturn("encoded-password");
+        when(emailVerificationMailService.isReady()).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SignupResponse response = authService.signup(request);
+
+        assertThat(response.emailVerificationRequired()).isFalse();
+        verify(emailVerificationTokenRepository, never()).save(any(EmailVerificationToken.class));
+        verify(emailVerificationMailService, never()).sendVerificationEmail(anyString(), anyString());
+    }
+
+    @Test
+    void loginAllowsUnverifiedLocalWhenEmailVerificationIsNotReady() {
+        User user = unverifiedLocalUser();
+        LoginRequest request = new LoginRequest(user.getEmail(), "Pass123!");
+
+        when(emailVerificationMailService.isReady()).thenReturn(false);
+        when(redisService.hasKey("login:lock:" + user.getEmail())).thenReturn(false);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
+        when(jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole()))
+                .thenReturn("access-token");
+        when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(user.getId()), anyString()))
+                .thenReturn("refresh-token");
+
+        LoginTokens response = authService.login(request);
+
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        verify(passwordEncoder).matches(request.password(), user.getPassword());
     }
 
     @Test
