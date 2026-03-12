@@ -79,10 +79,13 @@ export default function SignupPage() {
         >
           <div className="text-center">
             <h1 className="m-0 text-[var(--text-xl)] font-bold text-[var(--color-text-primary)]">
-              Check your email
+              이메일을 확인해주세요
             </h1>
             <p className="mt-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-              We sent a verification link to {verificationNotice.email}. Verify your email before signing in.
+              {verificationNotice.email} 주소로 인증 링크를 보냈습니다. 이메일 인증을 완료한 뒤 로그인하세요.
+            </p>
+            <p className="mt-[var(--spacing-xs)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+              메일이 보이지 않으면 스팸함을 확인한 뒤 다시 보내기를 시도하세요.
             </p>
           </div>
 
@@ -122,7 +125,7 @@ export default function SignupPage() {
               {resending ? '전송 중...' : '인증 메일 다시 보내기'}
             </button>
             <Link to="/login" className="font-medium text-[var(--color-primary)]">
-              Back to login
+              로그인으로 돌아가기
             </Link>
           </div>
         </div>
@@ -140,10 +143,10 @@ export default function SignupPage() {
       >
         <div className="mb-[var(--spacing-lg)] text-center">
           <h1 className="m-0 text-[var(--text-xl)] font-bold text-[var(--color-text-primary)]">
-            Create your account
+            회원가입
           </h1>
           <p className="m-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-            Join EasyWork and start collaborating with your team.
+            EasyWork에 가입하고 팀 협업을 시작하세요.
           </p>
         </div>
 
@@ -164,7 +167,7 @@ export default function SignupPage() {
               htmlFor="signup-nickname"
               className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
             >
-              Nickname
+              닉네임
             </label>
             <input
               id="signup-nickname"
@@ -206,7 +209,7 @@ export default function SignupPage() {
               htmlFor="signup-password"
               className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
             >
-              Password
+              비밀번호
             </label>
             <input
               id="signup-password"
@@ -232,7 +235,7 @@ export default function SignupPage() {
               disabled:cursor-not-allowed disabled:opacity-50
             "
           >
-            {loading ? 'Creating...' : 'Create account'}
+            {loading ? '가입 중...' : '가입하기'}
           </button>
         </form>
       </div>
@@ -243,9 +246,9 @@ export default function SignupPage() {
           bg-[var(--color-surface)] p-[var(--spacing-base)] text-center text-[var(--text-sm)] text-[var(--color-text-secondary)]
         "
       >
-        Already have an account?{' '}
+        이미 계정이 있으신가요?{' '}
         <Link to="/login" className="font-medium text-[var(--color-primary)]">
-          Sign in
+          로그인
         </Link>
       </div>
     </div>

@@ -43,8 +43,9 @@ describe('VerifyEmailPage', () => {
       });
     });
 
-    expect(await screen.findByText('Email verified')).toBeInTheDocument();
+    expect(await screen.findByText('이메일 인증 완료')).toBeInTheDocument();
     expect(screen.getByText('이메일 인증이 완료되었습니다.')).toBeInTheDocument();
+    expect(screen.getByText('로그인으로 이동')).toBeInTheDocument();
   });
 
   it('does not issue duplicate verify requests in StrictMode', async () => {
@@ -52,7 +53,7 @@ describe('VerifyEmailPage', () => {
 
     renderPage('/verify-email?token=raw-token', true);
 
-    expect(await screen.findByText('Email verified')).toBeInTheDocument();
+    expect(await screen.findByText('이메일 인증 완료')).toBeInTheDocument();
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledTimes(1);
     });
@@ -61,8 +62,11 @@ describe('VerifyEmailPage', () => {
   it('shows error when token is missing', async () => {
     renderPage('/verify-email');
 
-    expect(await screen.findByText('Verification failed')).toBeInTheDocument();
+    expect(await screen.findByText('이메일 인증 실패')).toBeInTheDocument();
     expect(screen.getByText('유효한 인증 링크가 아닙니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('로그인 화면에서 인증 메일을 다시 보내고 새 링크로 다시 시도하세요.')
+    ).toBeInTheDocument();
     expect(mockPost).not.toHaveBeenCalled();
   });
 });

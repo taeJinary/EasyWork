@@ -39,14 +39,14 @@ describe('SignupPage', () => {
     );
 
     const user = userEvent.setup();
-    const nicknameInput = screen.getByLabelText('Nickname');
+    const nicknameInput = screen.getByLabelText('닉네임');
     const emailInput = screen.getByLabelText('Email');
-    const passwordInput = screen.getByLabelText('Password');
+    const passwordInput = screen.getByLabelText('비밀번호');
 
     await user.type(nicknameInput, 'Nick');
     await user.type(emailInput, 'nick@example.com');
     await user.type(passwordInput, 'Password1!');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.click(screen.getByRole('button', { name: '가입하기' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/auth/signup', {
@@ -69,13 +69,16 @@ describe('SignupPage', () => {
     );
 
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText('Nickname'), 'Nick');
+    await user.type(screen.getByLabelText('닉네임'), 'Nick');
     await user.type(screen.getByLabelText('Email'), 'nick@example.com');
-    await user.type(screen.getByLabelText('Password'), 'Password1!');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.type(screen.getByLabelText('비밀번호'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: '가입하기' }));
 
-    expect(await screen.findByText('Check your email')).toBeInTheDocument();
-    expect(screen.getByText(/We sent a verification link to nick@example.com/)).toBeInTheDocument();
+    expect(await screen.findByText('이메일을 확인해주세요')).toBeInTheDocument();
+    expect(screen.getByText(/nick@example.com 주소로 인증 링크를 보냈습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText('메일이 보이지 않으면 스팸함을 확인한 뒤 다시 보내기를 시도하세요.')
+    ).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -92,12 +95,12 @@ describe('SignupPage', () => {
     );
 
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText('Nickname'), 'Nick');
+    await user.type(screen.getByLabelText('닉네임'), 'Nick');
     await user.type(screen.getByLabelText('Email'), 'nick@example.com');
-    await user.type(screen.getByLabelText('Password'), 'Password1!');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.type(screen.getByLabelText('비밀번호'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: '가입하기' }));
 
-    expect(await screen.findByText('Check your email')).toBeInTheDocument();
+    expect(await screen.findByText('이메일을 확인해주세요')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '인증 메일 다시 보내기' }));
 
@@ -130,12 +133,12 @@ describe('SignupPage', () => {
     );
 
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText('Nickname'), 'Nick');
+    await user.type(screen.getByLabelText('닉네임'), 'Nick');
     await user.type(screen.getByLabelText('Email'), 'nick@example.com');
-    await user.type(screen.getByLabelText('Password'), 'Password1!');
-    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.type(screen.getByLabelText('비밀번호'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: '가입하기' }));
 
-    expect(await screen.findByText('Check your email')).toBeInTheDocument();
+    expect(await screen.findByText('이메일을 확인해주세요')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '인증 메일 다시 보내기' }));
 

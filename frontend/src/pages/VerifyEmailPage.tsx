@@ -47,10 +47,10 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   const title = state === 'loading'
-    ? 'Verifying your email'
+    ? '이메일 인증 중'
     : state === 'success'
-      ? 'Email verified'
-      : 'Verification failed';
+      ? '이메일 인증 완료'
+      : '이메일 인증 실패';
 
   return (
     <div className="w-full max-w-[440px]">
@@ -67,11 +67,16 @@ export default function VerifyEmailPage() {
           <p className="mt-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
             {message}
           </p>
+          {state === 'error' && (
+            <p className="mt-[var(--spacing-xs)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+              로그인 화면에서 인증 메일을 다시 보내고 새 링크로 다시 시도하세요.
+            </p>
+          )}
         </div>
 
         <div className="mt-[var(--spacing-lg)] text-center">
           <Link to="/login" className="font-medium text-[var(--color-primary)]">
-            Sign in
+            로그인으로 이동
           </Link>
         </div>
       </div>

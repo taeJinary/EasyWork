@@ -151,22 +151,27 @@ export default function LoginPage() {
               disabled:opacity-50 disabled:cursor-not-allowed
             "
           >
-            {loading ? '로그인 중...' : 'Sign in'}
+            {loading ? '로그인 중...' : '로그인'}
           </button>
 
           {requiresVerification && (
-            <button
-              type="button"
-              disabled={resending || !email}
-              onClick={handleResendVerification}
-              className="
-                mt-[var(--spacing-sm)] w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-                cursor-pointer hover:bg-[var(--color-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              {resending ? '전송 중...' : '인증 메일 다시 보내기'}
-            </button>
+            <div className="mt-[var(--spacing-sm)]">
+              <p className="mb-[var(--spacing-xs)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                인증 메일이 오지 않았다면 스팸함을 확인한 뒤 다시 보내기를 시도하세요.
+              </p>
+              <button
+                type="button"
+                disabled={resending || !email}
+                onClick={handleResendVerification}
+                className="
+                  w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
+                  bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                  cursor-pointer hover:bg-[var(--color-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed
+                "
+              >
+                {resending ? '전송 중...' : '인증 메일 다시 보내기'}
+              </button>
+            </div>
           )}
         </form>
 
@@ -182,21 +187,21 @@ export default function LoginPage() {
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
-            Continue with Google
+            Google로 계속하기
           </button>
           <button className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
-            Continue with Kakao
+            Kakao로 계속하기
           </button>
           <button className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
-            Continue with Naver
+            Naver로 계속하기
           </button>
         </div>
       </div>
@@ -209,7 +214,7 @@ export default function LoginPage() {
       ">
         계정이 없으신가요?{' '}
         <Link to="/signup" className="text-[var(--color-primary)] font-medium">
-          Sign up
+          회원가입
         </Link>
       </div>
     </div>
