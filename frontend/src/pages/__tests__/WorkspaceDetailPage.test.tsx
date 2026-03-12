@@ -95,11 +95,11 @@ describe('WorkspaceDetailPage', () => {
 
     expect(screen.getByText('Owner')).toBeInTheDocument();
     expect(screen.getByText('Member')).toBeInTheDocument();
-    expect(screen.getAllByText('2 members').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('멤버 2명').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Roadmap')).toBeInTheDocument();
-    expect(screen.getByText('3 open tasks')).toBeInTheDocument();
+    expect(screen.getByText('진행 중 3개')).toBeInTheDocument();
     expect(screen.getAllByText('OWNER').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Pending Invites')).toBeInTheDocument();
+    expect(screen.getByText('대기 중인 초대')).toBeInTheDocument();
     expect(screen.getByText('Invitee')).toBeInTheDocument();
   });
 
@@ -138,7 +138,7 @@ describe('WorkspaceDetailPage', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Member Workspace' })).toBeInTheDocument();
-    expect(screen.queryByText('Pending Invites')).not.toBeInTheDocument();
+    expect(screen.queryByText('대기 중인 초대')).not.toBeInTheDocument();
     expect(mockGet).not.toHaveBeenCalledWith('/workspaces/2/invitations', { params: { status: 'PENDING' } });
   });
 
@@ -177,13 +177,13 @@ describe('WorkspaceDetailPage', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Alpha Workspace' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'New Project' }));
+    fireEvent.click(screen.getByRole('button', { name: '새 프로젝트' }));
 
-    expect(await screen.findByRole('heading', { name: 'Create Project' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '프로젝트 생성' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Project Name'), { target: { value: 'Roadmap' } });
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Q2 roadmap' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    fireEvent.change(screen.getByLabelText('프로젝트 이름'), { target: { value: 'Roadmap' } });
+    fireEvent.change(screen.getByLabelText('설명'), { target: { value: 'Q2 roadmap' } });
+    fireEvent.click(screen.getByRole('button', { name: '프로젝트 생성' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/projects', {
@@ -205,8 +205,8 @@ describe('WorkspaceDetailPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('Failed to load workspace.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(await screen.findByText('작업공간을 불러오지 못했습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
   });
 
   it('opens workspace invite modal and submits invitation with workspace contract', async () => {
@@ -247,14 +247,14 @@ describe('WorkspaceDetailPage', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Alpha Workspace' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+    fireEvent.click(screen.getByRole('button', { name: '초대' }));
 
-    expect(await screen.findByRole('heading', { name: 'Invite Workspace Member' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '작업공간 멤버 초대' })).toBeInTheDocument();
     const dialogQueries = within(screen.getByRole('dialog'));
 
-    fireEvent.change(dialogQueries.getByLabelText('Email'), { target: { value: 'member@example.com' } });
-    fireEvent.change(dialogQueries.getByLabelText('Role'), { target: { value: 'MEMBER' } });
-    fireEvent.click(dialogQueries.getByRole('button', { name: 'Invite' }));
+    fireEvent.change(dialogQueries.getByLabelText('이메일'), { target: { value: 'member@example.com' } });
+    fireEvent.change(dialogQueries.getByLabelText('권한'), { target: { value: 'MEMBER' } });
+    fireEvent.click(dialogQueries.getByRole('button', { name: '초대 보내기' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/workspaces/1/invitations', {
@@ -313,7 +313,7 @@ describe('WorkspaceDetailPage', () => {
 
     expect(await screen.findByText('Invitee')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: '초대 취소' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/workspaces/1/invitations/31/cancel');

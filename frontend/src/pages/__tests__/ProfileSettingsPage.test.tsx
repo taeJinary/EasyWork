@@ -174,6 +174,25 @@ describe('ProfileSettingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/프로필을 불러오는 데 실패/)).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+  });
+
+  it('retries profile loading after fetch failure', async () => {
+    mockGet
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce(apiOk(makeProfile({ nickname: 'RetryUser', email: 'retry@example.com' })));
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/프로필을 불러오는 데 실패/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('RetryUser')).toBeInTheDocument();
+    });
   });
 
   // 8. Submitting state → button disabled + text change

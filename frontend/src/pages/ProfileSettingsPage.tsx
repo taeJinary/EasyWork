@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
@@ -15,23 +15,24 @@ export default function ProfileSettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchProfile() {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await apiClient.get<ApiResponse<UserProfile>>('/users/me');
-        setProfile(res.data.data);
-        setNickname(res.data.data.nickname);
-      } catch (err) {
-        setError('프로필을 불러오는 데 실패했습니다.');
-        console.error('Failed to fetch profile:', err);
-      } finally {
-        setLoading(false);
-      }
+  const fetchProfile = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiClient.get<ApiResponse<UserProfile>>('/users/me');
+      setProfile(res.data.data);
+      setNickname(res.data.data.nickname);
+    } catch (err) {
+      setError('프로필을 불러오는 데 실패했습니다.');
+      console.error('Failed to fetch profile:', err);
+    } finally {
+      setLoading(false);
     }
-    fetchProfile();
   }, []);
+
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
 
   // Client-side validation
   const validateNickname = (value: string): string | null => {
@@ -88,7 +89,14 @@ export default function ProfileSettingsPage() {
       {error && (
         <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mt-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
           <AlertCircle size={14} className="shrink-0" />
-          {error}
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={() => void fetchProfile()}
+            className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-[var(--color-accent-red)]"
+          >
+            다시 시도
+          </button>
         </div>
       )}
 
