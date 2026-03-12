@@ -458,7 +458,7 @@ export default function AccountSettingsPage() {
                     setPushError(null);
                     setPushSuccess(null);
                   }}
-                  placeholder="device token"
+                  placeholder="디바이스 토큰을 입력하세요"
                   className="
                     w-full h-[36px] px-[var(--spacing-sm)]
                     border border-[var(--color-border)] rounded-[var(--radius-sm)]

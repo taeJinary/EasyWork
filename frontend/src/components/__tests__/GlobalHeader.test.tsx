@@ -66,7 +66,7 @@ describe('GlobalHeader', () => {
     );
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /new/i }));
+    await user.click(screen.getByRole('button', { name: '새로 만들기' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/workspaces?create=workspace');
   });
@@ -95,7 +95,7 @@ describe('GlobalHeader', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'N' }));
-    await user.click(screen.getByRole('link', { name: 'Settings' }));
+    await user.click(screen.getByRole('link', { name: '설정' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/settings/account');
   });
@@ -110,8 +110,18 @@ describe('GlobalHeader', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'N' }));
-    await user.click(screen.getByRole('link', { name: 'Profile' }));
+    await user.click(screen.getByRole('link', { name: '프로필' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/settings/profile');
+  });
+
+  it('uses Korean search placeholder in the global search box', () => {
+    render(
+      <MemoryRouter>
+        <GlobalHeader />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByPlaceholderText('검색...')).toBeInTheDocument();
   });
 });
