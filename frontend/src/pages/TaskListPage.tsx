@@ -104,7 +104,7 @@ export default function TaskListPage() {
           return;
         }
 
-        setError('Failed to load tasks.');
+        setError('작업을 불러오지 못했습니다.');
         console.error('Failed to fetch task list:', caughtError);
       } finally {
         if (!cancelled) {
@@ -137,10 +137,10 @@ export default function TaskListPage() {
   };
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'board', label: 'Board' },
-    { key: 'list', label: 'List' },
-    { key: 'members', label: 'Members' },
-    { key: 'settings', label: 'Settings' },
+    { key: 'board', label: '보드' },
+    { key: 'list', label: '목록' },
+    { key: 'members', label: '멤버' },
+    { key: 'settings', label: '설정' },
   ];
 
   return (
@@ -149,7 +149,7 @@ export default function TaskListPage() {
         <div>
           <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
             <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
-              Workspace
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
@@ -172,7 +172,7 @@ export default function TaskListPage() {
             "
           >
             <UserPlus size={14} />
-            Invite
+            멤버 초대
           </button>
           <button
             type="button"
@@ -184,7 +184,7 @@ export default function TaskListPage() {
             "
           >
             <Plus size={14} />
-            New Task
+            새 작업
           </button>
         </div>
       </div>
@@ -225,7 +225,7 @@ export default function TaskListPage() {
       )}
 
       <FilterBar
-        searchPlaceholder="Search tasks..."
+        searchPlaceholder="작업 검색..."
         searchValue={searchQuery}
         onSearchChange={(value) => {
           setSearchQuery(value);
@@ -244,10 +244,10 @@ export default function TaskListPage() {
             focus:border-[var(--color-primary)] focus:outline-none
           "
         >
-          <option value="">Status: All</option>
-          <option value="TODO">TODO</option>
-          <option value="IN_PROGRESS">IN PROGRESS</option>
-          <option value="DONE">DONE</option>
+          <option value="">상태: 전체</option>
+          <option value="TODO">할 일</option>
+          <option value="IN_PROGRESS">진행 중</option>
+          <option value="DONE">완료</option>
         </select>
         <select
           value={sortBy}
@@ -261,9 +261,9 @@ export default function TaskListPage() {
             focus:border-[var(--color-primary)] focus:outline-none
           "
         >
-          <option value="updatedAt">Sort: Updated</option>
-          <option value="createdAt">Sort: Created</option>
-          <option value="dueDate">Sort: Due Date</option>
+          <option value="updatedAt">정렬: 최근 수정</option>
+          <option value="createdAt">정렬: 생성일</option>
+          <option value="dueDate">정렬: 마감일</option>
         </select>
         <select
           value={direction}
@@ -277,8 +277,8 @@ export default function TaskListPage() {
             focus:border-[var(--color-primary)] focus:outline-none
           "
         >
-          <option value="DESC">Direction: Desc</option>
-          <option value="ASC">Direction: Asc</option>
+          <option value="DESC">방향: 내림차순</option>
+          <option value="ASC">방향: 오름차순</option>
         </select>
       </FilterBar>
 
@@ -295,7 +295,9 @@ export default function TaskListPage() {
 
       {!loading && tasks.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          {searchQuery || statusFilter ? 'No tasks matched your filter.' : 'No tasks yet. Create the first task.'}
+          {searchQuery || statusFilter
+            ? '검색 조건에 맞는 작업이 없습니다.'
+            : '아직 작업이 없습니다. 첫 작업을 만들어보세요.'}
         </div>
       )}
 
@@ -373,10 +375,10 @@ export default function TaskListPage() {
             "
           >
             <ChevronLeft size={14} />
-            Prev
+            이전
           </button>
           <span className="text-[var(--color-text-muted)]">
-            Page {page + 1} / {totalPages}
+            페이지 {page + 1} / {totalPages}
           </span>
           <button
             onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
@@ -387,7 +389,7 @@ export default function TaskListPage() {
               hover:bg-[var(--color-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50
             "
           >
-            Next
+            다음
             <ChevronRight size={14} />
           </button>
         </div>

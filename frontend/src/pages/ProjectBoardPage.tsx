@@ -64,7 +64,7 @@ export default function ProjectBoardPage() {
       setColumns(normalizeColumns(boardRes.data.data.columns));
       setLabels(labelsRes.data.data);
     } catch (caughtError) {
-      setError('Failed to load board.');
+      setError('보드를 불러오지 못했습니다.');
       console.error('Failed to fetch board:', caughtError);
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export default function ProjectBoardPage() {
       });
       setColumns(normalizeColumns(response.data.data.columns));
     } catch (caughtError) {
-      setError('Failed to refresh board.');
+      setError('보드를 새로고침하지 못했습니다.');
       console.error('Failed to refresh board:', caughtError);
     }
   };
@@ -133,14 +133,14 @@ export default function ProjectBoardPage() {
   };
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'board', label: 'Board' },
-    { key: 'list', label: 'List' },
-    { key: 'members', label: 'Members' },
-    { key: 'settings', label: 'Settings' },
+    { key: 'board', label: '보드' },
+    { key: 'list', label: '목록' },
+    { key: 'members', label: '멤버' },
+    { key: 'settings', label: '설정' },
   ];
 
   const priorityOptions = [
-    { value: '', label: 'Priority: All' },
+    { value: '', label: '우선순위: 전체' },
     { value: 'URGENT', label: 'URGENT' },
     { value: 'HIGH', label: 'HIGH' },
     { value: 'MEDIUM', label: 'MEDIUM' },
@@ -167,7 +167,7 @@ export default function ProjectBoardPage() {
         <div>
           <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
             <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
-              Workspace
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
@@ -190,7 +190,7 @@ export default function ProjectBoardPage() {
             "
           >
             <UserPlus size={14} />
-            Invite
+            멤버 초대
           </button>
           <button
             type="button"
@@ -202,7 +202,7 @@ export default function ProjectBoardPage() {
             "
           >
             <Plus size={14} />
-            New Task
+            새 작업
           </button>
         </div>
       </div>
@@ -242,7 +242,7 @@ export default function ProjectBoardPage() {
         </div>
       )}
 
-      <FilterBar searchPlaceholder="Search tasks..." searchValue={searchQuery} onSearchChange={setSearchQuery}>
+      <FilterBar searchPlaceholder="작업 검색..." searchValue={searchQuery} onSearchChange={setSearchQuery}>
         <select
           value={priorityFilter}
           onChange={(event) => setPriorityFilter(event.target.value)}
@@ -268,7 +268,7 @@ export default function ProjectBoardPage() {
             focus:border-[var(--color-primary)] focus:outline-none
           "
         >
-          <option value="">Label: All</option>
+          <option value="">라벨: 전체</option>
           {labels.map((label) => (
             <option key={label.labelId} value={String(label.labelId)}>
               {label.name}
@@ -284,7 +284,7 @@ export default function ProjectBoardPage() {
             <BoardColumnComponent key={column.status} status={column.status} count={filteredTasks.length}>
               {filteredTasks.length === 0 ? (
                 <div className="py-[var(--spacing-lg)] text-center text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                  No tasks
+                  작업이 없습니다
                 </div>
               ) : (
                 filteredTasks.map((task) => (

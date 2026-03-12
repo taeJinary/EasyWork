@@ -244,15 +244,15 @@ describe('TaskListPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('button', { name: 'New Task' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'New Task' }));
+    expect(await screen.findByRole('button', { name: '새 작업' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '새 작업' }));
 
-    expect(await screen.findByRole('heading', { name: 'Create Task' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '작업 생성' })).toBeInTheDocument();
     fireEvent.click(await screen.findByLabelText('Release'));
 
-    fireEvent.change(screen.getByLabelText('Task Title'), { target: { value: 'Draft release notes' } });
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Write the summary' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
+    fireEvent.change(screen.getByLabelText('작업 제목'), { target: { value: 'Draft release notes' } });
+    fireEvent.change(screen.getByLabelText('설명'), { target: { value: 'Write the summary' } });
+    fireEvent.click(screen.getByRole('button', { name: '작업 생성' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/projects/3/tasks', {
