@@ -10,6 +10,15 @@ import type { NotificationItem, NotificationListResponse } from '@/types';
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockPatch = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock('@/api/client', () => ({
   default: {
@@ -179,6 +188,28 @@ describe('NotificationsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Unread invitation')).toBeInTheDocument();
     });
+  });
+
+  it('navigates workspace invitation notifications to the workspace invitation tab', async () => {
+    const notification = makeNotification({
+      notificationId: 90,
+      title: 'Workspace invitation',
+      referenceType: 'WORKSPACE_INVITATION',
+      referenceId: 13,
+      isRead: true,
+    });
+    setupMocks([notification], 0);
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText('Workspace invitation')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Workspace invitation'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/invitations?kind=workspace');
   });
 
 });

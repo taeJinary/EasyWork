@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
 import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.notification.dto.response.NotificationCreatedEventPayload;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListResponse;
@@ -23,6 +24,7 @@ import com.taskflow.backend.global.common.enums.Role;
 import com.taskflow.backend.global.common.enums.TaskPriority;
 import com.taskflow.backend.global.common.enums.TaskStatus;
 import com.taskflow.backend.global.common.enums.UserStatus;
+import com.taskflow.backend.global.common.enums.WorkspaceRole;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.websocket.dto.WebSocketEventMessage;
@@ -339,6 +341,56 @@ class NotificationServiceTest {
         assertThat(payload.type()).isEqualTo(NotificationType.INVITATION_ACCEPTED);
         assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.INVITATION);
         assertThat(payload.referenceId()).isEqualTo(77L);
+    }
+
+    @Test
+    void createWorkspaceInvitationNotificationSavesEntityAndPublishesRealtimeEvent() {
+        User owner = activeUser(1L, "owner@example.com", "owner");
+        User invitee = activeUser(2L, "member@example.com", "member");
+        com.taskflow.backend.domain.workspace.entity.Workspace workspace =
+                com.taskflow.backend.domain.workspace.entity.Workspace.create(owner, "TaskFlow Workspace", "desc");
+        ReflectionTestUtils.setField(workspace, "id", 20L);
+        WorkspaceInvitation invitation = WorkspaceInvitation.create(
+                workspace,
+                owner,
+                invitee,
+                WorkspaceRole.MEMBER,
+                InvitationStatus.PENDING,
+                LocalDateTime.now().plusDays(7)
+        );
+        ReflectionTestUtils.setField(invitation, "id", 88L);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 3, 3, 10, 15);
+        given(notificationRepository.save(any(Notification.class))).willAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(notification, "id", 999L);
+            ReflectionTestUtils.setField(notification, "createdAt", createdAt);
+            return notification;
+        });
+
+        notificationService.createWorkspaceInvitationNotification(invitation);
+
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+
+        Notification saved = notificationCaptor.getValue();
+        assertThat(saved.getUser().getId()).isEqualTo(2L);
+        assertThat(saved.getType()).isEqualTo(NotificationType.PROJECT_INVITED);
+        assertThat(saved.getReferenceType()).isEqualTo(NotificationReferenceType.WORKSPACE_INVITATION);
+        assertThat(saved.getReferenceId()).isEqualTo(88L);
+
+        ArgumentCaptor<WebSocketEventMessage> eventCaptor = ArgumentCaptor.forClass(WebSocketEventMessage.class);
+        verify(messagingTemplate).convertAndSendToUser(
+                eq("member@example.com"),
+                eq("/queue/notifications"),
+                eventCaptor.capture()
+        );
+
+        WebSocketEventMessage<?> eventMessage = eventCaptor.getValue();
+        assertThat(eventMessage.projectId()).isEqualTo(20L);
+
+        NotificationCreatedEventPayload payload = (NotificationCreatedEventPayload) eventMessage.payload();
+        assertThat(payload.referenceType()).isEqualTo(NotificationReferenceType.WORKSPACE_INVITATION);
+        assertThat(payload.referenceId()).isEqualTo(88L);
     }
 
     @Test

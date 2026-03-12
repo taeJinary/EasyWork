@@ -91,9 +91,9 @@ function makeWorkspaceListResponse(
   };
 }
 
-function renderPage() {
+function renderPage(initialEntries?: string[]) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <InvitationsPage />
     </MemoryRouter>
   );
@@ -329,5 +329,20 @@ describe('InvitationsPage', () => {
       expect(screen.getByText('Workspace Current')).toBeInTheDocument();
     });
     expect(screen.queryByText('Project Page 2')).not.toBeInTheDocument();
+  });
+
+  it('opens the workspace invitation tab from the query string', async () => {
+    mockGet.mockResolvedValue(apiOk(makeWorkspaceListResponse([makeWorkspaceInvitation({ workspaceName: 'Workspace Via Query' })])));
+
+    renderPage(['/invitations?kind=workspace']);
+
+    await waitFor(() => {
+      expect(screen.getByText('Workspace Via Query')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: 'Workspace Invitations' })).toHaveClass('border-[var(--color-primary)]');
+    expect(mockGet).toHaveBeenCalledWith('/workspace-invitations/me', {
+      params: { page: 0, size: 20 },
+    });
   });
 });

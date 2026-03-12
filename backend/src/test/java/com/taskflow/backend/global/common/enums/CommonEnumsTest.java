@@ -55,6 +55,7 @@ class CommonEnumsTest {
                         NotificationReferenceType.PROJECT,
                         NotificationReferenceType.TASK,
                         NotificationReferenceType.INVITATION,
+                        NotificationReferenceType.WORKSPACE_INVITATION,
                         NotificationReferenceType.COMMENT
                 );
     }

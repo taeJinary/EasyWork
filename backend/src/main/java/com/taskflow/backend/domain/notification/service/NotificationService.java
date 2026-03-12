@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.notification.service;
 
 import com.taskflow.backend.domain.invitation.entity.ProjectInvitation;
+import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
 import com.taskflow.backend.domain.comment.entity.Comment;
 import com.taskflow.backend.domain.notification.dto.response.NotificationCreatedEventPayload;
 import com.taskflow.backend.domain.notification.dto.response.NotificationListItemResponse;
@@ -137,6 +138,24 @@ public class NotificationService {
         publishNotificationCreatedEvent(
                 saved,
                 invitation.getProject().getId(),
+                invitation.getInviter()
+        );
+    }
+
+    @Transactional
+    public void createWorkspaceInvitationNotification(WorkspaceInvitation invitation) {
+        Notification notification = Notification.create(
+                invitation.getInvitee(),
+                NotificationType.PROJECT_INVITED,
+                "Workspace invitation",
+                invitation.getInviter().getNickname() + " invited you to " + invitation.getWorkspace().getName(),
+                NotificationReferenceType.WORKSPACE_INVITATION,
+                invitation.getId()
+        );
+        Notification saved = notificationRepository.save(notification);
+        publishNotificationCreatedEvent(
+                saved,
+                invitation.getWorkspace().getId(),
                 invitation.getInviter()
         );
     }
