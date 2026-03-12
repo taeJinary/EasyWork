@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, AlertTriangle, AlertCircle, CheckCircle, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
-import { WebPushIssueError, isWebPushConfigured, issueWebPushToken } from '@/push/webPush';
+import {
+  WebPushIssueError,
+  getMissingWebPushConfigKeys,
+  isWebPushConfigured,
+  issueWebPushToken,
+} from '@/push/webPush';
 import { useAuthStore } from '@/stores/authStore';
 import type {
   ApiResponse,
@@ -18,8 +23,10 @@ const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&
 type PushEnvironmentState = {
   notificationsSupported: boolean;
   serviceWorkerSupported: boolean;
+  secureContext: boolean;
   notificationPermission: NotificationPermission | 'unsupported';
   webPushConfigured: boolean;
+  missingConfigKeys: string[];
 };
 
 function validateNewPassword(value: string): string | null {
@@ -32,13 +39,30 @@ function validateNewPassword(value: string): string | null {
 function readPushEnvironmentState(): PushEnvironmentState {
   const notificationsSupported = typeof window !== 'undefined' && 'Notification' in window;
   const serviceWorkerSupported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+  const secureContext = typeof window === 'undefined' ? true : window.isSecureContext;
+  const missingConfigKeys = getMissingWebPushConfigKeys();
 
   return {
     notificationsSupported,
     serviceWorkerSupported,
+    secureContext,
     notificationPermission: notificationsSupported ? window.Notification.permission : 'unsupported',
     webPushConfigured: isWebPushConfigured(),
+    missingConfigKeys,
   };
+}
+
+function formatNotificationPermission(permission: PushEnvironmentState['notificationPermission']): string {
+  switch (permission) {
+    case 'granted':
+      return '허용';
+    case 'denied':
+      return '차단';
+    case 'default':
+      return '미결정';
+    default:
+      return '미지원';
+  }
 }
 
 function mapWebPushIssueError(error: unknown): string {
@@ -92,6 +116,7 @@ export default function AccountSettingsPage() {
     pushPlatform === 'WEB' &&
     (!pushEnvironment.notificationsSupported ||
       !pushEnvironment.serviceWorkerSupported ||
+      !pushEnvironment.secureContext ||
       !pushEnvironment.webPushConfigured ||
       pushEnvironment.notificationPermission === 'denied');
 
@@ -352,10 +377,17 @@ export default function AccountSettingsPage() {
             </div>
           )}
 
+          {pushPlatform === 'WEB' && !pushEnvironment.secureContext && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+              <AlertCircle size={14} className="shrink-0" />
+              웹 푸시는 HTTPS 또는 localhost 환경에서만 등록할 수 있습니다.
+            </div>
+          )}
+
           {pushPlatform === 'WEB' && pushEnvironment.webPushConfigured === false && (
             <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               <AlertCircle size={14} className="shrink-0" />
-              웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.
+              <div>웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.</div>
             </div>
           )}
 
@@ -440,6 +472,29 @@ export default function AccountSettingsPage() {
             {pushPlatform === 'WEB' && (
               <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
                 브라우저에서 발급된 푸시 토큰으로 현재 디바이스를 등록합니다.
+              </div>
+            )}
+
+            {pushPlatform === 'WEB' && (
+              <div
+                data-testid="web-push-diagnostics"
+                className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]"
+              >
+                <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
+                  웹 푸시 진단
+                </h3>
+                <div className="space-y-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+                  <p className="m-0">알림 API: {pushEnvironment.notificationsSupported ? '지원됨' : '미지원'}</p>
+                  <p className="m-0">Service Worker: {pushEnvironment.serviceWorkerSupported ? '지원됨' : '미지원'}</p>
+                  <p className="m-0">보안 컨텍스트: {pushEnvironment.secureContext ? '충족' : '미충족'}</p>
+                  <p className="m-0">알림 권한: {formatNotificationPermission(pushEnvironment.notificationPermission)}</p>
+                  <p className="m-0">Firebase 설정: {pushEnvironment.webPushConfigured ? '준비됨' : '누락'}</p>
+                  {!pushEnvironment.webPushConfigured && pushEnvironment.missingConfigKeys.length > 0 && (
+                    <p className="m-0 break-all">
+                      누락된 설정: {pushEnvironment.missingConfigKeys.join(', ')}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
