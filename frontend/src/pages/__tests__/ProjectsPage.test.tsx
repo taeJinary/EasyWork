@@ -56,8 +56,8 @@ describe('ProjectsPage', () => {
 
     expect(screen.getByText('Main project')).toBeInTheDocument();
     expect(screen.getByText('OWNER')).toBeInTheDocument();
-    expect(screen.getByText('4 members')).toBeInTheDocument();
-    expect(screen.getByText('6 open tasks')).toBeInTheDocument();
+    expect(screen.getByText('멤버 4명')).toBeInTheDocument();
+    expect(screen.getByText('미완료 작업 6개')).toBeInTheDocument();
   });
 
   it('opens project modal, loads workspaces, and creates a project', async () => {
@@ -116,9 +116,9 @@ describe('ProjectsPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('button', { name: 'New Project' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '새 프로젝트' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'New Project' }));
+    fireEvent.click(screen.getByRole('button', { name: '새 프로젝트' }));
 
     expect(await screen.findByRole('heading', { name: '프로젝트 생성' })).toBeInTheDocument();
 

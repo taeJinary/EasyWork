@@ -12,11 +12,11 @@ import type { ApiResponse, ProjectListResponse, ProjectSummary } from '@/types';
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}일 전`;
 }
 
 export default function ProjectsPage() {
@@ -42,7 +42,7 @@ export default function ProjectsPage() {
         setProjects(res.data.data.content.map(toProjectSummary));
         setTotalPages(res.data.data.totalPages);
       } catch {
-        setError('Failed to load projects.');
+        setError('프로젝트를 불러오지 못했습니다.');
       } finally {
         setLoading(false);
       }
@@ -53,8 +53,8 @@ export default function ProjectsPage() {
   return (
     <div>
       <PageHeader
-        title="Projects"
-        description="Review projects you own or participate in."
+        title="프로젝트"
+        description="참여 중이거나 소유한 프로젝트를 확인하세요."
         actions={
           <button
             type="button"
@@ -67,7 +67,7 @@ export default function ProjectsPage() {
             "
           >
             <Plus size={16} />
-            New Project
+            새 프로젝트
           </button>
         }
       />
@@ -79,7 +79,7 @@ export default function ProjectsPage() {
       />
 
       <FilterBar
-        searchPlaceholder="Search projects..."
+        searchPlaceholder="프로젝트 검색..."
         searchValue={searchQuery}
         onSearchChange={(value) => {
           setSearchQuery(value);
@@ -99,9 +99,9 @@ export default function ProjectsPage() {
             focus:outline-none focus:border-[var(--color-primary)]
           "
         >
-          <option value="">Role: All</option>
-          <option value="OWNER">Role: Owner</option>
-          <option value="MEMBER">Role: Member</option>
+          <option value="">역할: 전체</option>
+          <option value="OWNER">역할: 소유자</option>
+          <option value="MEMBER">역할: 멤버</option>
         </select>
         <select
           className="
@@ -111,9 +111,9 @@ export default function ProjectsPage() {
             focus:outline-none focus:border-[var(--color-primary)]
           "
         >
-          <option value="updated">Sort: Updated</option>
-          <option value="name">Sort: Name</option>
-          <option value="created">Sort: Created</option>
+          <option value="updated">정렬: 최근 수정</option>
+          <option value="name">정렬: 이름</option>
+          <option value="created">정렬: 생성일</option>
         </select>
       </FilterBar>
 
@@ -138,7 +138,7 @@ export default function ProjectsPage() {
 
       {!loading && !error && projects.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          {searchQuery || roleFilter ? 'No projects matched your filters.' : 'No projects yet. Create your first project.'}
+          {searchQuery || roleFilter ? '조건에 맞는 프로젝트가 없습니다.' : '아직 프로젝트가 없습니다. 첫 프로젝트를 만들어보세요.'}
         </div>
       )}
 
@@ -168,9 +168,9 @@ export default function ProjectsPage() {
               </div>
 
               <div className="flex shrink-0 items-center gap-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                <span>{project.memberCount} members</span>
-                <span>{project.openTaskCount} open tasks</span>
-                <span>Updated {formatTimeAgo(project.updatedAt)}</span>
+                <span>멤버 {project.memberCount}명</span>
+                <span>미완료 작업 {project.openTaskCount}개</span>
+                <span>업데이트 {formatTimeAgo(project.updatedAt)}</span>
               </div>
             </div>
           ))}
@@ -189,9 +189,9 @@ export default function ProjectsPage() {
             "
           >
             <ChevronLeft size={14} />
-            Prev
+            이전
           </button>
-          <span className="text-[var(--color-text-muted)]">Page {page + 1} / {totalPages}</span>
+          <span className="text-[var(--color-text-muted)]">페이지 {page + 1} / {totalPages}</span>
           <button
             onClick={() => setPage((currentPage) => Math.min(totalPages - 1, currentPage + 1))}
             disabled={page >= totalPages - 1}
@@ -201,7 +201,7 @@ export default function ProjectsPage() {
               hover:bg-[var(--color-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50
             "
           >
-            Next
+            다음
             <ChevronRight size={14} />
           </button>
         </div>
@@ -209,3 +209,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+

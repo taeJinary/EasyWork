@@ -246,7 +246,7 @@ export default function InvitationsPage() {
               : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
           }`}
         >
-          Project Invitations
+          프로젝트 초대
         </button>
         <button
           type="button"
@@ -257,7 +257,7 @@ export default function InvitationsPage() {
               : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]'
           }`}
         >
-          Workspace Invitations
+          작업공간 초대
         </button>
       </div>
 
@@ -279,7 +279,7 @@ export default function InvitationsPage() {
             focus:outline-none focus:border-[var(--color-primary)]
           "
         >
-          <option value="">Status: All</option>
+          <option value="">상태: 전체</option>
           <option value="PENDING">PENDING</option>
           <option value="ACCEPTED">ACCEPTED</option>
           <option value="REJECTED">REJECTED</option>
@@ -400,9 +400,9 @@ export default function InvitationsPage() {
             "
           >
             <ChevronLeft size={14} />
-            Prev
+            이전
           </button>
-          <span className="text-[var(--color-text-muted)]">Page {page + 1} / {totalPages}</span>
+          <span className="text-[var(--color-text-muted)]">페이지 {page + 1} / {totalPages}</span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
@@ -414,7 +414,7 @@ export default function InvitationsPage() {
               disabled:opacity-50 disabled:cursor-not-allowed
             "
           >
-            Next
+            다음
             <ChevronRight size={14} />
           </button>
         </div>

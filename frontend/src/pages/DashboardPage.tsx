@@ -12,11 +12,11 @@ import type {
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}일 전`;
 }
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
@@ -54,13 +54,13 @@ function ProjectRow({
             </span>
           </button>
           <div className="mt-[var(--spacing-xs)] flex flex-wrap items-center gap-[var(--spacing-base)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-            <span>{project.memberCount} members</span>
-            <span>{openTaskCount} open tasks</span>
-            <span>{project.progressRate}% complete</span>
+            <span>멤버 {project.memberCount}명</span>
+            <span>미완료 작업 {openTaskCount}개</span>
+            <span>완료율 {project.progressRate}%</span>
           </div>
         </div>
         <div className="shrink-0 text-[var(--text-xs)] text-[var(--color-text-muted)]">
-          Updated {formatTimeAgo(project.updatedAt)}
+          업데이트 {formatTimeAgo(project.updatedAt)}
         </div>
       </div>
       <div className="mt-[var(--spacing-sm)] flex justify-end">
@@ -69,7 +69,7 @@ function ProjectRow({
           onClick={() => onInspect(project.projectId)}
           className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
         >
-          View Stats
+          통계 보기
         </button>
       </div>
     </div>
@@ -113,7 +113,7 @@ export default function DashboardPage() {
         if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
           setDashboard(null);
           setSelectedProjectId(null);
-          setError('Failed to load dashboard data.');
+          setError('대시보드 데이터를 불러오지 못했습니다.');
         }
       } finally {
         if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
@@ -142,7 +142,7 @@ export default function DashboardPage() {
       } catch {
         if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
           setProjectStats(null);
-          setProjectStatsError('Failed to load project stats.');
+          setProjectStatsError('프로젝트 통계를 불러오지 못했습니다.');
         }
       } finally {
         if (mountedRef.current && requestId === projectStatsRequestIdRef.current) {
@@ -173,12 +173,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="Track active projects and pending invitations in one place." />
+      <PageHeader title="대시보드" description="참여 중인 프로젝트와 초대 현황을 한곳에서 확인하세요." />
 
       <div className="mt-[var(--spacing-base)] grid gap-[var(--spacing-base)] md:grid-cols-3">
-        <StatCard label="Pending invitations" value={dashboard?.pendingInvitationCount ?? 0} />
-        <StatCard label="Active projects" value={totalProjects} />
-        <StatCard label="Tracked tasks" value={totalTasks} />
+        <StatCard label="대기 중 초대" value={dashboard?.pendingInvitationCount ?? 0} />
+        <StatCard label="진행 중 프로젝트" value={totalProjects} />
+        <StatCard label="추적 중 작업" value={totalTasks} />
       </div>
 
       {error && (
@@ -189,7 +189,7 @@ export default function DashboardPage() {
             onClick={() => void fetchDashboard()}
             className="mt-[var(--spacing-sm)] h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-white/40"
           >
-            Retry
+            다시 시도
           </button>
         </div>
       )}
@@ -204,8 +204,8 @@ export default function DashboardPage() {
 
       {!loading && !error && dashboard && dashboard.myProjects.length === 0 && (
         <div className="mt-[var(--spacing-base)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          <div>No active projects yet.</div>
-          <div className="mt-[var(--spacing-sm)]">Create or join a project to start tracking workload and progress.</div>
+          <div>아직 참여 중인 프로젝트가 없습니다.</div>
+          <div className="mt-[var(--spacing-sm)]">프로젝트를 만들거나 초대를 수락하면 진행 현황을 확인할 수 있습니다.</div>
         </div>
       )}
 
@@ -229,9 +229,9 @@ export default function DashboardPage() {
           <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-base)]">
             <div className="mb-[var(--spacing-base)] flex items-center justify-between gap-[var(--spacing-sm)]">
               <div>
-                <div className="text-[var(--text-xs)] uppercase tracking-wide text-[var(--color-text-muted)]">Project Stats</div>
+                <div className="text-[var(--text-xs)] uppercase tracking-wide text-[var(--color-text-muted)]">프로젝트 통계</div>
                 <div className="mt-[var(--spacing-xs)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
-                  {selectedProjectName ?? 'Select a project'}
+                  {selectedProjectName ?? '프로젝트를 선택하세요'}
                 </div>
               </div>
               {selectedProjectId && (
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                   onClick={() => navigate(`/projects/${selectedProjectId}/board`)}
                   className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)]"
                 >
-                  Open Board
+                  보드 열기
                 </button>
               )}
             </div>
@@ -254,7 +254,7 @@ export default function DashboardPage() {
                     onClick={() => void fetchProjectStats(selectedProjectId)}
                     className="mt-[var(--spacing-sm)] h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-white/40"
                   >
-                    Retry Stats
+                    다시 시도
                   </button>
                 )}
               </div>
@@ -270,20 +270,20 @@ export default function DashboardPage() {
 
             {!projectStatsLoading && !projectStatsError && !projectStats && (
               <div className="text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                Select a project to inspect workload and due-date risk.
+                프로젝트를 선택하면 작업량과 마감 위험을 확인할 수 있습니다.
               </div>
             )}
 
             {!projectStatsLoading && !projectStatsError && projectStats && (
               <div className="grid gap-[var(--spacing-sm)] sm:grid-cols-2">
-                <StatCard label="Members" value={projectStats.memberCount} />
-                <StatCard label="Tasks" value={projectStats.taskCount} />
-                <StatCard label="TODO" value={projectStats.todoCount} />
-                <StatCard label="In Progress" value={projectStats.inProgressCount} />
-                <StatCard label="Done" value={projectStats.doneCount} />
-                <StatCard label="Completion" value={`${projectStats.completionRate}%`} />
-                <StatCard label="Overdue" value={projectStats.overdueCount} />
-                <StatCard label="Due Soon" value={projectStats.dueSoonCount} />
+                <StatCard label="멤버" value={projectStats.memberCount} />
+                <StatCard label="작업" value={projectStats.taskCount} />
+                <StatCard label="할 일" value={projectStats.todoCount} />
+                <StatCard label="진행 중" value={projectStats.inProgressCount} />
+                <StatCard label="완료" value={projectStats.doneCount} />
+                <StatCard label="완료율" value={`${projectStats.doneCount}/${projectStats.taskCount}`} />
+                <StatCard label="기한 초과" value={projectStats.overdueCount} />
+                <StatCard label="마감 임박" value={projectStats.dueSoonCount} />
               </div>
             )}
           </div>
@@ -292,3 +292,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

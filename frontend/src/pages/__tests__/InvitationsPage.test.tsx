@@ -254,7 +254,7 @@ describe('InvitationsPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Workspace Invitations' }));
+    await user.click(await screen.findByRole('button', { name: '작업공간 초대' }));
 
     await waitFor(() => {
       expect(screen.getByText('Alpha Workspace')).toBeInTheDocument();
@@ -303,9 +303,9 @@ describe('InvitationsPage', () => {
 
     expect(await screen.findByText('Project Page 1')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
 
-    await user.click(screen.getByRole('button', { name: 'Workspace Invitations' }));
+    await user.click(screen.getByRole('button', { name: '작업공간 초대' }));
 
     workspacePage0.resolve(
       apiOk(makeWorkspaceListResponse([makeWorkspaceInvitation({ workspaceName: 'Workspace Current' })]))
@@ -340,7 +340,7 @@ describe('InvitationsPage', () => {
       expect(screen.getByText('Workspace Via Query')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: 'Workspace Invitations' })).toHaveClass('border-[var(--color-primary)]');
+    expect(screen.getByRole('button', { name: '작업공간 초대' })).toHaveClass('border-[var(--color-primary)]');
     expect(mockGet).toHaveBeenCalledWith('/workspace-invitations/me', {
       params: { page: 0, size: 20 },
     });

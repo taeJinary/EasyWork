@@ -163,8 +163,8 @@ describe('ProjectBoardPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('button', { name: 'Invite' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+    expect(await screen.findByRole('button', { name: '멤버 초대' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '멤버 초대' }));
 
     await waitFor(() => {
       expect(screen.getByText('/projects/3/members?invite=1')).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe('ProjectBoardPage', () => {
     expect(await screen.findByRole('option', { name: 'Release' })).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Label Filter' }), '1');
+    await user.selectOptions(screen.getByRole('combobox', { name: '라벨 필터' }), '1');
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(

@@ -49,7 +49,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
       } catch (caughtError: unknown) {
         if (!cancelled) {
           const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          setError(message || 'Failed to load labels.');
+          setError(message || '라벨을 불러오지 못했습니다.');
         }
       }
     }
@@ -90,7 +90,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
       onClose();
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || 'Failed to create task.');
+      setError(message || '작업 생성에 실패했습니다.');
       console.error('Failed to create task:', caughtError);
     } finally {
       setSubmitting(false);
@@ -114,7 +114,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
           aria-modal="true"
         >
           <div className="mb-[var(--spacing-base)] flex items-center justify-between">
-            <h3 className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">Create Task</h3>
+            <h3 className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">작업 생성</h3>
             <button
               type="button"
               onClick={handleClose}
@@ -134,10 +134,10 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
           <div className="space-y-[var(--spacing-md)]">
             <div>
               <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                Task Title
+                작업 제목
               </label>
               <input
-                aria-label="Task Title"
+                aria-label="작업 제목"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -146,10 +146,10 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
 
             <div>
               <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                Description
+                설명
               </label>
               <textarea
-                aria-label="Description"
+                aria-label="설명"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 className="min-h-[96px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -158,10 +158,10 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
 
             <div>
               <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                Priority
+                우선순위
               </label>
               <select
-                aria-label="Priority"
+                aria-label="우선순위"
                 value={priority}
                 onChange={(event) => setPriority(event.target.value as TaskPriority)}
                 className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -176,11 +176,11 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
 
             <div>
               <div className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                Labels
+                라벨
               </div>
               {labels.length === 0 ? (
                 <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                  No labels available.
+                  라벨이 없습니다.
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-sm)]">
@@ -215,7 +215,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
                 onClick={handleClose}
                 className="h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)]"
               >
-                Cancel
+                취소
               </button>
               <button
                 type="button"
@@ -223,7 +223,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
                 disabled={!title.trim() || submitting}
                 className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:opacity-50"
               >
-                Create Task
+                작업 생성
               </button>
             </div>
           </div>
@@ -232,3 +232,4 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
     </>
   );
 }
+
