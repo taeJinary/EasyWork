@@ -1,15 +1,19 @@
 import { useState } from 'react';
+import type { AxiosError } from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '@/api/client';
-import type { ApiResponse, SignupResponse } from '@/types';
+import type { ApiErrorResponse, ApiResponse, SignupResponse } from '@/types';
 
 export default function SignupPage() {
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [verificationError, setVerificationError] = useState('');
+  const [verificationInfo, setVerificationInfo] = useState('');
   const [verificationNotice, setVerificationNotice] = useState<SignupResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,6 +30,8 @@ export default function SignupPage() {
 
       const signup = response.data.data;
       if (signup.emailVerificationRequired) {
+        setVerificationError('');
+        setVerificationInfo('');
         setVerificationNotice(signup);
         return;
       }
@@ -35,6 +41,30 @@ export default function SignupPage() {
       setError('Failed to sign up. Please check your input.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verificationNotice) {
+      return;
+    }
+
+    setVerificationError('');
+    setVerificationInfo('');
+    setResending(true);
+
+    try {
+      const response = await apiClient.post<ApiResponse<void>>('/auth/email-verification/resend', {
+        email: verificationNotice.email,
+      });
+      setVerificationInfo(response.data.message ?? '인증 메일을 다시 보냈습니다.');
+    } catch (caughtError) {
+      const axiosError = caughtError as AxiosError<ApiErrorResponse>;
+      setVerificationError(
+        axiosError.response?.data?.message ?? '인증 메일 재발송에 실패했습니다.'
+      );
+    } finally {
+      setResending(false);
     }
   };
 
@@ -56,7 +86,41 @@ export default function SignupPage() {
             </p>
           </div>
 
-          <div className="mt-[var(--spacing-lg)] text-center">
+          {verificationError && (
+            <div
+              className="
+                mt-[var(--spacing-base)] rounded-[var(--radius-sm)] border border-[var(--color-danger)]/20
+                bg-[var(--color-accent-red)] p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-danger)]
+              "
+            >
+              {verificationError}
+            </div>
+          )}
+
+          {verificationInfo && (
+            <div
+              className="
+                mt-[var(--spacing-base)] rounded-[var(--radius-sm)] border border-[var(--color-success)]/20
+                bg-[var(--color-accent-green)]/15 p-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-success)]
+              "
+            >
+              {verificationInfo}
+            </div>
+          )}
+
+          <div className="mt-[var(--spacing-lg)] flex flex-col gap-[var(--spacing-sm)] text-center">
+            <button
+              type="button"
+              disabled={resending}
+              onClick={handleResendVerification}
+              className="
+                h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
+                bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
+                hover:bg-[var(--color-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50
+              "
+            >
+              {resending ? '전송 중...' : '인증 메일 다시 보내기'}
+            </button>
             <Link to="/login" className="font-medium text-[var(--color-primary)]">
               Back to login
             </Link>
