@@ -55,6 +55,18 @@ function makeListResponse(items: NotificationItem[]): NotificationListResponse {
   };
 }
 
+function makePagedListResponse(items: NotificationItem[], page: number, totalPages: number): NotificationListResponse {
+  return {
+    content: items,
+    page,
+    size: 20,
+    totalElements: totalPages * 20,
+    totalPages,
+    first: page === 0,
+    last: page === totalPages - 1,
+  };
+}
+
 function setupMocks(items: NotificationItem[], unreadCount?: number) {
   mockGet.mockImplementation((url: string) => {
     if (typeof url === 'string' && url.includes('unread-count')) {
@@ -158,6 +170,35 @@ describe('NotificationsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('알림을 불러오는 데 실패했습니다.')).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+  });
+
+  it('retries notification loading after fetch failure', async () => {
+    let listCallCount = 0;
+    mockGet.mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('unread-count')) {
+        return Promise.resolve(apiOk({ unreadCount: 1 }));
+      }
+
+      listCallCount += 1;
+      if (listCallCount === 1) {
+        return Promise.reject(new Error('Network Error'));
+      }
+
+      return Promise.resolve(apiOk(makeListResponse([makeNotification({ title: '복구된 알림' })])));
+    });
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('알림을 불러오는 데 실패했습니다.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('복구된 알림')).toBeInTheDocument();
+    });
   });
 
   it('restores the full notification item when unread-only read fails', async () => {
@@ -210,6 +251,28 @@ describe('NotificationsPage', () => {
     await user.click(screen.getByText('Workspace invitation'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/invitations?kind=workspace');
+  });
+
+  it('renders Korean pagination labels', async () => {
+    const notifications = Array.from({ length: 2 }, (_, index) =>
+      makeNotification({ notificationId: index + 1, title: `알림 ${index + 1}` })
+    );
+    mockGet.mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('unread-count')) {
+        return Promise.resolve(apiOk({ unreadCount: 2 }));
+      }
+
+      return Promise.resolve(apiOk(makePagedListResponse(notifications, 0, 2)));
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('페이지 1 / 2')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /이전/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /다음/i })).toBeInTheDocument();
   });
 
 });

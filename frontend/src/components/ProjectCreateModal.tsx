@@ -69,7 +69,7 @@ export default function ProjectCreateModal({
         if (cancelled) {
           return;
         }
-        setError('Failed to load workspaces.');
+        setError('작업공간 목록을 불러오지 못했습니다.');
         console.error('Failed to load workspaces for project creation:', caughtError);
       } finally {
         if (!cancelled) {
@@ -113,7 +113,7 @@ export default function ProjectCreateModal({
       onClose();
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || 'Failed to create project.');
+      setError(message || '프로젝트 생성에 실패했습니다.');
       console.error('Failed to create project:', caughtError);
     } finally {
       setSubmitting(false);
@@ -131,7 +131,7 @@ export default function ProjectCreateModal({
           aria-modal="true"
         >
           <div className="mb-[var(--spacing-base)] flex items-center justify-between">
-            <h3 className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">Create Project</h3>
+            <h3 className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">프로젝트 생성</h3>
             <button
               type="button"
               onClick={handleClose}
@@ -152,16 +152,16 @@ export default function ProjectCreateModal({
             {!fixedWorkspaceId && (
               <div>
                 <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                  Workspace
+                  작업공간
                 </label>
                 <select
-                  aria-label="Workspace"
+                  aria-label="작업공간"
                   value={workspaceId}
                   onChange={(event) => setWorkspaceId(event.target.value)}
                   disabled={loadingWorkspaces}
                   className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
                 >
-                  <option value="">Select workspace</option>
+                  <option value="">작업공간을 선택하세요</option>
                   {workspaces.map((workspace) => (
                     <option key={workspace.id} value={String(workspace.id)}>
                       {workspace.name}
@@ -173,10 +173,10 @@ export default function ProjectCreateModal({
 
             <div>
               <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                Project Name
+                프로젝트 이름
               </label>
               <input
-                aria-label="Project Name"
+                aria-label="프로젝트 이름"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -185,10 +185,10 @@ export default function ProjectCreateModal({
 
             <div>
               <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                Description
+                설명
               </label>
               <textarea
-                aria-label="Description"
+                aria-label="설명"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 className="min-h-[96px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -201,7 +201,7 @@ export default function ProjectCreateModal({
                 onClick={handleClose}
                 className="h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)]"
               >
-                Cancel
+                취소
               </button>
               <button
                 type="button"
@@ -209,7 +209,7 @@ export default function ProjectCreateModal({
                 disabled={!workspaceId || !name.trim() || submitting || loadingWorkspaces}
                 className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:opacity-50"
               >
-                Create Project
+                프로젝트 생성
               </button>
             </div>
           </div>

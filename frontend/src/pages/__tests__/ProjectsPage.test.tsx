@@ -120,12 +120,12 @@ describe('ProjectsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'New Project' }));
 
-    expect(await screen.findByRole('heading', { name: 'Create Project' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '프로젝트 생성' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Workspace'), { target: { value: '1' } });
-    fireEvent.change(screen.getByLabelText('Project Name'), { target: { value: 'Roadmap' } });
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Q2 roadmap' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    fireEvent.change(screen.getByLabelText('작업공간'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('프로젝트 이름'), { target: { value: 'Roadmap' } });
+    fireEvent.change(screen.getByLabelText('설명'), { target: { value: 'Q2 roadmap' } });
+    fireEvent.click(screen.getByRole('button', { name: '프로젝트 생성' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/projects', {

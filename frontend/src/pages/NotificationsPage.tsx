@@ -81,7 +81,7 @@ export default function NotificationsPage() {
   }, [page, unreadOnly]);
 
   useEffect(() => {
-    fetchNotifications();
+    void fetchNotifications();
   }, [fetchNotifications]);
 
   const handleRead = async (notificationId: number) => {
@@ -184,7 +184,14 @@ export default function NotificationsPage() {
       {error && (
         <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mt-[var(--spacing-sm)] bg-[var(--color-accent-red)] border border-[var(--color-danger)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-danger)]">
           <AlertCircle size={14} className="shrink-0" />
-          {error}
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={() => void fetchNotifications()}
+            className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-[var(--color-accent-red)]"
+          >
+            다시 시도
+          </button>
         </div>
       )}
 
@@ -270,9 +277,9 @@ export default function NotificationsPage() {
             "
           >
             <ChevronLeft size={14} />
-            Prev
+            이전
           </button>
-          <span className="text-[var(--color-text-muted)]">Page {page + 1} / {totalPages}</span>
+          <span className="text-[var(--color-text-muted)]">페이지 {page + 1} / {totalPages}</span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
@@ -284,7 +291,7 @@ export default function NotificationsPage() {
               disabled:opacity-50 disabled:cursor-not-allowed
             "
           >
-            Next
+            다음
             <ChevronRight size={14} />
           </button>
         </div>

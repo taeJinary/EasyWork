@@ -24,11 +24,11 @@ type TabType = 'overview' | 'projects' | 'members' | 'settings';
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}일 전`;
 }
 
 function formatDate(dateStr: string): string {
@@ -108,7 +108,7 @@ export default function WorkspaceDetailPage() {
       setMembers([]);
       setProjects([]);
       setSentInvitations([]);
-      setError('Failed to load workspace.');
+      setError('작업공간을 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
@@ -156,7 +156,7 @@ export default function WorkspaceDetailPage() {
       setActiveTab('members');
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setInviteError(message || 'Failed to invite workspace member.');
+      setInviteError(message || '작업공간 멤버 초대에 실패했습니다.');
       console.error('Failed to invite workspace member:', caughtError);
     } finally {
       setInviteSubmitting(false);
@@ -182,7 +182,7 @@ export default function WorkspaceDetailPage() {
       );
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setInviteListError(message || 'Failed to cancel workspace invitation.');
+      setInviteListError(message || '작업공간 초대를 취소하지 못했습니다.');
       console.error('Failed to cancel workspace invitation:', caughtError);
     } finally {
       setCancelingInvitationId(null);
@@ -190,10 +190,10 @@ export default function WorkspaceDetailPage() {
   }, [workspaceId]);
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'projects', label: 'Projects' },
-    { key: 'members', label: 'Members' },
-    { key: 'settings', label: 'Settings' },
+    { key: 'overview', label: '개요' },
+    { key: 'projects', label: '프로젝트' },
+    { key: 'members', label: '멤버' },
+    { key: 'settings', label: '설정' },
   ];
 
   if (loading) {
@@ -219,7 +219,7 @@ export default function WorkspaceDetailPage() {
             hover:bg-[var(--color-surface-muted)]
           "
         >
-          Retry
+          다시 시도
         </button>
       </div>
     );
@@ -234,7 +234,7 @@ export default function WorkspaceDetailPage() {
               className="cursor-pointer hover:text-[var(--color-primary)]"
               onClick={() => navigate('/workspaces')}
             >
-              Workspaces
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{workspace?.name}</span>
@@ -262,7 +262,7 @@ export default function WorkspaceDetailPage() {
             }}
           >
             <UserPlus size={14} />
-            Invite
+            초대
           </button>
           <button
             type="button"
@@ -274,7 +274,7 @@ export default function WorkspaceDetailPage() {
             onClick={() => setShowProjectModal(true)}
           >
             <Plus size={14} />
-            New Project
+            새 프로젝트
           </button>
         </div>
       </div>
@@ -305,7 +305,7 @@ export default function WorkspaceDetailPage() {
                   id="workspace-invite-dialog-title"
                   className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]"
                 >
-                  Invite Workspace Member
+                  작업공간 멤버 초대
                 </h3>
                 <button
                   type="button"
@@ -329,7 +329,7 @@ export default function WorkspaceDetailPage() {
                     htmlFor="workspace-invite-email"
                     className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
                   >
-                    Email
+                    이메일
                   </label>
                   <input
                     id="workspace-invite-email"
@@ -345,7 +345,7 @@ export default function WorkspaceDetailPage() {
                     htmlFor="workspace-invite-role"
                     className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
                   >
-                    Role
+                    권한
                   </label>
                   <select
                     id="workspace-invite-role"
@@ -363,7 +363,7 @@ export default function WorkspaceDetailPage() {
                     onClick={closeInviteModal}
                     className="h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)]"
                   >
-                    Cancel
+                    취소
                   </button>
                   <button
                     type="button"
@@ -371,7 +371,7 @@ export default function WorkspaceDetailPage() {
                     disabled={!inviteEmail.trim() || inviteSubmitting}
                     className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:opacity-50"
                   >
-                    {inviteSubmitting ? 'Sending...' : 'Invite'}
+                    {inviteSubmitting ? '보내는 중...' : '초대 보내기'}
                   </button>
                 </div>
               </div>
@@ -403,14 +403,14 @@ export default function WorkspaceDetailPage() {
         <div className="min-w-0 flex-1">
           <div className="mb-[var(--spacing-md)] flex items-center justify-between">
             <h2 className="m-0 text-[var(--text-base)] font-semibold text-[var(--color-text-primary)]">
-              Projects
+              프로젝트
             </h2>
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
             {projects.length === 0 ? (
               <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                No projects yet. Create the first project in this workspace.
+                아직 프로젝트가 없습니다. 이 작업공간의 첫 프로젝트를 생성해보세요.
               </div>
             ) : (
               projects.map((project, index) => (
@@ -437,9 +437,9 @@ export default function WorkspaceDetailPage() {
                   </div>
 
                   <div className="flex shrink-0 items-center gap-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                    <span>{project.memberCount} members</span>
-                    <span>{project.openTaskCount} open tasks</span>
-                    <span>Updated {formatTimeAgo(project.updatedAt)}</span>
+                    <span>멤버 {project.memberCount}명</span>
+                    <span>진행 중 {project.openTaskCount}개</span>
+                    <span>최근 수정 {formatTimeAgo(project.updatedAt)}</span>
                   </div>
                 </div>
               ))
@@ -451,13 +451,13 @@ export default function WorkspaceDetailPage() {
           <div className="mb-[var(--spacing-lg)]">
             <h3 className="m-0 mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
               <Users size={14} />
-              Members
+              멤버
               <span className="font-normal text-[var(--color-text-muted)]">({members.length})</span>
             </h3>
             <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
               {members.length === 0 ? (
                 <div className="p-[var(--spacing-base)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                  No members
+                  멤버가 없습니다.
                 </div>
               ) : (
                 members.map((member, index) => (
@@ -492,7 +492,7 @@ export default function WorkspaceDetailPage() {
             <div className="mb-[var(--spacing-lg)]">
               <h3 className="m-0 mb-[var(--spacing-sm)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
                 <Mail size={14} />
-                Pending Invites
+                대기 중인 초대
                 <span className="font-normal text-[var(--color-text-muted)]">({sentInvitations.length})</span>
               </h3>
               {inviteListError && (
@@ -504,7 +504,7 @@ export default function WorkspaceDetailPage() {
               <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
                 {sentInvitations.length === 0 ? (
                   <div className="p-[var(--spacing-base)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                    No pending invitations
+                    대기 중인 초대가 없습니다.
                   </div>
                 ) : (
                   sentInvitations.map((invitation, index) => (
@@ -526,14 +526,14 @@ export default function WorkspaceDetailPage() {
                         </Badge>
                       </div>
                       <div className="mt-[var(--spacing-xs)] flex items-center justify-between gap-[var(--spacing-sm)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                        <span>Expires {formatDate(invitation.expiresAt)}</span>
+                        <span>만료일 {formatDate(invitation.expiresAt)}</span>
                         <button
                           type="button"
                           onClick={() => void handleCancelInvitation(invitation)}
                           disabled={cancelingInvitationId === invitation.invitationId}
                           className="h-[28px] rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-transparent px-[var(--spacing-sm)] text-[var(--text-xs)] font-medium text-[var(--color-danger)] hover:bg-[var(--color-accent-red)] disabled:opacity-50"
                         >
-                          Cancel
+                          초대 취소
                         </button>
                       </div>
                     </div>
@@ -545,7 +545,7 @@ export default function WorkspaceDetailPage() {
 
           <div>
             <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
-              Info
+              정보
             </h3>
             <div
               className="
@@ -555,16 +555,16 @@ export default function WorkspaceDetailPage() {
             >
               <div className="flex items-center gap-[var(--spacing-sm)]">
                 <Users size={14} className="text-[var(--color-text-muted)]" />
-                <span>{workspace?.memberCount ?? 0} members</span>
+                <span>멤버 {workspace?.memberCount ?? 0}명</span>
               </div>
               <div className="flex items-center gap-[var(--spacing-sm)]">
                 <FolderKanban size={14} className="text-[var(--color-text-muted)]" />
-                <span>Role {workspace?.myRole ?? 'MEMBER'}</span>
+                <span>권한 {workspace?.myRole ?? 'MEMBER'}</span>
               </div>
               {workspace?.updatedAt && (
                 <div className="flex items-center gap-[var(--spacing-sm)]">
                   <Settings size={14} className="text-[var(--color-text-muted)]" />
-                  <span>Updated {formatTimeAgo(workspace.updatedAt)}</span>
+                  <span>최근 수정 {formatTimeAgo(workspace.updatedAt)}</span>
                 </div>
               )}
             </div>
