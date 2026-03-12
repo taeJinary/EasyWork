@@ -74,4 +74,16 @@ describe('webPush', () => {
 
     expect(parsed.pathname).toBe('/firebase-messaging-sw.js');
   });
+
+  it('returns missing firebase config keys for operational diagnostics', async () => {
+    vi.stubEnv('VITE_FIREBASE_API_KEY', '');
+    vi.stubEnv('VITE_FIREBASE_VAPID_KEY', '');
+
+    const { getMissingWebPushConfigKeys } = await importWebPushModule();
+
+    expect(getMissingWebPushConfigKeys()).toEqual([
+      'VITE_FIREBASE_API_KEY',
+      'VITE_FIREBASE_VAPID_KEY',
+    ]);
+  });
 });

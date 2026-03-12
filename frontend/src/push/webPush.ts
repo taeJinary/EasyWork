@@ -7,6 +7,14 @@ type WebPushConfig = {
   vapidKey: string;
 };
 
+const REQUIRED_WEB_PUSH_CONFIG_KEYS = [
+  ['VITE_FIREBASE_API_KEY', () => readConfigValue(import.meta.env.VITE_FIREBASE_API_KEY)],
+  ['VITE_FIREBASE_PROJECT_ID', () => readConfigValue(import.meta.env.VITE_FIREBASE_PROJECT_ID)],
+  ['VITE_FIREBASE_MESSAGING_SENDER_ID', () => readConfigValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID)],
+  ['VITE_FIREBASE_APP_ID', () => readConfigValue(import.meta.env.VITE_FIREBASE_APP_ID)],
+  ['VITE_FIREBASE_VAPID_KEY', () => readConfigValue(import.meta.env.VITE_FIREBASE_VAPID_KEY)],
+] as const;
+
 export type WebPushIssueErrorCode =
   | 'UNSUPPORTED_NOTIFICATIONS'
   | 'UNSUPPORTED_SERVICE_WORKER'
@@ -29,6 +37,12 @@ function readConfigValue(value: string | boolean | undefined): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+export function getMissingWebPushConfigKeys(): string[] {
+  return REQUIRED_WEB_PUSH_CONFIG_KEYS
+    .filter(([, readValue]) => !readValue())
+    .map(([envKey]) => envKey);
+}
+
 function readWebPushConfig(): WebPushConfig {
   const apiKey = readConfigValue(import.meta.env.VITE_FIREBASE_API_KEY);
   const authDomain = readConfigValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
@@ -37,7 +51,7 @@ function readWebPushConfig(): WebPushConfig {
   const appId = readConfigValue(import.meta.env.VITE_FIREBASE_APP_ID);
   const vapidKey = readConfigValue(import.meta.env.VITE_FIREBASE_VAPID_KEY);
 
-  if (!apiKey || !projectId || !messagingSenderId || !appId || !vapidKey) {
+  if (getMissingWebPushConfigKeys().length > 0) {
     throw new WebPushIssueError('MISSING_CONFIG', 'Web push config is missing.');
   }
 

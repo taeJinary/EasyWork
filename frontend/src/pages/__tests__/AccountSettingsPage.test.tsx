@@ -11,6 +11,7 @@ const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockIsWebPushConfigured = vi.fn();
 const mockIssueWebPushToken = vi.fn();
+const mockGetMissingWebPushConfigKeys = vi.fn();
 
 vi.mock('@/api/client', () => ({
   default: {
@@ -24,6 +25,7 @@ vi.mock('@/api/client', () => ({
 vi.mock('@/push/webPush', () => ({
   isWebPushConfigured: () => mockIsWebPushConfigured(),
   issueWebPushToken: (...args: unknown[]) => mockIssueWebPushToken(...args),
+  getMissingWebPushConfigKeys: () => mockGetMissingWebPushConfigKeys(),
 }));
 
 const mockLogout = vi.fn();
@@ -71,14 +73,24 @@ function setServiceWorkerSupport(supported: boolean) {
   Reflect.deleteProperty(window.navigator, 'serviceWorker');
 }
 
+function setSecureContext(value: boolean) {
+  Object.defineProperty(window, 'isSecureContext', {
+    configurable: true,
+    writable: true,
+    value,
+  });
+}
+
 describe('AccountSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockResolvedValue(apiOk([]));
     mockIsWebPushConfigured.mockReturnValue(true);
+    mockGetMissingWebPushConfigKeys.mockReturnValue([]);
     mockIssueWebPushToken.mockResolvedValue('web-token-issued');
     setNotificationPermission('granted');
     setServiceWorkerSupport(true);
+    setSecureContext(true);
   });
 
   it('renders password change form fields', async () => {
@@ -461,10 +473,32 @@ describe('AccountSettingsPage', () => {
 
   it('disables web registration when web push config is missing', async () => {
     mockIsWebPushConfigured.mockReturnValue(false);
+    mockGetMissingWebPushConfigKeys.mockReturnValue(['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_VAPID_KEY']);
 
     renderPage();
 
     expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
     expect(screen.getByText('웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('누락된 설정: VITE_FIREBASE_API_KEY, VITE_FIREBASE_VAPID_KEY')).toBeInTheDocument();
+  });
+
+  it('shows web push diagnostics for operational verification', async () => {
+    renderPage();
+
+    const diagnostics = await screen.findByTestId('web-push-diagnostics');
+    expect(within(diagnostics).getByText('알림 API: 지원됨')).toBeInTheDocument();
+    expect(within(diagnostics).getByText('Service Worker: 지원됨')).toBeInTheDocument();
+    expect(within(diagnostics).getByText('보안 컨텍스트: 충족')).toBeInTheDocument();
+    expect(within(diagnostics).getByText('알림 권한: 허용')).toBeInTheDocument();
+    expect(within(diagnostics).getByText('Firebase 설정: 준비됨')).toBeInTheDocument();
+  });
+
+  it('disables web registration when secure context is missing', async () => {
+    setSecureContext(false);
+
+    renderPage();
+
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
+    expect(await screen.findByText('웹 푸시는 HTTPS 또는 localhost 환경에서만 등록할 수 있습니다.')).toBeInTheDocument();
   });
 });
