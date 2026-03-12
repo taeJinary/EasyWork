@@ -9,6 +9,8 @@ const mockPatch = vi.fn();
 const mockDelete = vi.fn();
 const mockGet = vi.fn();
 const mockPost = vi.fn();
+const mockIsWebPushConfigured = vi.fn();
+const mockIssueWebPushToken = vi.fn();
 
 vi.mock('@/api/client', () => ({
   default: {
@@ -17,6 +19,11 @@ vi.mock('@/api/client', () => ({
     patch: (...args: unknown[]) => mockPatch(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
   },
+}));
+
+vi.mock('@/push/webPush', () => ({
+  isWebPushConfigured: () => mockIsWebPushConfigured(),
+  issueWebPushToken: (...args: unknown[]) => mockIssueWebPushToken(...args),
 }));
 
 const mockLogout = vi.fn();
@@ -68,6 +75,8 @@ describe('AccountSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockResolvedValue(apiOk([]));
+    mockIsWebPushConfigured.mockReturnValue(true);
+    mockIssueWebPushToken.mockResolvedValue('web-token-issued');
     setNotificationPermission('granted');
     setServiceWorkerSupport(true);
   });
@@ -219,11 +228,42 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  it('registers a push token and shows registered device info', async () => {
+  it('registers a non-web push token and shows registered device info', async () => {
     mockGet.mockResolvedValueOnce(apiOk([]));
     mockPost.mockResolvedValue(
       apiOk({
-        token: 'web-token-123',
+        token: 'android-token-123',
+        platform: 'ANDROID',
+        active: true,
+      })
+    );
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'ANDROID');
+    await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-123');
+    await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith('/notifications/push-tokens', {
+        token: 'android-token-123',
+        platform: 'ANDROID',
+      });
+    });
+
+    expect(await screen.findByText('활성 디바이스가 등록되었습니다.')).toBeInTheDocument();
+    const registeredSection = screen.getByTestId('registered-device-list');
+    expect(within(registeredSection).getByText('ANDROID')).toBeInTheDocument();
+    expect(within(registeredSection).getByText('android-token-123')).toBeInTheDocument();
+  });
+
+  it('uses browser-issued web push token instead of manual input for WEB', async () => {
+    mockGet.mockResolvedValueOnce(apiOk([]));
+    mockIssueWebPushToken.mockResolvedValueOnce('web-token-issued');
+    mockPost.mockResolvedValue(
+      apiOk({
+        token: 'web-token-issued',
         platform: 'WEB',
         active: true,
       })
@@ -232,21 +272,18 @@ describe('AccountSettingsPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-123');
-    await user.selectOptions(screen.getByLabelText('플랫폼'), 'WEB');
+    expect(screen.queryByLabelText('푸시 토큰')).not.toBeInTheDocument();
+    expect(screen.getByText('브라우저에서 발급된 푸시 토큰으로 현재 디바이스를 등록합니다.')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
 
     await waitFor(() => {
+      expect(mockIssueWebPushToken).toHaveBeenCalled();
       expect(mockPost).toHaveBeenCalledWith('/notifications/push-tokens', {
-        token: 'web-token-123',
+        token: 'web-token-issued',
         platform: 'WEB',
       });
     });
-
-    expect(await screen.findByText('활성 디바이스가 등록되었습니다.')).toBeInTheDocument();
-    const registeredSection = screen.getByTestId('registered-device-list');
-    expect(within(registeredSection).getByText('WEB')).toBeInTheDocument();
-    expect(within(registeredSection).getByText('web-token-123')).toBeInTheDocument();
   });
 
   it('unregisters the currently registered push token', async () => {
@@ -263,8 +300,8 @@ describe('AccountSettingsPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-9');
     await user.selectOptions(screen.getByLabelText('플랫폼'), 'ANDROID');
+    await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-9');
     await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
 
     expect(await screen.findByText('등록된 디바이스')).toBeInTheDocument();
@@ -347,8 +384,8 @@ describe('AccountSettingsPage', () => {
     mockGet.mockRejectedValueOnce(new Error('load failed'));
     mockPost.mockResolvedValue(
       apiOk({
-        token: 'web-token-9',
-        platform: 'WEB',
+        token: 'android-token-9',
+        platform: 'ANDROID',
         active: true,
       })
     );
@@ -358,13 +395,13 @@ describe('AccountSettingsPage', () => {
 
     expect(await screen.findByText('등록된 디바이스 목록을 불러오지 못했습니다.')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-9');
-    await user.selectOptions(screen.getByLabelText('플랫폼'), 'WEB');
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'ANDROID');
+    await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-9');
     await user.click(screen.getByRole('button', { name: '디바이스 등록' }));
 
     expect(await screen.findByText('활성 디바이스가 등록되었습니다.')).toBeInTheDocument();
     expect(screen.getByText('등록된 디바이스')).toBeInTheDocument();
-    expect(screen.getByText('web-token-9')).toBeInTheDocument();
+    expect(screen.getByText('android-token-9')).toBeInTheDocument();
     expect(screen.queryByText('등록된 디바이스 목록을 불러오지 못했습니다.')).not.toBeInTheDocument();
   });
 
@@ -382,9 +419,6 @@ describe('AccountSettingsPage', () => {
     setNotificationPermission('denied');
 
     renderPage();
-    const user = userEvent.setup();
-
-    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-guarded');
 
     expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
     expect(
@@ -406,9 +440,6 @@ describe('AccountSettingsPage', () => {
     setServiceWorkerSupport(false);
 
     renderPage();
-    const user = userEvent.setup();
-
-    await user.type(screen.getByLabelText('푸시 토큰'), 'web-token-unsupported');
 
     expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
     expect(
@@ -426,5 +457,14 @@ describe('AccountSettingsPage', () => {
     await user.type(screen.getByLabelText('푸시 토큰'), 'android-token-1');
 
     expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeEnabled();
+  });
+
+  it('disables web registration when web push config is missing', async () => {
+    mockIsWebPushConfigured.mockReturnValue(false);
+
+    renderPage();
+
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
+    expect(screen.getByText('웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.')).toBeInTheDocument();
   });
 });
