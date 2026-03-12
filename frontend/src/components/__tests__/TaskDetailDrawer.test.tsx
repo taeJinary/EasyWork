@@ -222,8 +222,8 @@ describe('TaskDetailDrawer', () => {
     await screen.findByText('Prepare release');
 
     const user = userEvent.setup();
-    await user.type(screen.getByPlaceholderText(/comment/i), 'Looks good to me');
-    await user.click(screen.getByRole('button', { name: 'Comment' }));
+    await user.type(screen.getByPlaceholderText('댓글을 입력하세요'), 'Looks good to me');
+    await user.click(screen.getByRole('button', { name: '댓글 작성' }));
 
     await waitFor(() => {
       expect(apiMock.post).toHaveBeenCalledWith('/tasks/7/comments', {
@@ -232,7 +232,7 @@ describe('TaskDetailDrawer', () => {
     });
 
     expect(await screen.findByText('Looks good to me')).toBeInTheDocument();
-    expect(screen.getByText('Activity (1)')).toBeInTheDocument();
+    expect(screen.getByText('활동 (1)')).toBeInTheDocument();
   });
 
   it('deletes an owned attachment and removes it from the list', async () => {
@@ -274,14 +274,14 @@ describe('TaskDetailDrawer', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Edit task' }));
 
-    await user.clear(screen.getByLabelText('Task Title'));
-    await user.type(screen.getByLabelText('Task Title'), 'Prepare final release');
-    await user.clear(screen.getByLabelText('Task Description'));
-    await user.type(screen.getByLabelText('Task Description'), 'Ship the final release notes');
-    await user.selectOptions(screen.getByLabelText('Task Assignee'), '3');
+    await user.clear(screen.getByLabelText('작업 제목'));
+    await user.type(screen.getByLabelText('작업 제목'), 'Prepare final release');
+    await user.clear(screen.getByLabelText('작업 설명'));
+    await user.type(screen.getByLabelText('작업 설명'), 'Ship the final release notes');
+    await user.selectOptions(screen.getByLabelText('담당자'), '3');
     await user.click(screen.getByLabelText('Release'));
     await user.click(screen.getByLabelText('Backend'));
-    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
       expect(apiMock.patch).toHaveBeenCalledWith('/tasks/7', {
@@ -322,6 +322,18 @@ describe('TaskDetailDrawer', () => {
 
     expect(onTaskDeleted).toHaveBeenCalledWith(7);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders Korean labels for task detail controls', async () => {
+    render(<TaskDetailDrawer taskId={7} onClose={vi.fn()} />);
+
+    await screen.findByText('Prepare release');
+
+    expect(screen.getByText('설명')).toBeInTheDocument();
+    expect(screen.getByText('활동 (0)')).toBeInTheDocument();
+    expect(screen.getByText('상태')).toBeInTheDocument();
+    expect(screen.getByText('첨부 파일 (1)')).toBeInTheDocument();
+    expect(screen.getByText('상태 변경 기록')).toBeInTheDocument();
   });
 
   it('clears stale assignee and label options when next project options fail to load', async () => {

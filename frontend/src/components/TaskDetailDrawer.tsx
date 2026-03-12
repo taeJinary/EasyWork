@@ -47,12 +47,12 @@ function formatDate(dateStr: string): string {
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}일 전`;
 }
 
 export default function TaskDetailDrawer({
@@ -97,7 +97,7 @@ export default function TaskDetailDrawer({
         setComments(commentsResponse.data.data.content);
         setAttachments(attachmentsResponse.data.data);
       } catch (caughtError) {
-        setError('Failed to load task.');
+        setError('작업 정보를 불러오지 못했습니다.');
         console.error('Failed to fetch task detail:', caughtError);
       } finally {
         setLoading(false);
@@ -181,7 +181,7 @@ export default function TaskDetailDrawer({
       );
       onStatusChange?.(taskId, movedTask.status);
     } catch (caughtError) {
-      setError('Failed to update task status.');
+      setError('작업 상태를 변경하지 못했습니다.');
       console.error('Failed to move task:', caughtError);
     }
   };
@@ -222,7 +222,7 @@ export default function TaskDetailDrawer({
       setIsEditing(false);
       onTaskUpdated?.();
     } catch (caughtError) {
-      setError('Failed to update task.');
+      setError('작업을 수정하지 못했습니다.');
       console.error('Failed to update task:', caughtError);
     } finally {
       setSavingTask(false);
@@ -236,7 +236,7 @@ export default function TaskDetailDrawer({
   };
 
   const handleTaskDelete = async () => {
-    if (!task || !window.confirm('Delete this task?')) {
+    if (!task || !window.confirm('이 작업을 삭제하시겠습니까?')) {
       return;
     }
 
@@ -247,7 +247,7 @@ export default function TaskDetailDrawer({
       onTaskDeleted?.(taskId);
       onClose();
     } catch (caughtError) {
-      setError('Failed to delete task.');
+      setError('작업을 삭제하지 못했습니다.');
       console.error('Failed to delete task:', caughtError);
     } finally {
       setDeletingTask(false);
@@ -274,7 +274,7 @@ export default function TaskDetailDrawer({
           : current
       );
     } catch (caughtError) {
-      setError('Failed to submit comment.');
+      setError('댓글을 등록하지 못했습니다.');
       console.error('Failed to submit comment:', caughtError);
     } finally {
       setSubmitting(false);
@@ -288,7 +288,7 @@ export default function TaskDetailDrawer({
       await apiClient.delete(`/attachments/${attachmentId}`);
       setAttachments((current) => current.filter((attachment) => attachment.attachmentId !== attachmentId));
     } catch (caughtError) {
-      setError('Failed to delete attachment.');
+      setError('첨부 파일을 삭제하지 못했습니다.');
       console.error('Failed to delete attachment:', caughtError);
     } finally {
       setDeletingAttachmentId(null);
@@ -340,7 +340,7 @@ export default function TaskDetailDrawer({
         {isEditing && task && (
           <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-[var(--spacing-lg)] py-[var(--spacing-base)]">
             <div className="mb-[var(--spacing-sm)] flex items-center justify-between">
-              <h3 className="m-0 text-[var(--text-base)] font-semibold text-[var(--color-text-primary)]">Edit Task</h3>
+              <h3 className="m-0 text-[var(--text-base)] font-semibold text-[var(--color-text-primary)]">작업 수정</h3>
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
@@ -352,10 +352,10 @@ export default function TaskDetailDrawer({
             <div className="grid gap-[var(--spacing-sm)] md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Task Title
+                  작업 제목
                 </label>
                 <input
-                  aria-label="Task Title"
+                  aria-label="작업 제목"
                   value={editTitle}
                   onChange={(event) => setEditTitle(event.target.value)}
                   className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
@@ -363,10 +363,10 @@ export default function TaskDetailDrawer({
               </div>
               <div className="md:col-span-2">
                 <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Task Description
+                  작업 설명
                 </label>
                 <textarea
-                  aria-label="Task Description"
+                  aria-label="작업 설명"
                   value={editDescription}
                   onChange={(event) => setEditDescription(event.target.value)}
                   rows={4}
@@ -375,10 +375,10 @@ export default function TaskDetailDrawer({
               </div>
               <div>
                 <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Task Assignee
+                  담당자
                 </label>
                 <select
-                  aria-label="Task Assignee"
+                  aria-label="담당자"
                   value={editAssigneeUserId}
                   onChange={(event) => setEditAssigneeUserId(event.target.value)}
                   className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-primary)]"
@@ -410,10 +410,10 @@ export default function TaskDetailDrawer({
               </div>
               <div>
                 <label className="mb-[var(--spacing-xs)] block text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Due Date
+                  마감일
                 </label>
                 <input
-                  aria-label="Task Due Date"
+                  aria-label="작업 마감일"
                   type="date"
                   value={editDueDate}
                   onChange={(event) => setEditDueDate(event.target.value)}
@@ -426,7 +426,7 @@ export default function TaskDetailDrawer({
                 </div>
                 {projectLabels.length === 0 ? (
                   <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                    No labels available.
+                    선택 가능한 라벨이 없습니다.
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--spacing-sm)]">
@@ -462,7 +462,7 @@ export default function TaskDetailDrawer({
                 disabled={!editTitle.trim() || savingTask}
                 className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {savingTask ? 'Saving...' : 'Save Changes'}
+                {savingTask ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>
@@ -494,12 +494,12 @@ export default function TaskDetailDrawer({
                 {task.title}
               </h2>
               <div className="mb-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                opened by {task.creator.nickname} · {formatTimeAgo(task.createdAt)} · updated {formatTimeAgo(task.updatedAt)}
+                {task.creator.nickname}님이 생성 · {formatTimeAgo(task.createdAt)} · {formatTimeAgo(task.updatedAt)}에 수정됨
               </div>
 
               <div className="mb-[var(--spacing-lg)]">
                 <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
-                  Description
+                  설명
                 </h3>
                 <div
                   className="
@@ -508,19 +508,19 @@ export default function TaskDetailDrawer({
                     leading-relaxed text-[var(--color-text-secondary)]
                   "
                 >
-                  {task.description || 'No description.'}
+                  {task.description || '설명이 없습니다.'}
                 </div>
               </div>
 
               <div>
                 <h3 className="m-0 mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-xs)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
                   <MessageSquare size={14} />
-                  Activity ({comments.length})
+                  활동 ({comments.length})
                 </h3>
 
                 {comments.length === 0 && (
                   <div className="mb-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                    No comments yet.
+                    아직 댓글이 없습니다.
                   </div>
                 )}
 
@@ -560,10 +560,10 @@ export default function TaskDetailDrawer({
 
                 <div className="border-t border-[var(--color-border)] pt-[var(--spacing-md)]">
                   <textarea
-                    aria-label="Comment"
+                    aria-label="댓글"
                     value={newComment}
                     onChange={(event) => setNewComment(event.target.value)}
-                    placeholder="Write a comment..."
+                    placeholder="댓글을 입력하세요"
                     rows={3}
                     className="
                       w-full resize-vertical rounded-[var(--radius-sm)] border border-[var(--color-border)]
@@ -581,7 +581,7 @@ export default function TaskDetailDrawer({
                         hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50
                       "
                     >
-                      {submitting ? 'Sending...' : 'Comment'}
+                      {submitting ? '등록 중...' : '댓글 작성'}
                     </button>
                   </div>
                 </div>
@@ -591,7 +591,7 @@ export default function TaskDetailDrawer({
             <div className="w-full shrink-0 space-y-[var(--spacing-base)] border-[var(--color-border)] p-[var(--spacing-base)] md:w-[220px] md:border-t-0 border-t">
               <div>
                 <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Status
+                  상태
                 </div>
                 <select
                   value={task.status}
@@ -612,7 +612,7 @@ export default function TaskDetailDrawer({
 
               <div>
                 <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Assignee
+                  담당자
                 </div>
                 {task.assignee ? (
                   <div className="flex items-center gap-[var(--spacing-xs)]">
@@ -642,7 +642,7 @@ export default function TaskDetailDrawer({
 
               <div>
                 <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Due Date
+                  마감일
                 </div>
                 <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">
                   {task.dueDate ? formatDate(task.dueDate) : '-'}
@@ -651,7 +651,7 @@ export default function TaskDetailDrawer({
 
               <div>
                 <div className="mb-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
-                  Creator
+                  생성자
                 </div>
                 <span className="text-[var(--text-sm)] text-[var(--color-text-primary)]">{task.creator.nickname}</span>
               </div>
@@ -677,14 +677,14 @@ export default function TaskDetailDrawer({
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">None</span>
+                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">없음</span>
                 )}
               </div>
 
               <div>
                 <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   <Paperclip size={11} />
-                  Attachments ({attachments.length})
+                  첨부 파일 ({attachments.length})
                 </div>
                 {attachments.length > 0 ? (
                   <div className="space-y-2">
@@ -709,21 +709,21 @@ export default function TaskDetailDrawer({
                               hover:bg-[var(--color-accent-red)] disabled:cursor-not-allowed disabled:opacity-50
                             "
                           >
-                            {deletingAttachmentId === file.attachmentId ? 'Deleting...' : 'Delete'}
+                            {deletingAttachmentId === file.attachmentId ? '삭제 중...' : '삭제'}
                           </button>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">None</span>
+                  <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">없음</span>
                 )}
               </div>
 
               <div>
                 <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase text-[var(--color-text-muted)]">
                   <Clock size={11} />
-                  Status History
+                  상태 변경 기록
                 </div>
                 {task.recentStatusHistories.length > 0 ? (
                   <div className="space-y-1">
@@ -737,13 +737,13 @@ export default function TaskDetailDrawer({
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">No status history</span>
+                  <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">상태 변경 기록이 없습니다.</span>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          <div className="p-[var(--spacing-lg)] text-[var(--color-text-muted)]">Task could not be loaded.</div>
+          <div className="p-[var(--spacing-lg)] text-[var(--color-text-muted)]">작업 정보를 불러오지 못했습니다.</div>
         )}
       </div>
     </>

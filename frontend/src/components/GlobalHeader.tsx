@@ -55,7 +55,7 @@ export default function GlobalHeader() {
     navigate('/login');
   };
 
-  const displayName = user?.nickname?.trim() || 'User';
+  const displayName = user?.nickname?.trim() || '사용자';
   const avatarInitial = displayName.charAt(0).toUpperCase() || 'U';
 
   const handleCreateWorkspace = () => {
@@ -75,7 +75,7 @@ export default function GlobalHeader() {
           flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[var(--radius-sm)]
           border-none bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] md:hidden
         "
-        aria-label="Toggle Menu"
+        aria-label="메뉴 열기"
       >
         <Menu size={20} />
       </button>
@@ -94,7 +94,7 @@ export default function GlobalHeader() {
           hover:bg-[var(--color-surface-muted)]
         "
       >
-        <span className="max-w-[120px] truncate">Workspace</span>
+        <span className="max-w-[120px] truncate">워크스페이스</span>
         <ChevronDown size={14} />
       </button>
 
@@ -105,7 +105,7 @@ export default function GlobalHeader() {
         />
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="검색..."
           className="
             h-[32px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
             bg-[var(--color-surface-muted)] pl-[30px] pr-[var(--spacing-sm)] text-[var(--text-sm)]
@@ -125,7 +125,7 @@ export default function GlobalHeader() {
           "
         >
           <Plus size={16} />
-          <span>New</span>
+          <span>새로 만들기</span>
         </button>
 
         <Link
@@ -185,7 +185,7 @@ export default function GlobalHeader() {
                 "
               >
                 <User size={14} />
-                Profile
+                프로필
               </Link>
               <Link
                 to="/settings/account"
@@ -196,7 +196,7 @@ export default function GlobalHeader() {
                 "
               >
                 <Settings size={14} />
-                Settings
+                설정
               </Link>
               <div className="mt-[var(--spacing-xs)] border-t border-[var(--color-border)]">
                 <button
@@ -208,7 +208,7 @@ export default function GlobalHeader() {
                   "
                 >
                   <LogOut size={14} />
-                  Logout
+                  로그아웃
                 </button>
               </div>
             </div>

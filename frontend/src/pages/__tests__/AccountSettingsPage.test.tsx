@@ -471,6 +471,15 @@ describe('AccountSettingsPage', () => {
     expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeEnabled();
   });
 
+  it('uses Korean placeholder for non-web push token input', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.selectOptions(screen.getByLabelText('플랫폼'), 'ANDROID');
+
+    expect(screen.getByPlaceholderText('디바이스 토큰을 입력하세요')).toBeInTheDocument();
+  });
+
   it('disables web registration when web push config is missing', async () => {
     mockIsWebPushConfigured.mockReturnValue(false);
     mockGetMissingWebPushConfigKeys.mockReturnValue(['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_VAPID_KEY']);
