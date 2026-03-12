@@ -520,7 +520,12 @@ export type NotificationType =
   | 'COMMENT_CREATED'
   | 'COMMENT_MENTIONED';
 
-export type NotificationReferenceType = 'PROJECT' | 'TASK' | 'INVITATION' | 'COMMENT';
+export type NotificationReferenceType =
+  | 'PROJECT'
+  | 'TASK'
+  | 'INVITATION'
+  | 'WORKSPACE_INVITATION'
+  | 'COMMENT';
 
 export interface NotificationItem {
   notificationId: number;

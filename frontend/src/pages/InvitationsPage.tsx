@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Mail,
   Check,
@@ -96,8 +96,10 @@ function toWorkspaceInvitation(invitation: WorkspaceInvitationListItem): Invitat
 
 export default function InvitationsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kindParam = searchParams.get('kind');
+  const activeKind: InvitationKind = kindParam === 'workspace' ? 'workspace' : 'project';
   const requestIdRef = useRef(0);
-  const [activeKind, setActiveKind] = useState<InvitationKind>('project');
   const [invitations, setInvitations] = useState<InvitationViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,8 +157,8 @@ export default function InvitationsPage() {
       return;
     }
 
+    setSearchParams(nextKind === 'workspace' ? { kind: 'workspace' } : {});
     requestIdRef.current += 1;
-    setActiveKind(nextKind);
     setPage(0);
     setInvitations([]);
     setTotalPages(0);

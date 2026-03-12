@@ -7,6 +7,7 @@ import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationLi
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceSentInvitationListItemResponse;
 import com.taskflow.backend.domain.invitation.dto.response.WorkspaceInvitationSummaryResponse;
 import com.taskflow.backend.domain.invitation.entity.WorkspaceInvitation;
+import com.taskflow.backend.domain.notification.service.NotificationService;
 import com.taskflow.backend.domain.invitation.repository.WorkspaceInvitationRepository;
 import com.taskflow.backend.domain.user.entity.User;
 import com.taskflow.backend.domain.user.repository.UserRepository;
@@ -35,6 +36,7 @@ public class WorkspaceInvitationService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final WorkspaceInvitationRepository workspaceInvitationRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Value("${app.invitation.expires-days:7}")
     private long invitationExpiresDays;
@@ -85,6 +87,7 @@ public class WorkspaceInvitationService {
         }
 
         workspace.touch(now);
+        notificationService.createWorkspaceInvitationNotification(saved);
 
         return new WorkspaceInvitationSummaryResponse(
                 saved.getId(),

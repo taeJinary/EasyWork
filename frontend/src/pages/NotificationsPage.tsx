@@ -43,6 +43,7 @@ function getNavigationPath(refType: NotificationReferenceType, refId: number): s
     case 'PROJECT': return `/projects/${refId}/board`;
     case 'TASK': return null; // task drawer needs project context
     case 'INVITATION': return '/invitations';
+    case 'WORKSPACE_INVITATION': return '/invitations?kind=workspace';
     case 'COMMENT': return null;
     default: return null;
   }
