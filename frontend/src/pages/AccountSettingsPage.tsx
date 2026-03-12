@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, AlertTriangle, AlertCircle, CheckCircle, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
+import { WebPushIssueError, isWebPushConfigured, issueWebPushToken } from '@/push/webPush';
 import { useAuthStore } from '@/stores/authStore';
 import type {
   ApiResponse,
@@ -18,6 +19,7 @@ type PushEnvironmentState = {
   notificationsSupported: boolean;
   serviceWorkerSupported: boolean;
   notificationPermission: NotificationPermission | 'unsupported';
+  webPushConfigured: boolean;
 };
 
 function validateNewPassword(value: string): string | null {
@@ -35,7 +37,29 @@ function readPushEnvironmentState(): PushEnvironmentState {
     notificationsSupported,
     serviceWorkerSupported,
     notificationPermission: notificationsSupported ? window.Notification.permission : 'unsupported',
+    webPushConfigured: isWebPushConfigured(),
   };
+}
+
+function mapWebPushIssueError(error: unknown): string {
+  if (!(error instanceof WebPushIssueError)) {
+    return '웹 푸시 토큰 발급에 실패했습니다. 잠시 후 다시 시도해주세요.';
+  }
+
+  switch (error.code) {
+    case 'MISSING_CONFIG':
+      return '웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.';
+    case 'PERMISSION_NOT_GRANTED':
+      return '브라우저 알림 권한이 허용되지 않아 웹 푸시를 등록할 수 없습니다.';
+    case 'UNSUPPORTED_NOTIFICATIONS':
+    case 'UNSUPPORTED_SERVICE_WORKER':
+    case 'UNSUPPORTED_MESSAGING':
+      return '현재 브라우저는 웹 푸시를 지원하지 않습니다.';
+    case 'TOKEN_UNAVAILABLE':
+      return '웹 푸시 토큰을 발급받지 못했습니다. 잠시 후 다시 시도해주세요.';
+    default:
+      return '웹 푸시 토큰 발급에 실패했습니다. 잠시 후 다시 시도해주세요.';
+  }
 }
 
 export default function AccountSettingsPage() {
@@ -68,6 +92,7 @@ export default function AccountSettingsPage() {
     pushPlatform === 'WEB' &&
     (!pushEnvironment.notificationsSupported ||
       !pushEnvironment.serviceWorkerSupported ||
+      !pushEnvironment.webPushConfigured ||
       pushEnvironment.notificationPermission === 'denied');
 
   const handleNewPasswordChange = (value: string) => {
@@ -78,7 +103,10 @@ export default function AccountSettingsPage() {
   };
 
   const canChangePassword = currentPassword.trim().length > 0 && newPassword.trim().length > 0 && !pwValidation && !pwSubmitting;
-  const canRegisterDevice = pushToken.trim().length > 0 && !pushSubmitting && !isWebPushBlocked;
+  const canRegisterDevice =
+    pushPlatform === 'WEB'
+      ? !pushSubmitting && !isWebPushBlocked
+      : pushToken.trim().length > 0 && !pushSubmitting;
 
   const loadRegisteredDevices = async () => {
     setPushDevicesLoading(true);
@@ -148,17 +176,21 @@ export default function AccountSettingsPage() {
   };
 
   const handleRegisterPushToken = async () => {
-    const normalizedToken = pushToken.trim();
-    if (!normalizedToken) {
-      setPushError('푸시 토큰을 입력해주세요.');
-      return;
-    }
-
     setPushSubmitting(true);
     setPushError(null);
     setPushSuccess(null);
 
     try {
+      const normalizedToken =
+        pushPlatform === 'WEB'
+          ? await issueWebPushToken()
+          : pushToken.trim();
+
+      if (!normalizedToken) {
+        setPushError('푸시 토큰을 입력해주세요.');
+        return;
+      }
+
       const response = await apiClient.post<ApiResponse<NotificationPushTokenResponse>>(
         '/notifications/push-tokens',
         {
@@ -179,10 +211,15 @@ export default function AccountSettingsPage() {
         ];
       });
       setPushDevicesLoadError(null);
-      setPushToken('');
+      if (pushPlatform !== 'WEB') {
+        setPushToken('');
+      }
       setPushSuccess('활성 디바이스가 등록되었습니다.');
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const message =
+        err instanceof WebPushIssueError
+          ? mapWebPushIssueError(err)
+          : (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setPushError(message || '디바이스 등록에 실패했습니다.');
       console.error('Failed to register push token:', err);
     } finally {
@@ -315,6 +352,13 @@ export default function AccountSettingsPage() {
             </div>
           )}
 
+          {pushPlatform === 'WEB' && pushEnvironment.webPushConfigured === false && (
+            <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+              <AlertCircle size={14} className="shrink-0" />
+              웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.
+            </div>
+          )}
+
           {pushPlatform === 'WEB' && pushEnvironment.notificationPermission === 'default' && (
             <div className="flex items-center gap-[var(--spacing-sm)] p-[var(--spacing-sm)] mb-[var(--spacing-sm)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
               <AlertCircle size={14} className="shrink-0" />
@@ -344,29 +388,6 @@ export default function AccountSettingsPage() {
 
           <div className="space-y-[var(--spacing-md)]">
             <div>
-              <label htmlFor="pushToken" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
-                푸시 토큰
-              </label>
-              <input
-                id="pushToken"
-                type="text"
-                value={pushToken}
-                onChange={(e) => {
-                  setPushToken(e.target.value);
-                  setPushError(null);
-                  setPushSuccess(null);
-                }}
-                placeholder="device token"
-                className="
-                  w-full h-[36px] px-[var(--spacing-sm)]
-                  border border-[var(--color-border)] rounded-[var(--radius-sm)]
-                  bg-[var(--color-surface)] text-[var(--text-sm)]
-                  focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
-                "
-              />
-            </div>
-
-            <div>
               <label htmlFor="pushPlatform" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
                 플랫폼
               </label>
@@ -390,6 +411,37 @@ export default function AccountSettingsPage() {
                 <option value="IOS">IOS</option>
               </select>
             </div>
+
+            {pushPlatform !== 'WEB' && (
+              <div>
+                <label htmlFor="pushToken" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
+                  푸시 토큰
+                </label>
+                <input
+                  id="pushToken"
+                  type="text"
+                  value={pushToken}
+                  onChange={(e) => {
+                    setPushToken(e.target.value);
+                    setPushError(null);
+                    setPushSuccess(null);
+                  }}
+                  placeholder="device token"
+                  className="
+                    w-full h-[36px] px-[var(--spacing-sm)]
+                    border border-[var(--color-border)] rounded-[var(--radius-sm)]
+                    bg-[var(--color-surface)] text-[var(--text-sm)]
+                    focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]
+                  "
+                />
+              </div>
+            )}
+
+            {pushPlatform === 'WEB' && (
+              <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
+                브라우저에서 발급된 푸시 토큰으로 현재 디바이스를 등록합니다.
+              </div>
+            )}
 
             <div className="flex gap-[var(--spacing-sm)]">
               <button
