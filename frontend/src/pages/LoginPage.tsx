@@ -104,7 +104,7 @@ export default function LoginPage() {
 
           <div className="mb-[var(--spacing-base)]">
             <label htmlFor="login-email" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
-              Email
+              이메일
             </label>
             <input
               id="login-email"
@@ -123,7 +123,7 @@ export default function LoginPage() {
 
           <div className="mb-[var(--spacing-base)]">
             <label htmlFor="login-password" className="block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)] mb-[var(--spacing-xs)]">
-              Password
+              비밀번호
             </label>
             <input
               id="login-password"
@@ -177,7 +177,7 @@ export default function LoginPage() {
 
         <div className="flex items-center gap-[var(--spacing-md)] my-[var(--spacing-lg)]">
           <div className="flex-1 h-px bg-[var(--color-border)]" />
-          <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">OR</span>
+          <span className="text-[var(--text-xs)] text-[var(--color-text-muted)]">또는</span>
           <div className="flex-1 h-px bg-[var(--color-border)]" />
         </div>
 
@@ -194,14 +194,14 @@ export default function LoginPage() {
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
-            Kakao로 계속하기
+            카카오로 계속하기
           </button>
           <button className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
-            Naver로 계속하기
+            네이버로 계속하기
           </button>
         </div>
       </div>

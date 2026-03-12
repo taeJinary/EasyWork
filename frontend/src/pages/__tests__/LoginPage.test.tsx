@@ -52,8 +52,8 @@ describe('LoginPage', () => {
     );
 
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText('Email'), 'user@example.com');
-    await user.type(screen.getByLabelText('Password'), 'Password1!');
+    await user.type(screen.getByLabelText('이메일'), 'user@example.com');
+    await user.type(screen.getByLabelText('비밀번호'), 'Password1!');
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
     expect(await screen.findByText('이메일 인증이 필요합니다. 인증 메일을 확인하거나 다시 보내세요.')).toBeInTheDocument();

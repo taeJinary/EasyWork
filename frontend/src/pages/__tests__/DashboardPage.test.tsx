@@ -125,9 +125,9 @@ describe('Dashboard route', () => {
 
     expect(screen.getAllByText('Alpha Project').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
-    expect(screen.getByText('완료율 42%')).toBeInTheDocument();
     expect(screen.getByText('프로젝트 통계')).toBeInTheDocument();
     expect(await screen.findByText('기한 초과')).toBeInTheDocument();
+    expect(screen.getByText('42%')).toBeInTheDocument();
     expect(screen.getByText('마감 임박')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -143,7 +143,7 @@ describe('Dashboard route', () => {
     });
 
     expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
-    expect(screen.getByText('2/9')).toBeInTheDocument();
+    expect(await screen.findByText('22%')).toBeInTheDocument();
   });
 
   it('shows an inline error when project stats fail to load', async () => {
@@ -352,7 +352,7 @@ describe('Dashboard route', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '다시 시도' }));
 
-    expect(await screen.findByText('5/12')).toBeInTheDocument();
+    expect(await screen.findByText('42%')).toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledWith('/projects/11/dashboard');
   });
 
@@ -428,7 +428,7 @@ describe('Dashboard route', () => {
     const user = userEvent.setup();
     await user.click(screen.getAllByRole('button', { name: '통계 보기' })[1]);
 
-    expect(await screen.findByText('2/9')).toBeInTheDocument();
+    expect(await screen.findByText('22%')).toBeInTheDocument();
 
     alphaStats.resolve(
       apiOk({
@@ -447,7 +447,7 @@ describe('Dashboard route', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
     });
-    expect(screen.getByText('2/9')).toBeInTheDocument();
-    expect(screen.queryByText('5/12')).not.toBeInTheDocument();
+    expect(await screen.findByText('22%')).toBeInTheDocument();
+    expect(screen.queryByText('42%')).not.toBeInTheDocument();
   });
 });

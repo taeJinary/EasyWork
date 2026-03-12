@@ -238,7 +238,7 @@ describe('ProjectBoardPage', () => {
     expect(await screen.findByRole('option', { name: 'Release' })).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Label Filter' }), '1');
+    await user.selectOptions(screen.getByRole('combobox', { name: '라벨 필터' }), '1');
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(

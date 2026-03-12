@@ -259,7 +259,7 @@ export default function ProjectBoardPage() {
           ))}
         </select>
         <select
-          aria-label="Label Filter"
+          aria-label="라벨 필터"
           value={labelFilter}
           onChange={(event) => setLabelFilter(event.target.value)}
           className="
