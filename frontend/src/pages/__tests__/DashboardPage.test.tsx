@@ -120,22 +120,22 @@ describe('Dashboard route', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '대시보드' })).toBeInTheDocument();
     });
 
     expect(screen.getAllByText('Alpha Project').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
-    expect(screen.getByText('42% complete')).toBeInTheDocument();
-    expect(screen.getByText('Project Stats')).toBeInTheDocument();
-    expect(await screen.findByText('Overdue')).toBeInTheDocument();
-    expect(screen.getByText('Due Soon')).toBeInTheDocument();
+    expect(screen.getByText('완료율 42%')).toBeInTheDocument();
+    expect(screen.getByText('프로젝트 통계')).toBeInTheDocument();
+    expect(await screen.findByText('기한 초과')).toBeInTheDocument();
+    expect(screen.getByText('마감 임박')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/projects/11/dashboard');
     });
 
     const user = userEvent.setup();
-    const viewStatsButtons = screen.getAllByRole('button', { name: 'View Stats' });
+    const viewStatsButtons = screen.getAllByRole('button', { name: '통계 보기' });
     await user.click(viewStatsButtons[1]);
 
     await waitFor(() => {
@@ -143,7 +143,7 @@ describe('Dashboard route', () => {
     });
 
     expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
-    expect(screen.getByText('22%')).toBeInTheDocument();
+    expect(screen.getByText('2/9')).toBeInTheDocument();
   });
 
   it('shows an inline error when project stats fail to load', async () => {
@@ -186,10 +186,10 @@ describe('Dashboard route', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '대시보드' })).toBeInTheDocument();
     });
 
-    expect(await screen.findByText('Failed to load project stats.')).toBeInTheDocument();
+    expect(await screen.findByText('프로젝트 통계를 불러오지 못했습니다.')).toBeInTheDocument();
   });
 
   it('retries dashboard fetch after initial load failure', async () => {
@@ -251,10 +251,10 @@ describe('Dashboard route', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('Failed to load dashboard data.')).toBeInTheDocument();
+    expect(await screen.findByText('대시보드 데이터를 불러오지 못했습니다.')).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
 
     expect((await screen.findAllByText('Gamma Project')).length).toBeGreaterThan(0);
     expect(mockGet).toHaveBeenCalledWith('/dashboard/projects');
@@ -284,8 +284,8 @@ describe('Dashboard route', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('No active projects yet.')).toBeInTheDocument();
-    expect(screen.getByText('Create or join a project to start tracking workload and progress.')).toBeInTheDocument();
+    expect(await screen.findByText('아직 참여 중인 프로젝트가 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('프로젝트를 만들거나 초대를 수락하면 진행 현황을 확인할 수 있습니다.')).toBeInTheDocument();
   });
 
   it('retries project stats fetch when the selected project stats request fails', async () => {
@@ -347,12 +347,12 @@ describe('Dashboard route', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('Failed to load project stats.')).toBeInTheDocument();
+    expect(await screen.findByText('프로젝트 통계를 불러오지 못했습니다.')).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Retry Stats' }));
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
 
-    expect(await screen.findByText('Overdue')).toBeInTheDocument();
+    expect(await screen.findByText('5/12')).toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledWith('/projects/11/dashboard');
   });
 
@@ -423,12 +423,12 @@ describe('Dashboard route', () => {
       </MemoryRouter>
     );
 
-    await screen.findByRole('heading', { name: 'Dashboard' });
+    await screen.findByRole('heading', { name: '대시보드' });
 
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole('button', { name: 'View Stats' })[1]);
+    await user.click(screen.getAllByRole('button', { name: '통계 보기' })[1]);
 
-    expect(await screen.findByText('22%')).toBeInTheDocument();
+    expect(await screen.findByText('2/9')).toBeInTheDocument();
 
     alphaStats.resolve(
       apiOk({
@@ -447,7 +447,7 @@ describe('Dashboard route', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Beta Project').length).toBeGreaterThan(0);
     });
-    expect(screen.getByText('22%')).toBeInTheDocument();
-    expect(screen.queryByText('42%')).not.toBeInTheDocument();
+    expect(screen.getByText('2/9')).toBeInTheDocument();
+    expect(screen.queryByText('5/12')).not.toBeInTheDocument();
   });
 });

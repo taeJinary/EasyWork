@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TaskCreateModal from '@/components/TaskCreateModal';
 import { apiOk } from '@/test/helpers';
@@ -50,24 +49,23 @@ describe('TaskCreateModal', () => {
 
     const onClose = vi.fn();
     const onCreated = vi.fn();
-    const user = userEvent.setup();
     const view = render(<TaskCreateModal projectId={3} open onClose={onClose} onCreated={onCreated} />);
 
-    await user.type(screen.getByLabelText('Task Title'), 'Carry Over');
-    await user.type(screen.getByLabelText('Description'), 'Do not keep me');
-    await user.click(await screen.findByLabelText('Release'));
+    fireEvent.change(screen.getByLabelText('작업 제목'), { target: { value: 'Carry Over' } });
+    fireEvent.change(screen.getByLabelText('설명'), { target: { value: 'Do not keep me' } });
+    fireEvent.click(await screen.findByLabelText('Release'));
 
     view.rerender(<TaskCreateModal projectId={4} open onClose={onClose} onCreated={onCreated} />);
 
-    expect(screen.getByLabelText('Task Title')).toHaveValue('');
-    expect(screen.getByLabelText('Description')).toHaveValue('');
+    expect(screen.getByLabelText('작업 제목')).toHaveValue('');
+    expect(screen.getByLabelText('설명')).toHaveValue('');
     expect(screen.queryByLabelText('Release')).not.toBeInTheDocument();
 
     const backendCheckbox = await screen.findByLabelText('Backend');
     expect(backendCheckbox).not.toBeChecked();
 
-    await user.type(screen.getByLabelText('Task Title'), 'Fresh task');
-    await user.click(backendCheckbox);
+    fireEvent.change(screen.getByLabelText('작업 제목'), { target: { value: 'Fresh task' } });
+    fireEvent.click(backendCheckbox);
 
     mockPost.mockResolvedValue(
       apiOk({
@@ -82,7 +80,7 @@ describe('TaskCreateModal', () => {
       })
     );
 
-    await user.click(screen.getByRole('button', { name: 'Create Task' }));
+    fireEvent.click(screen.getByRole('button', { name: '작업 생성' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/projects/4/tasks', {

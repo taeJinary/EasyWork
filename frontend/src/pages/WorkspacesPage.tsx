@@ -15,11 +15,11 @@ import type {
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}일 전`;
 }
 
 function toWorkspaceSummary(workspace: WorkspaceListItemResponse): WorkspaceSummary {
@@ -54,7 +54,7 @@ export default function WorkspacesPage() {
         const res = await apiClient.get<ApiResponse<WorkspaceListResponse>>('/workspaces');
         setWorkspaces(res.data.data.content.map(toWorkspaceSummary));
       } catch {
-        setError('Failed to load workspaces.');
+        setError('작업공간을 불러오지 못했습니다.');
       } finally {
         setLoading(false);
       }
@@ -90,7 +90,7 @@ export default function WorkspacesPage() {
     const normalizedDescription = createDescription.trim();
 
     if (!normalizedName) {
-      setCreateError('Workspace name is required.');
+      setCreateError('작업공간 이름은 필수입니다.');
       return;
     }
 
@@ -116,7 +116,7 @@ export default function WorkspacesPage() {
       ]);
       closeCreateModal();
     } catch {
-      setCreateError('Failed to create workspace.');
+      setCreateError('작업공간을 생성하지 못했습니다.');
     } finally {
       setCreating(false);
     }
@@ -125,8 +125,8 @@ export default function WorkspacesPage() {
   return (
     <div>
       <PageHeader
-        title="Workspaces"
-        description="Manage your collaboration spaces and move into project work from here."
+        title="작업공간"
+        description="협업 공간을 관리하고 여기서 프로젝트 작업으로 이동하세요."
         actions={
           <button
             className="
@@ -137,13 +137,13 @@ export default function WorkspacesPage() {
             onClick={openCreateModal}
           >
             <Plus size={16} />
-            New Workspace
+            작업공간 생성
           </button>
         }
       />
 
       <FilterBar
-        searchPlaceholder="Search workspaces..."
+        searchPlaceholder="작업공간 검색..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
       >
@@ -154,9 +154,9 @@ export default function WorkspacesPage() {
             focus:border-[var(--color-primary)] focus:outline-none
           "
         >
-          <option value="updated">Sort: Updated</option>
-          <option value="name">Sort: Name</option>
-          <option value="created">Sort: Created</option>
+          <option value="updated">정렬: 최근 수정</option>
+          <option value="name">정렬: 이름</option>
+          <option value="created">정렬: 생성일</option>
         </select>
       </FilterBar>
 
@@ -188,8 +188,8 @@ export default function WorkspacesPage() {
       {!loading && !error && filteredWorkspaces.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
           {searchQuery
-            ? 'No workspaces matched your search.'
-            : 'No workspaces yet. Create your first workspace.'}
+            ? '검색 조건에 맞는 작업공간이 없습니다.'
+            : '아직 작업공간이 없습니다. 첫 작업공간을 만들어보세요.'}
         </div>
       )}
 
@@ -228,13 +228,13 @@ export default function WorkspacesPage() {
               <div className="flex shrink-0 items-center gap-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
                 <span className="flex items-center gap-1">
                   <Users size={12} />
-                  {workspace.memberCount ?? 0} members
+                  멤버 {workspace.memberCount ?? 0}명
                 </span>
                 <span className="flex items-center gap-1">
                   <FolderKanban size={12} />
                   {workspace.myRole}
                 </span>
-                <span>Updated {formatTimeAgo(workspace.updatedAt)}</span>
+                <span>최근 수정 {formatTimeAgo(workspace.updatedAt)}</span>
                 <ChevronRight size={16} className="text-[var(--color-text-muted)]" />
               </div>
             </div>
@@ -261,10 +261,10 @@ export default function WorkspacesPage() {
             <div className="mb-[var(--spacing-base)] flex items-start justify-between gap-[var(--spacing-base)]">
               <div>
                 <h2 className="m-0 text-[var(--text-lg)] font-semibold text-[var(--color-text-primary)]">
-                  Create Workspace
+                  작업공간 생성
                 </h2>
                 <p className="mb-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-                  Create a workspace to group projects and members.
+                  프로젝트와 멤버를 묶을 작업공간을 생성하세요.
                 </p>
               </div>
               <button
@@ -275,7 +275,7 @@ export default function WorkspacesPage() {
                   bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--color-text-secondary)]
                 "
               >
-                Close
+                닫기
               </button>
             </div>
 
@@ -284,7 +284,7 @@ export default function WorkspacesPage() {
                 htmlFor="workspace-name"
                 className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
               >
-                Workspace Name
+                작업공간 이름
               </label>
               <input
                 id="workspace-name"
@@ -305,7 +305,7 @@ export default function WorkspacesPage() {
                 htmlFor="workspace-description"
                 className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
               >
-                Description
+                설명
               </label>
               <textarea
                 id="workspace-description"
@@ -336,7 +336,7 @@ export default function WorkspacesPage() {
                   bg-[var(--color-surface)] px-[var(--spacing-base)] text-[var(--color-text-secondary)]
                 "
               >
-                Cancel
+                취소
               </button>
               <button
                 type="submit"
@@ -347,7 +347,7 @@ export default function WorkspacesPage() {
                   hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50
                 "
               >
-                {creating ? 'Creating...' : 'Create Workspace'}
+                {creating ? '생성 중...' : '작업공간 생성'}
               </button>
             </div>
           </form>

@@ -65,7 +65,7 @@ export default function ProjectMembersPage() {
       setProject(toProjectDetail(projectRes.data.data));
       setMembers(membersRes.data.data);
     } catch (caughtError) {
-      setError('Failed to load members.');
+      setError('멤버를 불러오지 못했습니다.');
       console.error('Failed to fetch members:', caughtError);
     } finally {
       setLoading(false);
@@ -99,19 +99,19 @@ export default function ProjectMembersPage() {
         member.memberId === memberId ? { ...member, role: newRole } : member
       )));
     } catch (caughtError) {
-      setError('Failed to change role.');
+      setError('권한을 변경하지 못했습니다.');
       console.error('Failed to change role:', caughtError);
     }
   };
 
   const handleRemoveMember = async (memberId: number, nickname: string) => {
-    if (!confirm(`${nickname} will be removed from this project. Continue?`)) return;
+    if (!confirm(`${nickname} 님을 이 프로젝트에서 제거할까요?`)) return;
     try {
       setError(null);
       await apiClient.delete(`/projects/${projectId}/members/${memberId}`);
       setMembers((previousMembers) => previousMembers.filter((member) => member.memberId !== memberId));
     } catch (caughtError) {
-      setError('Failed to remove member.');
+      setError('멤버를 제거하지 못했습니다.');
       console.error('Failed to remove member:', caughtError);
     }
   };
@@ -128,7 +128,7 @@ export default function ProjectMembersPage() {
       closeInviteModal();
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setInviteError(message || 'Failed to invite member.');
+      setInviteError(message || '멤버 초대를 보내지 못했습니다.');
       console.error('Failed to invite:', caughtError);
     } finally {
       setInviteSubmitting(false);
@@ -144,10 +144,10 @@ export default function ProjectMembersPage() {
     : members;
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'board', label: 'Board' },
-    { key: 'list', label: 'List' },
-    { key: 'members', label: 'Members' },
-    { key: 'settings', label: 'Settings' },
+    { key: 'board', label: '보드' },
+    { key: 'list', label: '목록' },
+    { key: 'members', label: '멤버' },
+    { key: 'settings', label: '설정' },
   ];
 
   return (
@@ -156,7 +156,7 @@ export default function ProjectMembersPage() {
         <div>
           <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
             <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
-              Workspace
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
@@ -173,7 +173,7 @@ export default function ProjectMembersPage() {
           "
         >
           <UserPlus size={14} />
-          Invite Member
+          멤버 초대
         </button>
       </div>
 
@@ -203,8 +203,8 @@ export default function ProjectMembersPage() {
         </div>
       )}
 
-      <FilterBar searchPlaceholder="Search members..." searchValue={searchQuery} onSearchChange={setSearchQuery}>
-        <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">{members.length} members</span>
+      <FilterBar searchPlaceholder="멤버 검색..." searchValue={searchQuery} onSearchChange={setSearchQuery}>
+        <span className="text-[var(--text-sm)] text-[var(--color-text-muted)]">멤버 {members.length}명</span>
       </FilterBar>
 
       {loading && (
@@ -219,7 +219,7 @@ export default function ProjectMembersPage() {
         <div className="mt-[var(--spacing-sm)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
           {filteredMembers.length === 0 ? (
             <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-              {searchQuery ? 'No members matched your search.' : 'No members yet.'}
+              {searchQuery ? '검색 조건에 맞는 멤버가 없습니다.' : '아직 멤버가 없습니다.'}
             </div>
           ) : (
             filteredMembers.map((member, index) => (
@@ -243,7 +243,7 @@ export default function ProjectMembersPage() {
                     </Badge>
                   </div>
                   <div className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                    {member.email} - joined {formatDate(member.joinedAt)}
+                    {member.email} - 참여일 {formatDate(member.joinedAt)}
                   </div>
                 </div>
 
@@ -263,7 +263,7 @@ export default function ProjectMembersPage() {
                   <button
                     type="button"
                     onClick={() => handleRemoveMember(member.memberId, member.nickname)}
-                    title="Remove Member"
+                    title="멤버 제거"
                     className="rounded-[var(--radius-sm)] border-none bg-transparent p-[var(--spacing-xs)] text-[var(--color-danger)] hover:bg-[var(--color-accent-red)]"
                   >
                     <Trash2 size={14} />
@@ -284,7 +284,7 @@ export default function ProjectMembersPage() {
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-[var(--spacing-base)] flex items-center justify-between">
-                <h3 className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">Invite Member</h3>
+                <h3 className="m-0 text-[var(--text-base)] font-bold text-[var(--color-text-primary)]">멤버 초대</h3>
                 <button
                   type="button"
                   onClick={closeInviteModal}
@@ -303,10 +303,14 @@ export default function ProjectMembersPage() {
 
               <div className="space-y-[var(--spacing-md)]">
                 <div>
-                  <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                    Email
+                  <label
+                    htmlFor="project-member-invite-email"
+                    className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
+                  >
+                    이메일
                   </label>
                   <input
+                    id="project-member-invite-email"
                     type="email"
                     value={inviteEmail}
                     onChange={(event) => setInviteEmail(event.target.value)}
@@ -315,10 +319,14 @@ export default function ProjectMembersPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                    Role
+                  <label
+                    htmlFor="project-member-invite-role"
+                    className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
+                  >
+                    권한
                   </label>
                   <select
+                    id="project-member-invite-role"
                     value={inviteRole}
                     onChange={(event) => setInviteRole(event.target.value as ProjectRole)}
                     className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -333,7 +341,7 @@ export default function ProjectMembersPage() {
                     onClick={closeInviteModal}
                     className="h-[32px] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)]"
                   >
-                    Cancel
+                    취소
                   </button>
                   <button
                     type="button"
@@ -341,7 +349,7 @@ export default function ProjectMembersPage() {
                     disabled={!inviteEmail.trim() || inviteSubmitting}
                     className="h-[32px] rounded-[var(--radius-sm)] border-none bg-[var(--color-primary)] px-[var(--spacing-md)] text-[var(--text-sm)] font-medium text-white disabled:opacity-50"
                   >
-                    {inviteSubmitting ? 'Sending...' : 'Invite'}
+                    {inviteSubmitting ? '전송 중...' : '초대 보내기'}
                   </button>
                 </div>
               </div>

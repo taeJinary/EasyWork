@@ -163,8 +163,8 @@ describe('ProjectBoardPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('button', { name: 'Invite' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+    expect(await screen.findByRole('button', { name: '멤버 초대' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '멤버 초대' }));
 
     await waitFor(() => {
       expect(screen.getByText('/projects/3/members?invite=1')).toBeInTheDocument();

@@ -1,5 +1,5 @@
 ﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WorkspacesPage from '@/pages/WorkspacesPage';
 import { apiOk } from '@/test/helpers';
@@ -57,7 +57,7 @@ describe('WorkspacesPage', () => {
     });
 
     expect(screen.getByText('Main workspace')).toBeInTheDocument();
-    expect(screen.getByText('3 members')).toBeInTheDocument();
+    expect(screen.getByText('멤버 3명')).toBeInTheDocument();
     expect(screen.getByText('OWNER')).toBeInTheDocument();
   });
 
@@ -78,15 +78,15 @@ describe('WorkspacesPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('heading', { name: 'Create Workspace' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '작업공간 생성' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Workspace Name'), {
+    fireEvent.change(screen.getByLabelText('작업공간 이름'), {
       target: { value: 'New Space' },
     });
-    fireEvent.change(screen.getByLabelText('Description'), {
+    fireEvent.change(screen.getByLabelText('설명'), {
       target: { value: 'Created from modal' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Workspace' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '작업공간 생성' }));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/workspaces', {
@@ -105,12 +105,12 @@ describe('WorkspacesPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByRole('heading', { name: 'Create Workspace' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '작업공간 생성' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('workspace-create-backdrop'));
 
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: 'Create Workspace' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: '작업공간 생성' })).not.toBeInTheDocument();
     });
   });
 });

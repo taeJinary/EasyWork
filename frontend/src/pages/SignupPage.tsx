@@ -38,7 +38,7 @@ export default function SignupPage() {
 
       navigate('/login');
     } catch {
-      setError('Failed to sign up. Please check your input.');
+      setError('회원가입에 실패했습니다. 입력 정보를 확인해주세요.');
     } finally {
       setLoading(false);
     }
@@ -188,7 +188,7 @@ export default function SignupPage() {
               htmlFor="signup-email"
               className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
             >
-              Email
+              이메일
             </label>
             <input
               id="signup-email"
