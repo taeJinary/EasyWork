@@ -280,8 +280,8 @@ export default function DashboardPage() {
                 <StatCard label="작업" value={projectStats.taskCount} />
                 <StatCard label="TODO" value={projectStats.todoCount} />
                 <StatCard label="진행 중" value={projectStats.inProgressCount} />
-                <StatCard label="Done" value={projectStats.doneCount} />
-                <StatCard label={`완료율 ${projectStats.completionRate}%`} value={`${projectStats.doneCount}/${projectStats.taskCount}`} />
+                <StatCard label="완료" value={projectStats.doneCount} />
+                <StatCard label="완료율" value={`${projectStats.completionRate}%`} />
                 <StatCard label="기한 초과" value={projectStats.overdueCount} />
                 <StatCard label="마감 임박" value={projectStats.dueSoonCount} />
               </div>
