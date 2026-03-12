@@ -62,7 +62,7 @@ export function isWebPushConfigured(): boolean {
 
 let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
 
-async function getFirebaseMessaging() {
+async function getFirebaseMessaging(config: WebPushConfig) {
   const [{ getApps, initializeApp }, { getMessaging, getToken, isSupported }] = await Promise.all([
     import('firebase/app'),
     import('firebase/messaging'),
@@ -72,8 +72,6 @@ async function getFirebaseMessaging() {
   if (!supported) {
     throw new WebPushIssueError('UNSUPPORTED_MESSAGING', 'Firebase messaging is not supported.');
   }
-
-  const config = readWebPushConfig();
   const app = getApps()[0] ?? initializeApp({
     apiKey: config.apiKey,
     authDomain: config.authDomain,
@@ -90,16 +88,27 @@ async function getFirebaseMessaging() {
   };
 }
 
-async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+function buildServiceWorkerUrl(config: WebPushConfig): string {
+  if (typeof window === 'undefined') {
+    return '/firebase-messaging-sw.js';
+  }
+
+  const url = new URL('/firebase-messaging-sw.js', window.location.origin);
+  url.searchParams.set('apiKey', config.apiKey);
+  url.searchParams.set('authDomain', config.authDomain ?? '');
+  url.searchParams.set('projectId', config.projectId);
+  url.searchParams.set('messagingSenderId', config.messagingSenderId);
+  url.searchParams.set('appId', config.appId);
+  return url.toString();
+}
+
+async function getServiceWorkerRegistration(config: WebPushConfig): Promise<ServiceWorkerRegistration> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
     throw new WebPushIssueError('UNSUPPORTED_SERVICE_WORKER', 'Service worker is not supported.');
   }
 
   if (!registrationPromise) {
-    registrationPromise = navigator.serviceWorker.register(
-      new URL('./firebase-messaging-sw.ts', import.meta.url),
-      { type: 'module' }
-    );
+    registrationPromise = navigator.serviceWorker.register(buildServiceWorkerUrl(config));
   }
 
   return registrationPromise;
@@ -110,9 +119,7 @@ export async function issueWebPushToken(): Promise<string> {
     throw new WebPushIssueError('UNSUPPORTED_NOTIFICATIONS', 'Notifications are not supported.');
   }
 
-  if (!isWebPushConfigured()) {
-    throw new WebPushIssueError('MISSING_CONFIG', 'Web push config is missing.');
-  }
+  const config = readWebPushConfig();
 
   let permission = window.Notification.permission;
   if (permission === 'default') {
@@ -123,9 +130,9 @@ export async function issueWebPushToken(): Promise<string> {
     throw new WebPushIssueError('PERMISSION_NOT_GRANTED', 'Notification permission was not granted.');
   }
 
-  const [{ config, getMessaging, getToken, app }, registration] = await Promise.all([
-    getFirebaseMessaging(),
-    getServiceWorkerRegistration(),
+  const [{ getMessaging, getToken, app }, registration] = await Promise.all([
+    getFirebaseMessaging(config),
+    getServiceWorkerRegistration(config),
   ]);
 
   const token = await getToken(getMessaging(app), {
