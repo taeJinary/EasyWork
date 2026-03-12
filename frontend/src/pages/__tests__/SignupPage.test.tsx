@@ -78,4 +78,67 @@ describe('SignupPage', () => {
     expect(screen.getByText(/We sent a verification link to nick@example.com/)).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it('resends verification email from signup notice', async () => {
+    mockPost.mockResolvedValueOnce(
+      apiOk({ userId: 1, email: 'nick@example.com', nickname: 'Nick', emailVerificationRequired: true })
+    );
+    mockPost.mockResolvedValueOnce(apiOk(undefined, '인증 메일을 다시 보냈습니다.'));
+
+    render(
+      <MemoryRouter>
+        <SignupPage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Nickname'), 'Nick');
+    await user.type(screen.getByLabelText('Email'), 'nick@example.com');
+    await user.type(screen.getByLabelText('Password'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('Check your email')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '인증 메일 다시 보내기' }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenNthCalledWith(2, '/auth/email-verification/resend', {
+        email: 'nick@example.com',
+      });
+    });
+
+    expect(await screen.findByText('인증 메일을 다시 보냈습니다.')).toBeInTheDocument();
+  });
+
+  it('shows backend resend message when verification resend is throttled', async () => {
+    mockPost.mockResolvedValueOnce(
+      apiOk({ userId: 1, email: 'nick@example.com', nickname: 'Nick', emailVerificationRequired: true })
+    );
+    mockPost.mockRejectedValueOnce({
+      response: {
+        data: {
+          errorCode: 'EMAIL_VERIFICATION_RESEND_TOO_FREQUENT',
+          message: '인증 메일을 다시 보내기까지 잠시 기다려주세요.',
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SignupPage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Nickname'), 'Nick');
+    await user.type(screen.getByLabelText('Email'), 'nick@example.com');
+    await user.type(screen.getByLabelText('Password'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('Check your email')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '인증 메일 다시 보내기' }));
+
+    expect(await screen.findByText('인증 메일을 다시 보내기까지 잠시 기다려주세요.')).toBeInTheDocument();
+  });
 });
