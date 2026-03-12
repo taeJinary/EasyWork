@@ -167,7 +167,7 @@ export default function ProjectBoardPage() {
         <div>
           <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
             <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
-              Workspace
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
@@ -284,7 +284,7 @@ export default function ProjectBoardPage() {
             <BoardColumnComponent key={column.status} status={column.status} count={filteredTasks.length}>
               {filteredTasks.length === 0 ? (
                 <div className="py-[var(--spacing-lg)] text-center text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                  작업이 없습니다.
+                  작업이 없습니다
                 </div>
               ) : (
                 filteredTasks.map((task) => (
@@ -311,4 +311,3 @@ export default function ProjectBoardPage() {
     </div>
   );
 }
-

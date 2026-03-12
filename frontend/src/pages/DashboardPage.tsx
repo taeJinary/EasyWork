@@ -60,7 +60,7 @@ function ProjectRow({
           </div>
         </div>
         <div className="shrink-0 text-[var(--text-xs)] text-[var(--color-text-muted)]">
-          업데이트 {formatTimeAgo(project.updatedAt)}
+          최근 수정 {formatTimeAgo(project.updatedAt)}
         </div>
       </div>
       <div className="mt-[var(--spacing-sm)] flex justify-end">
@@ -173,12 +173,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="대시보드" description="참여 중인 프로젝트와 초대 현황을 한곳에서 확인하세요." />
+      <PageHeader title="대시보드" description="진행 중인 프로젝트와 초대 현황을 한눈에 확인하세요." />
 
       <div className="mt-[var(--spacing-base)] grid gap-[var(--spacing-base)] md:grid-cols-3">
-        <StatCard label="대기 중 초대" value={dashboard?.pendingInvitationCount ?? 0} />
-        <StatCard label="진행 중 프로젝트" value={totalProjects} />
-        <StatCard label="추적 중 작업" value={totalTasks} />
+        <StatCard label="대기 중인 초대" value={dashboard?.pendingInvitationCount ?? 0} />
+        <StatCard label="활성 프로젝트" value={totalProjects} />
+        <StatCard label="추적 중인 작업" value={totalTasks} />
       </div>
 
       {error && (
@@ -278,10 +278,10 @@ export default function DashboardPage() {
               <div className="grid gap-[var(--spacing-sm)] sm:grid-cols-2">
                 <StatCard label="멤버" value={projectStats.memberCount} />
                 <StatCard label="작업" value={projectStats.taskCount} />
-                <StatCard label="할 일" value={projectStats.todoCount} />
+                <StatCard label="TODO" value={projectStats.todoCount} />
                 <StatCard label="진행 중" value={projectStats.inProgressCount} />
-                <StatCard label="완료" value={projectStats.doneCount} />
-                <StatCard label="완료율" value={`${projectStats.doneCount}/${projectStats.taskCount}`} />
+                <StatCard label="Done" value={projectStats.doneCount} />
+                <StatCard label={`완료율 ${projectStats.completionRate}%`} value={`${projectStats.doneCount}/${projectStats.taskCount}`} />
                 <StatCard label="기한 초과" value={projectStats.overdueCount} />
                 <StatCard label="마감 임박" value={projectStats.dueSoonCount} />
               </div>
@@ -292,4 +292,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

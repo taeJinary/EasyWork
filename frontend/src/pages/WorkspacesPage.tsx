@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, FolderKanban, Plus, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
@@ -116,7 +116,7 @@ export default function WorkspacesPage() {
       ]);
       closeCreateModal();
     } catch {
-      setCreateError('작업공간 생성에 실패했습니다.');
+      setCreateError('작업공간을 생성하지 못했습니다.');
     } finally {
       setCreating(false);
     }
@@ -126,7 +126,7 @@ export default function WorkspacesPage() {
     <div>
       <PageHeader
         title="작업공간"
-        description="협업 공간을 관리하고 프로젝트 작업으로 이동하세요."
+        description="협업 공간을 관리하고 여기서 프로젝트 작업으로 이동하세요."
         actions={
           <button
             className="
@@ -137,7 +137,7 @@ export default function WorkspacesPage() {
             onClick={openCreateModal}
           >
             <Plus size={16} />
-            새 작업공간
+            작업공간 생성
           </button>
         }
       />
@@ -188,7 +188,7 @@ export default function WorkspacesPage() {
       {!loading && !error && filteredWorkspaces.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
           {searchQuery
-            ? '검색 결과와 일치하는 작업공간이 없습니다.'
+            ? '검색 조건에 맞는 작업공간이 없습니다.'
             : '아직 작업공간이 없습니다. 첫 작업공간을 만들어보세요.'}
         </div>
       )}
@@ -234,7 +234,7 @@ export default function WorkspacesPage() {
                   <FolderKanban size={12} />
                   {workspace.myRole}
                 </span>
-                <span>업데이트 {formatTimeAgo(workspace.updatedAt)}</span>
+                <span>최근 수정 {formatTimeAgo(workspace.updatedAt)}</span>
                 <ChevronRight size={16} className="text-[var(--color-text-muted)]" />
               </div>
             </div>
@@ -264,7 +264,7 @@ export default function WorkspacesPage() {
                   작업공간 생성
                 </h2>
                 <p className="mb-0 mt-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
-                  프로젝트와 멤버를 묶을 작업공간을 만드세요.
+                  프로젝트와 멤버를 묶을 작업공간을 생성하세요.
                 </p>
               </div>
               <button
@@ -356,4 +356,3 @@ export default function WorkspacesPage() {
     </div>
   );
 }
-

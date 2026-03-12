@@ -149,7 +149,7 @@ export default function TaskListPage() {
         <div>
           <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
             <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
-              Workspace
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
@@ -245,7 +245,7 @@ export default function TaskListPage() {
           "
         >
           <option value="">상태: 전체</option>
-          <option value="TODO">TODO</option>
+          <option value="TODO">할 일</option>
           <option value="IN_PROGRESS">진행 중</option>
           <option value="DONE">완료</option>
         </select>
@@ -295,7 +295,9 @@ export default function TaskListPage() {
 
       {!loading && tasks.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          {searchQuery || statusFilter ? '조건에 맞는 작업이 없습니다.' : '아직 작업이 없습니다. 첫 작업을 만들어보세요.'}
+          {searchQuery || statusFilter
+            ? '검색 조건에 맞는 작업이 없습니다.'
+            : '아직 작업이 없습니다. 첫 작업을 만들어보세요.'}
         </div>
       )}
 
@@ -408,4 +410,3 @@ export default function TaskListPage() {
     </div>
   );
 }
-

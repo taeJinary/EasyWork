@@ -90,7 +90,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
       onClose();
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || '작업 생성에 실패했습니다.');
+      setError(message || '작업을 생성하지 못했습니다.');
       console.error('Failed to create task:', caughtError);
     } finally {
       setSubmitting(false);
@@ -180,7 +180,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
               </div>
               {labels.length === 0 ? (
                 <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-[var(--spacing-sm)] py-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
-                  라벨이 없습니다.
+                  사용할 수 있는 라벨이 없습니다.
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-[var(--spacing-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-sm)]">
@@ -232,4 +232,3 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
     </>
   );
 }
-

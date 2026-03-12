@@ -54,7 +54,7 @@ export default function ProjectsPage() {
     <div>
       <PageHeader
         title="프로젝트"
-        description="참여 중이거나 소유한 프로젝트를 확인하세요."
+        description="참여 중이거나 소유한 프로젝트를 한눈에 확인하세요."
         actions={
           <button
             type="button"
@@ -138,7 +138,9 @@ export default function ProjectsPage() {
 
       {!loading && !error && projects.length === 0 && (
         <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          {searchQuery || roleFilter ? '조건에 맞는 프로젝트가 없습니다.' : '아직 프로젝트가 없습니다. 첫 프로젝트를 만들어보세요.'}
+          {searchQuery || roleFilter
+            ? '검색 조건에 맞는 프로젝트가 없습니다.'
+            : '아직 프로젝트가 없습니다. 첫 프로젝트를 만들어보세요.'}
         </div>
       )}
 
@@ -170,7 +172,7 @@ export default function ProjectsPage() {
               <div className="flex shrink-0 items-center gap-[var(--spacing-lg)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
                 <span>멤버 {project.memberCount}명</span>
                 <span>미완료 작업 {project.openTaskCount}개</span>
-                <span>업데이트 {formatTimeAgo(project.updatedAt)}</span>
+                <span>최근 수정 {formatTimeAgo(project.updatedAt)}</span>
               </div>
             </div>
           ))}
@@ -209,4 +211,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-

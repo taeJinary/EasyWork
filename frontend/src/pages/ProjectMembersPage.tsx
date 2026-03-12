@@ -99,7 +99,7 @@ export default function ProjectMembersPage() {
         member.memberId === memberId ? { ...member, role: newRole } : member
       )));
     } catch (caughtError) {
-      setError('권한 변경에 실패했습니다.');
+      setError('권한을 변경하지 못했습니다.');
       console.error('Failed to change role:', caughtError);
     }
   };
@@ -111,7 +111,7 @@ export default function ProjectMembersPage() {
       await apiClient.delete(`/projects/${projectId}/members/${memberId}`);
       setMembers((previousMembers) => previousMembers.filter((member) => member.memberId !== memberId));
     } catch (caughtError) {
-      setError('멤버 제거에 실패했습니다.');
+      setError('멤버를 제거하지 못했습니다.');
       console.error('Failed to remove member:', caughtError);
     }
   };
@@ -128,7 +128,7 @@ export default function ProjectMembersPage() {
       closeInviteModal();
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setInviteError(message || '멤버 초대에 실패했습니다.');
+      setInviteError(message || '멤버 초대를 보내지 못했습니다.');
       console.error('Failed to invite:', caughtError);
     } finally {
       setInviteSubmitting(false);
@@ -156,7 +156,7 @@ export default function ProjectMembersPage() {
         <div>
           <div className="mb-[var(--spacing-xs)] flex items-center gap-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
             <span className="cursor-pointer hover:text-[var(--color-primary)]" onClick={() => navigate('/workspaces')}>
-              Workspace
+              작업공간
             </span>
             <span>/</span>
             <span className="font-medium text-[var(--color-text-primary)]">{project?.name}</span>
@@ -219,7 +219,7 @@ export default function ProjectMembersPage() {
         <div className="mt-[var(--spacing-sm)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)]">
           {filteredMembers.length === 0 ? (
             <div className="py-[var(--spacing-xl)] text-center text-[var(--text-sm)] text-[var(--color-text-muted)]">
-              {searchQuery ? '검색 결과와 일치하는 멤버가 없습니다.' : '아직 멤버가 없습니다.'}
+              {searchQuery ? '검색 조건에 맞는 멤버가 없습니다.' : '아직 멤버가 없습니다.'}
             </div>
           ) : (
             filteredMembers.map((member, index) => (
@@ -304,29 +304,29 @@ export default function ProjectMembersPage() {
               <div className="space-y-[var(--spacing-md)]">
                 <div>
                   <label
-                    htmlFor="project-invite-email"
+                    htmlFor="project-member-invite-email"
                     className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
                   >
                     이메일
                   </label>
                   <input
-                    id="project-invite-email"
+                    id="project-member-invite-email"
                     type="email"
                     value={inviteEmail}
                     onChange={(event) => setInviteEmail(event.target.value)}
-                    placeholder="이메일 주소를 입력하세요"
+                    placeholder="user@example.com"
                     className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
                   />
                 </div>
                 <div>
                   <label
-                    htmlFor="project-invite-role"
+                    htmlFor="project-member-invite-role"
                     className="mb-[var(--spacing-xs)] block text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]"
                   >
                     권한
                   </label>
                   <select
-                    id="project-invite-role"
+                    id="project-member-invite-role"
                     value={inviteRole}
                     onChange={(event) => setInviteRole(event.target.value as ProjectRole)}
                     className="h-[36px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)]"
@@ -360,5 +360,3 @@ export default function ProjectMembersPage() {
     </div>
   );
 }
-
-
