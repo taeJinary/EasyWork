@@ -1,10 +1,14 @@
 package com.taskflow.backend.global.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mock.env.MockEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class EmailVerificationMailPropertiesValidatorTest {
 
@@ -16,7 +20,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://app.example.com/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
@@ -30,7 +34,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "http://localhost:5173/verify-email",
-                false
+                mailSenderProvider(false)
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
@@ -44,7 +48,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 " ",
                 "[TaskFlow]",
                 "https://app.example.com/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -60,7 +64,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 " noreply@example.com ",
                 "[TaskFlow]",
                 "https://app.example.com/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -76,7 +80,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "http://app.example.com/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -92,7 +96,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://localhost:5173/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -108,7 +112,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://127.1/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -124,7 +128,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://[0:0:0:0:0:0:0:1]/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -140,7 +144,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://app.example.com/verify-email?next=localhost",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
@@ -154,7 +158,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://app.example.com/verify-email",
-                false
+                mailSenderProvider(false)
         );
 
         assertThatThrownBy(validator::validateAtStartup)
@@ -170,7 +174,7 @@ class EmailVerificationMailPropertiesValidatorTest {
                 "noreply@example.com",
                 "[TaskFlow]",
                 "https://app.example.com/verify-email",
-                true
+                mailSenderProvider(true)
         );
 
         assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
@@ -178,5 +182,12 @@ class EmailVerificationMailPropertiesValidatorTest {
 
     private MockEnvironment prodEnvironment() {
         return new MockEnvironment().withProperty("spring.profiles.active", "prod");
+    }
+
+    private ObjectProvider<JavaMailSender> mailSenderProvider(boolean available) {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(available ? mock(JavaMailSender.class) : null);
+        return provider;
     }
 }

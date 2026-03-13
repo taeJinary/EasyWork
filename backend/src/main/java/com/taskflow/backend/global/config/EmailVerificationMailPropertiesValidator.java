@@ -32,30 +32,12 @@ public class EmailVerificationMailPropertiesValidator {
             @Value("${app.email-verification.verify-base-url:http://localhost:5173/verify-email}") String verifyBaseUrl,
             ObjectProvider<JavaMailSender> javaMailSenderProvider
     ) {
-        this(
-                environment,
-                emailVerificationEnabled,
-                fromAddress,
-                subjectPrefix,
-                verifyBaseUrl,
-                javaMailSenderProvider.getIfAvailable() != null
-        );
-    }
-
-    EmailVerificationMailPropertiesValidator(
-            Environment environment,
-            boolean emailVerificationEnabled,
-            String fromAddress,
-            String subjectPrefix,
-            String verifyBaseUrl,
-            boolean mailSenderAvailable
-    ) {
         this.environment = environment;
         this.emailVerificationEnabled = emailVerificationEnabled;
         this.fromAddress = fromAddress;
         this.subjectPrefix = subjectPrefix;
         this.verifyBaseUrl = verifyBaseUrl;
-        this.mailSenderAvailable = mailSenderAvailable;
+        this.mailSenderAvailable = javaMailSenderProvider.getIfAvailable() != null;
     }
 
     @PostConstruct
