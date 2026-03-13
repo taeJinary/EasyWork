@@ -184,6 +184,8 @@ class ApplicationConfigSecurityPolicyTest {
         String content = read("src/main/resources/application-prod.yml");
 
         assertThat(content).contains("management:");
+        assertThat(content).contains("mail:");
+        assertThat(content).contains("enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}");
         assertThat(content).contains("include: health,info");
         assertThat(content).contains("show-details: never");
     }
@@ -240,6 +242,7 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("password: ${MAIL_PASSWORD:}");
         assertThat(content).contains("auth: ${MAIL_SMTP_AUTH:true}");
         assertThat(content).contains("enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}");
+        assertThat(content).contains("enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}");
     }
 
     private String read(String relativePath) throws IOException {
