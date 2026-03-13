@@ -1,6 +1,20 @@
 spring:
   application:
     name: taskflow
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+          timeout: ${MAIL_SMTP_TIMEOUT:5000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:5000}
 
   # === DataSource ===
   datasource:
@@ -56,10 +70,10 @@ app:
   invitation:
     expires-days: 7
     email:
-      enabled: false
-      from: noreply@taskflow.local
-      subject-prefix: "[TaskFlow]"
-      accept-base-url: http://localhost:5173/invitations
+      enabled: ${APP_INVITATION_EMAIL_ENABLED:false}
+      from: ${APP_INVITATION_EMAIL_FROM:noreply@taskflow.local}
+      subject-prefix: ${APP_INVITATION_EMAIL_SUBJECT_PREFIX:[TaskFlow]}
+      accept-base-url: ${APP_INVITATION_EMAIL_ACCEPT_BASE_URL:http://localhost:5173/invitations}
       retry:
         interval-ms: 60000
         delay-seconds: 300
@@ -67,10 +81,10 @@ app:
         max-delay-seconds: 3600
         batch-size: 50
   email-verification:
-    enabled: false
-    from: noreply@taskflow.local
-    subject-prefix: "[TaskFlow]"
-    verify-base-url: http://localhost:5173/verify-email
+    enabled: ${APP_EMAIL_VERIFICATION_ENABLED:false}
+    from: ${APP_EMAIL_VERIFICATION_FROM:noreply@taskflow.local}
+    subject-prefix: ${APP_EMAIL_VERIFICATION_SUBJECT_PREFIX:[TaskFlow]}
+    verify-base-url: ${APP_EMAIL_VERIFICATION_VERIFY_BASE_URL:http://localhost:5173/verify-email}
     cleanup:
       enabled: true
       interval-ms: 3600000
