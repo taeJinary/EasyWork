@@ -101,6 +101,52 @@ class EmailVerificationMailPropertiesValidatorTest {
     }
 
     @Test
+    void rejectsLoopbackIpv4ShortcutVerificationUrlInProdWhenEnabled() {
+        EmailVerificationMailPropertiesValidator validator = new EmailVerificationMailPropertiesValidator(
+                prodEnvironment(),
+                true,
+                "noreply@example.com",
+                "[TaskFlow]",
+                "https://127.1/verify-email",
+                true
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.email-verification.verify-base-url");
+    }
+
+    @Test
+    void rejectsExpandedIpv6LoopbackVerificationUrlInProdWhenEnabled() {
+        EmailVerificationMailPropertiesValidator validator = new EmailVerificationMailPropertiesValidator(
+                prodEnvironment(),
+                true,
+                "noreply@example.com",
+                "[TaskFlow]",
+                "https://[0:0:0:0:0:0:0:1]/verify-email",
+                true
+        );
+
+        assertThatThrownBy(validator::validateAtStartup)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("app.email-verification.verify-base-url");
+    }
+
+    @Test
+    void allowsNonLoopbackHostEvenWhenQueryContainsLocalhostText() {
+        EmailVerificationMailPropertiesValidator validator = new EmailVerificationMailPropertiesValidator(
+                prodEnvironment(),
+                true,
+                "noreply@example.com",
+                "[TaskFlow]",
+                "https://app.example.com/verify-email?next=localhost",
+                true
+        );
+
+        assertThatCode(validator::validateAtStartup).doesNotThrowAnyException();
+    }
+
+    @Test
     void rejectsEnabledProdWhenMailSenderIsUnavailable() {
         EmailVerificationMailPropertiesValidator validator = new EmailVerificationMailPropertiesValidator(
                 prodEnvironment(),
