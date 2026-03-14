@@ -3,6 +3,7 @@ import { AlertCircle, Clock, Edit, MessageSquare, Paperclip, Trash2, X } from 'l
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   Attachment,
@@ -96,9 +97,9 @@ export default function TaskDetailDrawer({
         setTask(taskResponse.data.data);
         setComments(commentsResponse.data.data.content);
         setAttachments(attachmentsResponse.data.data);
-      } catch (caughtError) {
-        setError('작업 정보를 불러오지 못했습니다.');
-        console.error('Failed to fetch task detail:', caughtError);
+    } catch (caughtError) {
+      setError('작업 정보를 불러오지 못했습니다.');
+      reportUiError('Failed to fetch task detail:', caughtError);
       } finally {
         setLoading(false);
       }
@@ -147,7 +148,7 @@ export default function TaskDetailDrawer({
         if (!cancelled) {
           setProjectMembers([]);
           setProjectLabels([]);
-          console.error('Failed to load task edit options:', caughtError);
+          reportUiError('Failed to load task edit options:', caughtError);
         }
       }
     }
@@ -182,7 +183,7 @@ export default function TaskDetailDrawer({
       onStatusChange?.(taskId, movedTask.status);
     } catch (caughtError) {
       setError('작업 상태를 변경하지 못했습니다.');
-      console.error('Failed to move task:', caughtError);
+      reportUiError('Failed to move task:', caughtError);
     }
   };
 
@@ -223,7 +224,7 @@ export default function TaskDetailDrawer({
       onTaskUpdated?.();
     } catch (caughtError) {
       setError('작업을 수정하지 못했습니다.');
-      console.error('Failed to update task:', caughtError);
+      reportUiError('Failed to update task:', caughtError);
     } finally {
       setSavingTask(false);
     }
@@ -248,7 +249,7 @@ export default function TaskDetailDrawer({
       onClose();
     } catch (caughtError) {
       setError('작업을 삭제하지 못했습니다.');
-      console.error('Failed to delete task:', caughtError);
+      reportUiError('Failed to delete task:', caughtError);
     } finally {
       setDeletingTask(false);
     }
@@ -275,7 +276,7 @@ export default function TaskDetailDrawer({
       );
     } catch (caughtError) {
       setError('댓글을 등록하지 못했습니다.');
-      console.error('Failed to submit comment:', caughtError);
+      reportUiError('Failed to submit comment:', caughtError);
     } finally {
       setSubmitting(false);
     }
@@ -289,7 +290,7 @@ export default function TaskDetailDrawer({
       setAttachments((current) => current.filter((attachment) => attachment.attachmentId !== attachmentId));
     } catch (caughtError) {
       setError('첨부 파일을 삭제하지 못했습니다.');
-      console.error('Failed to delete attachment:', caughtError);
+      reportUiError('Failed to delete attachment:', caughtError);
     } finally {
       setDeletingAttachmentId(null);
     }

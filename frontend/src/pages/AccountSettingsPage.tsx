@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, AlertTriangle, AlertCircle, CheckCircle, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
+import { reportUiError } from '@/utils/reportUiError';
 import {
   WebPushIssueError,
   getMissingWebPushConfigKeys,
@@ -146,7 +147,7 @@ export default function AccountSettingsPage() {
     } catch (err) {
       setRegisteredDevices([]);
       setPushDevicesLoadError('등록된 디바이스 목록을 불러오지 못했습니다.');
-      console.error('Failed to load push tokens:', err);
+      reportUiError('Failed to load push tokens:', err);
     } finally {
       setPushDevicesLoading(false);
     }
@@ -177,7 +178,7 @@ export default function AccountSettingsPage() {
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setPwError(message || '비밀번호 변경에 실패했습니다.');
-      console.error('Failed to change password:', err);
+      reportUiError('Failed to change password:', err);
     } finally {
       setPwSubmitting(false);
     }
@@ -194,7 +195,7 @@ export default function AccountSettingsPage() {
       navigate('/login', { replace: true });
     } catch (err) {
       setWithdrawError('탈퇴에 실패했습니다. 비밀번호를 확인해주세요.');
-      console.error('Failed to withdraw:', err);
+      reportUiError('Failed to withdraw:', err);
     } finally {
       setWithdrawSubmitting(false);
     }
@@ -246,7 +247,7 @@ export default function AccountSettingsPage() {
           ? mapWebPushIssueError(err)
           : (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setPushError(message || '디바이스 등록에 실패했습니다.');
-      console.error('Failed to register push token:', err);
+      reportUiError('Failed to register push token:', err);
     } finally {
       setPushSubmitting(false);
     }
@@ -272,7 +273,7 @@ export default function AccountSettingsPage() {
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setPushError(message || '디바이스 해제에 실패했습니다.');
-      console.error('Failed to unregister push token:', err);
+      reportUiError('Failed to unregister push token:', err);
     } finally {
       setPushSubmitting(false);
     }

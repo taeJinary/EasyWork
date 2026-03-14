@@ -163,6 +163,7 @@ describe('NotificationsPage', () => {
   });
 
   it('shows error when fetch fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockGet.mockRejectedValue(new Error('Network Error'));
 
     renderPage();
@@ -172,6 +173,8 @@ describe('NotificationsPage', () => {
     });
 
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it('retries notification loading after fetch failure', async () => {

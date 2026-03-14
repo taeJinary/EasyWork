@@ -5,6 +5,7 @@ import Badge from '@/components/Badge';
 import ProjectCreateModal from '@/components/ProjectCreateModal';
 import apiClient from '@/api/client';
 import { toProjectSummary } from '@/utils/projectMappers';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   ProjectListItemResponse,
@@ -157,7 +158,7 @@ export default function WorkspaceDetailPage() {
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setInviteError(message || '작업공간 멤버 초대에 실패했습니다.');
-      console.error('Failed to invite workspace member:', caughtError);
+      reportUiError('Failed to invite workspace member:', caughtError);
     } finally {
       setInviteSubmitting(false);
     }
@@ -183,7 +184,7 @@ export default function WorkspaceDetailPage() {
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setInviteListError(message || '작업공간 초대를 취소하지 못했습니다.');
-      console.error('Failed to cancel workspace invitation:', caughtError);
+      reportUiError('Failed to cancel workspace invitation:', caughtError);
     } finally {
       setCancelingInvitationId(null);
     }

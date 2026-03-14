@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
+import { reportUiError } from '@/utils/reportUiError';
 import type { ApiResponse, UserProfile } from '@/types';
 
 export default function ProfileSettingsPage() {
@@ -24,7 +25,7 @@ export default function ProfileSettingsPage() {
       setNickname(res.data.data.nickname);
     } catch (err) {
       setError('프로필을 불러오는 데 실패했습니다.');
-      console.error('Failed to fetch profile:', err);
+      reportUiError('Failed to fetch profile:', err);
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function ProfileSettingsPage() {
       }
     } catch (err) {
       setError('프로필 저장에 실패했습니다.');
-      console.error('Failed to update profile:', err);
+      reportUiError('Failed to update profile:', err);
     } finally {
       setSubmitting(false);
     }

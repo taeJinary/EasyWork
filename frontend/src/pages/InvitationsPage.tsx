@@ -14,6 +14,7 @@ import {
 import PageHeader from '@/components/PageHeader';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   InvitationAction,
@@ -143,7 +144,7 @@ export default function InvitationsPage() {
       setError(activeKind === 'project'
         ? '프로젝트 초대 목록을 불러오는 데 실패했습니다.'
         : '워크스페이스 초대 목록을 불러오는 데 실패했습니다.');
-      console.error('Failed to fetch invitations:', err);
+      reportUiError('Failed to fetch invitations:', err);
       setLoading(false);
     }
   }, [activeKind, page, statusFilter]);
@@ -184,7 +185,7 @@ export default function InvitationsPage() {
       );
     } catch (err) {
       setError(invitation.kind === 'project' ? '초대 수락에 실패했습니다.' : '워크스페이스 초대 수락에 실패했습니다.');
-      console.error('Failed to accept:', err);
+      reportUiError('Failed to accept:', err);
     } finally {
       setActionLoading(null);
     }
@@ -208,7 +209,7 @@ export default function InvitationsPage() {
       );
     } catch (err) {
       setError(invitation.kind === 'project' ? '초대 거절에 실패했습니다.' : '워크스페이스 초대 거절에 실패했습니다.');
-      console.error('Failed to reject:', err);
+      reportUiError('Failed to reject:', err);
     } finally {
       setActionLoading(null);
     }

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import apiClient from '@/api/client';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse, NotificationItem, NotificationListResponse,
   NotificationUnreadCount, NotificationType, NotificationReferenceType,
@@ -74,7 +75,7 @@ export default function NotificationsPage() {
       setUnreadCount(countRes.data.data.unreadCount);
     } catch (err) {
       setError('알림을 불러오는 데 실패했습니다.');
-      console.error('Failed to fetch notifications:', err);
+      reportUiError('Failed to fetch notifications:', err);
     } finally {
       setLoading(false);
     }
@@ -112,7 +113,7 @@ export default function NotificationsPage() {
           : prev.map((n) => n.notificationId === notificationId ? { ...n, isRead: false } : n)
       );
       setUnreadCount((c) => c + 1);
-      console.error('Failed to read notification:', err);
+      reportUiError('Failed to read notification:', err);
     }
   };
 
@@ -130,7 +131,7 @@ export default function NotificationsPage() {
       }
     } catch (err) {
       setError('모두 읽기에 실패했습니다.');
-      console.error('Failed to read all:', err);
+      reportUiError('Failed to read all:', err);
     }
   };
 
