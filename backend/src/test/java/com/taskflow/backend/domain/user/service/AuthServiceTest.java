@@ -363,11 +363,12 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
                 .thenReturn("oauth-refresh-token");
 
-        LoginTokens response = authService.oauthCodeLogin(request);
+        LoginTokens response = authService.oauthCodeLogin(request, "client-nonce");
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
         assertThat(response.user().email()).isEqualTo("oauth@example.com");
+        verify(oauthStateService).consumeExpectedState(OAuthProvider.GOOGLE, "state", "client-nonce");
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -377,12 +378,12 @@ class AuthServiceTest {
                 "https://accounts.google.com/o/oauth2/v2/auth?state=server-state"
         );
 
-        when(oauthAuthorizeUrlService.issue(OAuthProvider.GOOGLE)).thenReturn(expected);
+        when(oauthAuthorizeUrlService.issue(OAuthProvider.GOOGLE, "client-nonce")).thenReturn(expected);
 
-        OAuthAuthorizeUrlResponse response = authService.issueOAuthAuthorizeUrl(OAuthProvider.GOOGLE);
+        OAuthAuthorizeUrlResponse response = authService.issueOAuthAuthorizeUrl(OAuthProvider.GOOGLE, "client-nonce");
 
         assertThat(response).isEqualTo(expected);
-        verify(oauthAuthorizeUrlService).issue(OAuthProvider.GOOGLE);
+        verify(oauthAuthorizeUrlService).issue(OAuthProvider.GOOGLE, "client-nonce");
     }
 
     @Test
@@ -414,11 +415,12 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
                 .thenReturn("oauth-refresh-token");
 
-        LoginTokens response = authService.oauthCodeLogin(request);
+        LoginTokens response = authService.oauthCodeLogin(request, "client-nonce");
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
         assertThat(response.user().email()).isEqualTo("oauth@example.com");
+        verify(oauthStateService).consumeExpectedState(OAuthProvider.GOOGLE, "state", "client-nonce");
         verify(passwordHistoryRepository, never()).save(any(PasswordHistory.class));
     }
 
@@ -432,9 +434,9 @@ class AuthServiceTest {
         );
 
         org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID))
-                .when(oauthStateService).consumeExpectedState(OAuthProvider.GOOGLE, "missing-state");
+                .when(oauthStateService).consumeExpectedState(OAuthProvider.GOOGLE, "missing-state", "client-nonce");
 
-        assertThatThrownBy(() -> authService.oauthCodeLogin(request))
+        assertThatThrownBy(() -> authService.oauthCodeLogin(request, "client-nonce"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.OAUTH_TOKEN_INVALID);
@@ -593,7 +595,7 @@ class AuthServiceTest {
         when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(activeUser()));
 
-        assertThatThrownBy(() -> authService.oauthCodeLogin(request))
+        assertThatThrownBy(() -> authService.oauthCodeLogin(request, "client-nonce"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
@@ -623,11 +625,12 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
                 .thenReturn("oauth-refresh-token");
 
-        LoginTokens response = authService.oauthCodeLogin(request);
+        LoginTokens response = authService.oauthCodeLogin(request, "client-nonce");
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
         verify(oauthAccessTokenExchanger).exchange(OAuthProvider.GOOGLE, "auth-code", null, "state");
+        verify(oauthStateService).consumeExpectedState(OAuthProvider.GOOGLE, "state", "client-nonce");
     }
 
     @Test

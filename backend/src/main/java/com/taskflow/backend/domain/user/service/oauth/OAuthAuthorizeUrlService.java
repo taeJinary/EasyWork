@@ -38,11 +38,11 @@ public class OAuthAuthorizeUrlService {
         );
     }
 
-    public OAuthAuthorizeUrlResponse issue(OAuthProvider provider) {
+    public OAuthAuthorizeUrlResponse issue(OAuthProvider provider, String clientNonce) {
         ProviderAuthorizeConfig config = resolveConfig(provider);
         validateConfig(config);
 
-        String state = oauthStateService.issue(provider);
+        String state = oauthStateService.issue(provider, clientNonce);
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(config.authorizeUri())
                 .queryParam("response_type", "code")
                 .queryParam("client_id", config.clientId())

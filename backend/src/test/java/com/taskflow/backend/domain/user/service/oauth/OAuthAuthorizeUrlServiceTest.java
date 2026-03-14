@@ -26,7 +26,7 @@ class OAuthAuthorizeUrlServiceTest {
                 "http://localhost:5173/oauth/naver/callback"
         );
 
-        OAuthAuthorizeUrlResponse response = service.issue(OAuthProvider.GOOGLE);
+        OAuthAuthorizeUrlResponse response = service.issue(OAuthProvider.GOOGLE, "client-nonce");
         URLParts url = new URLParts(response.authorizeUrl());
 
         assertThat(url.originWithPath()).isEqualTo("https://accounts.google.com/o/oauth2/v2/auth");

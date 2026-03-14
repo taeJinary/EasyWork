@@ -22,18 +22,18 @@ public class OAuthStateService {
         this.redisService = redisService;
     }
 
-    public String issue(OAuthProvider provider) {
+    public String issue(OAuthProvider provider, String clientNonce) {
         String state = UUID.randomUUID().toString();
-        redisService.setValue(stateKey(provider, state), state, STATE_TTL);
+        redisService.setValue(stateKey(provider, clientNonce, state), state, STATE_TTL);
         return state;
     }
 
-    public void consumeExpectedState(OAuthProvider provider, String state) {
-        if (!StringUtils.hasText(state)) {
+    public void consumeExpectedState(OAuthProvider provider, String state, String clientNonce) {
+        if (!StringUtils.hasText(state) || !StringUtils.hasText(clientNonce)) {
             throw new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID);
         }
 
-        String key = stateKey(provider, state);
+        String key = stateKey(provider, clientNonce, state);
         if (redisService.getValue(key).isEmpty()) {
             throw new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID);
         }
@@ -41,7 +41,12 @@ public class OAuthStateService {
         redisService.delete(key);
     }
 
-    private String stateKey(OAuthProvider provider, String state) {
-        return KEY_PREFIX + provider.name().toLowerCase(Locale.ROOT) + ":" + state.trim();
+    private String stateKey(OAuthProvider provider, String clientNonce, String state) {
+        return KEY_PREFIX
+                + provider.name().toLowerCase(Locale.ROOT)
+                + ":"
+                + clientNonce.trim()
+                + ":"
+                + state.trim();
     }
 }

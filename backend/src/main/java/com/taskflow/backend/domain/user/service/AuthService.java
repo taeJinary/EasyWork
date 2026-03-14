@@ -146,13 +146,13 @@ public class AuthService {
         return issueLoginTokens(user);
     }
 
-    public OAuthAuthorizeUrlResponse issueOAuthAuthorizeUrl(OAuthProvider provider) {
-        return oauthAuthorizeUrlService.issue(provider);
+    public OAuthAuthorizeUrlResponse issueOAuthAuthorizeUrl(OAuthProvider provider, String clientNonce) {
+        return oauthAuthorizeUrlService.issue(provider, clientNonce);
     }
 
     @Transactional
-    public LoginTokens oauthCodeLogin(OAuthCodeLoginRequest request) {
-        oauthStateService.consumeExpectedState(request.provider(), request.state());
+    public LoginTokens oauthCodeLogin(OAuthCodeLoginRequest request, String clientNonce) {
+        oauthStateService.consumeExpectedState(request.provider(), request.state(), clientNonce);
         String accessToken = oauthAccessTokenExchanger.exchange(
                 request.provider(),
                 request.authorizationCode(),
