@@ -3,6 +3,7 @@ package com.taskflow.backend.domain.user.service;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
+import com.taskflow.backend.domain.user.dto.response.OAuthAuthorizeUrlResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
 import com.taskflow.backend.domain.user.entity.PasswordHistory;
@@ -13,7 +14,9 @@ import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClient;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
 import com.taskflow.backend.domain.user.service.oauth.OAuthAccessTokenExchanger;
+import com.taskflow.backend.domain.user.service.oauth.OAuthAuthorizeUrlService;
 import com.taskflow.backend.domain.user.service.oauth.OAuthProfile;
+import com.taskflow.backend.domain.user.service.oauth.OAuthStateService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
@@ -81,6 +84,12 @@ class AuthServiceTest {
 
     @Mock
     private OAuthAccessTokenExchanger oauthAccessTokenExchanger;
+
+    @Mock
+    private OAuthAuthorizeUrlService oauthAuthorizeUrlService;
+
+    @Mock
+    private OAuthStateService oauthStateService;
 
     @Mock
     private OperationalMetricsService operationalMetricsService;
@@ -332,7 +341,7 @@ class AuthServiceTest {
 
     @Test
     void oauthCodeLoginReturnsTokensForExistingProviderUser() {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
         OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
         User oauthUser = User.builder()
                 .id(2L)
@@ -344,7 +353,7 @@ class AuthServiceTest {
                 .status(UserStatus.ACTIVE)
                 .build();
 
-        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, "state"))
                 .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
@@ -363,11 +372,25 @@ class AuthServiceTest {
     }
 
     @Test
+    void issueOAuthAuthorizeUrlStoresStateAndReturnsGoogleAuthorizeUrl() {
+        OAuthAuthorizeUrlResponse expected = new OAuthAuthorizeUrlResponse(
+                "https://accounts.google.com/o/oauth2/v2/auth?state=server-state"
+        );
+
+        when(oauthAuthorizeUrlService.issue(OAuthProvider.GOOGLE)).thenReturn(expected);
+
+        OAuthAuthorizeUrlResponse response = authService.issueOAuthAuthorizeUrl(OAuthProvider.GOOGLE);
+
+        assertThat(response).isEqualTo(expected);
+        verify(oauthAuthorizeUrlService).issue(OAuthProvider.GOOGLE);
+    }
+
+    @Test
     void oauthCodeLoginCreatesUserWhenProviderUserDoesNotExist() {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
         OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
 
-        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, "state"))
                 .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
@@ -397,6 +420,26 @@ class AuthServiceTest {
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
         assertThat(response.user().email()).isEqualTo("oauth@example.com");
         verify(passwordHistoryRepository, never()).save(any(PasswordHistory.class));
+    }
+
+    @Test
+    void oauthCodeLoginThrowsWhenStateWasNotIssued() {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(
+                OAuthProvider.GOOGLE,
+                "auth-code",
+                null,
+                "missing-state"
+        );
+
+        org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID))
+                .when(oauthStateService).consumeExpectedState(OAuthProvider.GOOGLE, "missing-state");
+
+        assertThatThrownBy(() -> authService.oauthCodeLogin(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.OAUTH_TOKEN_INVALID);
+
+        verify(oauthAccessTokenExchanger, never()).exchange(any(), anyString(), any(), any());
     }
 
     @Test
@@ -540,10 +583,10 @@ class AuthServiceTest {
 
     @Test
     void oauthCodeLoginThrowsWhenEmailAlreadyExistsWithAnotherAccount() {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
         OAuthProfile profile = new OAuthProfile("google-123", "user@example.com", "oauth-user");
 
-        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, "state"))
                 .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
@@ -558,7 +601,7 @@ class AuthServiceTest {
 
     @Test
     void oauthCodeLoginExchangesAuthorizationCodeBeforeOAuthLogin() {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
         OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
         User oauthUser = User.builder()
                 .id(2L)
@@ -570,7 +613,7 @@ class AuthServiceTest {
                 .status(UserStatus.ACTIVE)
                 .build();
 
-        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, "state"))
                 .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
@@ -584,7 +627,7 @@ class AuthServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
-        verify(oauthAccessTokenExchanger).exchange(OAuthProvider.GOOGLE, "auth-code", null, null);
+        verify(oauthAccessTokenExchanger).exchange(OAuthProvider.GOOGLE, "auth-code", null, "state");
     }
 
     @Test

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AxiosError } from 'axios';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { consumeOAuthState, type OAuthProvider } from '@/oauth/oauthLogin';
+import type { OAuthProvider } from '@/oauth/oauthLogin';
 import { requestOAuthCodeLogin } from '@/oauth/oauthCodeLoginRequestCache';
 import type { ApiErrorResponse } from '@/types';
 
@@ -31,8 +31,6 @@ export default function OAuthCallbackPage({ provider }: OAuthCallbackPageProps) 
     let cancelled = false;
 
     const completeOAuthLogin = async () => {
-      const expectedState = consumeOAuthState(provider);
-
       if (providerError) {
         setPageState('error');
         setMessage('소셜 로그인 제공자가 요청을 거부했습니다. 다시 시도하세요.');
@@ -45,7 +43,7 @@ export default function OAuthCallbackPage({ provider }: OAuthCallbackPageProps) 
         return;
       }
 
-      if (!expectedState || !state || expectedState !== state) {
+      if (!state) {
         setPageState('error');
         setMessage('로그인 요청 상태가 올바르지 않습니다. 다시 시도하세요.');
         return;

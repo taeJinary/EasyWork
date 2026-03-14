@@ -3,9 +3,11 @@ package com.taskflow.backend.domain.user.controller;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthAuthorizeUrlRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.LoginResponse;
+import com.taskflow.backend.domain.user.dto.response.OAuthAuthorizeUrlResponse;
 import com.taskflow.backend.domain.user.dto.response.ReissueResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.service.AuthService;
@@ -97,6 +99,14 @@ public class AuthController {
                 tokens.user()
         );
         return ResponseEntity.ok(ApiResponse.success(loginResponse));
+    }
+
+    @PostMapping(AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
+    public ResponseEntity<ApiResponse<OAuthAuthorizeUrlResponse>> oauthAuthorizeUrl(
+            @Valid @RequestBody OAuthAuthorizeUrlRequest request
+    ) {
+        OAuthAuthorizeUrlResponse response = authService.issueOAuthAuthorizeUrl(request.provider());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping(AuthHttpContract.OAUTH_CODE_LOGIN_PATH)

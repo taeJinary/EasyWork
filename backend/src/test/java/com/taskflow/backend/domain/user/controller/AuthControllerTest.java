@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthAuthorizeUrlRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
+import com.taskflow.backend.domain.user.dto.response.OAuthAuthorizeUrlResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.service.AuthService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
@@ -211,7 +213,7 @@ class AuthControllerTest {
 
     @Test
     void oauthCodeLoginReturnsTokenPayload() throws Exception {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
         LoginTokens tokens = new LoginTokens(
                 "oauth-access-token",
                 "oauth-refresh-token",
@@ -238,6 +240,24 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.user.userId").value(2L));
 
         then(apiRateLimitService).should().checkAuthOauthCodeLogin(any());
+    }
+
+    @Test
+    void oauthAuthorizeUrlReturnsPayload() throws Exception {
+        OAuthAuthorizeUrlRequest request = new OAuthAuthorizeUrlRequest(OAuthProvider.GOOGLE);
+        OAuthAuthorizeUrlResponse response = new OAuthAuthorizeUrlResponse(
+                "https://accounts.google.com/o/oauth2/v2/auth?state=server-state"
+        );
+
+        given(authService.issueOAuthAuthorizeUrl(OAuthProvider.GOOGLE)).willReturn(response);
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.authorizeUrl")
+                        .value("https://accounts.google.com/o/oauth2/v2/auth?state=server-state"));
     }
 
     @Test

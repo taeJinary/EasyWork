@@ -11,6 +11,7 @@ class AuthHttpContractTest {
         assertThat(AuthHttpContract.AUTH_BASE_PATH).isEqualTo("/auth");
         assertThat(AuthHttpContract.SIGNUP_PATH).isEqualTo("/signup");
         assertThat(AuthHttpContract.LOGIN_PATH).isEqualTo("/login");
+        assertThat(AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH).isEqualTo("/oauth/authorize-url");
         assertThat(AuthHttpContract.OAUTH_CODE_LOGIN_PATH).isEqualTo("/oauth/code/login");
         assertThat(AuthHttpContract.TOKEN_REISSUE_PATH).isEqualTo("/token/reissue");
         assertThat(AuthHttpContract.LOGOUT_PATH).isEqualTo("/logout");

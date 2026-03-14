@@ -4,7 +4,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OAuthCallbackPage from '@/pages/OAuthCallbackPage';
 import { resetOAuthCodeLoginRequestCacheForTest } from '@/oauth/oauthCodeLoginRequestCache';
-import { resetOAuthStateCacheForTest } from '@/oauth/oauthLogin';
 import { apiOk } from '@/test/helpers';
 
 const mockPost = vi.fn();
@@ -56,13 +55,10 @@ function renderPageInStrictMode(initialEntry: string, provider: 'GOOGLE' | 'NAVE
 describe('OAuthCallbackPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    resetOAuthStateCacheForTest();
     resetOAuthCodeLoginRequestCacheForTest();
-    window.sessionStorage.clear();
   });
 
   it('logs in with google authorization code and redirects to workspaces', async () => {
-    window.sessionStorage.setItem('easywork.oauth.state.GOOGLE', 'google-state');
     mockPost.mockResolvedValue(
       apiOk({
         accessToken: 'oauth-token',
@@ -98,19 +94,28 @@ describe('OAuthCallbackPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/workspaces', { replace: true });
   });
 
-  it('shows error when returned state does not match expected naver state', async () => {
-    window.sessionStorage.setItem('easywork.oauth.state.NAVER', 'expected-state');
+  it('shows error when backend rejects invalid naver state', async () => {
+    mockPost.mockRejectedValue({
+      response: {
+        data: {
+          message: '유효하지 않은 OAuth 토큰입니다.',
+        },
+      },
+    });
 
     renderPage('/oauth/naver/callback?code=naver-code&state=wrong-state', 'NAVER');
 
     expect(await screen.findByText('소셜 로그인 실패')).toBeInTheDocument();
-    expect(screen.getByText('로그인 요청 상태가 올바르지 않습니다. 다시 시도하세요.')).toBeInTheDocument();
-    expect(mockPost).not.toHaveBeenCalled();
+    expect(screen.getByText('유효하지 않은 OAuth 토큰입니다.')).toBeInTheDocument();
+    expect(mockPost).toHaveBeenCalledWith('/auth/oauth/code/login', {
+      provider: 'NAVER',
+      authorizationCode: 'naver-code',
+      codeVerifier: null,
+      state: 'wrong-state',
+    });
   });
 
   it('shows provider error when oauth provider returns access denial', async () => {
-    window.sessionStorage.setItem('easywork.oauth.state.GOOGLE', 'google-state');
-
     renderPage('/oauth/google/callback?error=access_denied&state=google-state', 'GOOGLE');
 
     expect(await screen.findByText('소셜 로그인 실패')).toBeInTheDocument();
@@ -119,7 +124,6 @@ describe('OAuthCallbackPage', () => {
   });
 
   it('does not issue duplicate oauth code login requests in StrictMode', async () => {
-    window.sessionStorage.setItem('easywork.oauth.state.GOOGLE', 'google-state');
     mockPost.mockResolvedValue(
       apiOk({
         accessToken: 'oauth-token',

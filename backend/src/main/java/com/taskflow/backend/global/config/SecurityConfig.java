@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/signup",
                                 "/auth/login",
+                                "/auth/oauth/authorize-url",
                                 "/auth/oauth/code/login",
                                 "/auth/token/reissue",
                                 "/auth/email-verification/verify",

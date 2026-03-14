@@ -8,6 +8,7 @@ public final class AuthHttpContract {
     public static final String EMAIL_VERIFICATION_BASE_PATH = "/email-verification";
     public static final String EMAIL_VERIFICATION_VERIFY_PATH = "/verify";
     public static final String EMAIL_VERIFICATION_RESEND_PATH = "/resend";
+    public static final String OAUTH_AUTHORIZE_URL_PATH = "/oauth/authorize-url";
     public static final String OAUTH_CODE_LOGIN_PATH = "/oauth/code/login";
     public static final String TOKEN_REISSUE_PATH = "/token/reissue";
     public static final String LOGOUT_PATH = "/logout";

@@ -56,6 +56,14 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
     }
 
     @Test
+    void oauthAuthorizeUrlEndpointPermitsAnonymousRequest() throws Exception {
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void oauthCodeLoginWithNaverRequiresState() throws Exception {
         mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,9 +73,9 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
                                   "authorizationCode": "valid-auth-code"
                                 }
                                 """))
-                .andExpect(status().isUnauthorized())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.errorCode").value("OAUTH_TOKEN_INVALID"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_INPUT"));
     }
 
     @Test

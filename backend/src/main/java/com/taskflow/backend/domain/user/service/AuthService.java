@@ -1,6 +1,7 @@
 package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
+import com.taskflow.backend.domain.user.dto.response.OAuthAuthorizeUrlResponse;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
@@ -13,7 +14,9 @@ import com.taskflow.backend.domain.user.repository.PasswordHistoryRepository;
 import com.taskflow.backend.domain.user.repository.UserRepository;
 import com.taskflow.backend.domain.user.service.oauth.OAuthClientRegistry;
 import com.taskflow.backend.domain.user.service.oauth.OAuthAccessTokenExchanger;
+import com.taskflow.backend.domain.user.service.oauth.OAuthAuthorizeUrlService;
 import com.taskflow.backend.domain.user.service.oauth.OAuthProfile;
+import com.taskflow.backend.domain.user.service.oauth.OAuthStateService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.auth.jwt.JwtProperties;
@@ -62,6 +65,8 @@ public class AuthService {
     private final RedisService redisService;
     private final OAuthClientRegistry oauthClientRegistry;
     private final OAuthAccessTokenExchanger oauthAccessTokenExchanger;
+    private final OAuthAuthorizeUrlService oauthAuthorizeUrlService;
+    private final OAuthStateService oauthStateService;
     private final OperationalMetricsService operationalMetricsService;
     private final EmailVerificationMailService emailVerificationMailService;
     private final EmailVerificationTokenManager emailVerificationTokenManager;
@@ -141,8 +146,13 @@ public class AuthService {
         return issueLoginTokens(user);
     }
 
+    public OAuthAuthorizeUrlResponse issueOAuthAuthorizeUrl(OAuthProvider provider) {
+        return oauthAuthorizeUrlService.issue(provider);
+    }
+
     @Transactional
     public LoginTokens oauthCodeLogin(OAuthCodeLoginRequest request) {
+        oauthStateService.consumeExpectedState(request.provider(), request.state());
         String accessToken = oauthAccessTokenExchanger.exchange(
                 request.provider(),
                 request.authorizationCode(),
