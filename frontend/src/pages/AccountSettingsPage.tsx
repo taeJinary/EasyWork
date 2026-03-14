@@ -112,7 +112,7 @@ export default function AccountSettingsPage() {
   const [registeredDevices, setRegisteredDevices] = useState<PushTokenRegistrationState[]>([]);
   const [pushDevicesLoading, setPushDevicesLoading] = useState(true);
   const [pushDevicesLoadError, setPushDevicesLoadError] = useState<string | null>(null);
-  const pushEnvironment = readPushEnvironmentState();
+  const [pushEnvironment, setPushEnvironment] = useState<PushEnvironmentState>(() => readPushEnvironmentState());
   const isWebPushBlocked =
     pushPlatform === 'WEB' &&
     (!pushEnvironment.notificationsSupported ||
@@ -120,6 +120,10 @@ export default function AccountSettingsPage() {
       !pushEnvironment.secureContext ||
       !pushEnvironment.webPushConfigured ||
       pushEnvironment.notificationPermission === 'denied');
+
+  const refreshPushEnvironment = () => {
+    setPushEnvironment(readPushEnvironmentState());
+  };
 
   const handleNewPasswordChange = (value: string) => {
     setNewPassword(value);
@@ -156,6 +160,10 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     void loadRegisteredDevices();
   }, []);
+
+  useEffect(() => {
+    refreshPushEnvironment();
+  }, [pushPlatform]);
 
   const handleChangePassword = async () => {
     const err = validateNewPassword(newPassword);
@@ -249,6 +257,7 @@ export default function AccountSettingsPage() {
       setPushError(message || '디바이스 등록에 실패했습니다.');
       reportUiError('Failed to register push token:', err);
     } finally {
+      refreshPushEnvironment();
       setPushSubmitting(false);
     }
   };
@@ -481,9 +490,23 @@ export default function AccountSettingsPage() {
                 data-testid="web-push-diagnostics"
                 className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-[var(--spacing-base)]"
               >
-                <h3 className="m-0 mb-[var(--spacing-sm)] text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
-                  웹 푸시 진단
-                </h3>
+                <div className="mb-[var(--spacing-sm)] flex items-center justify-between gap-[var(--spacing-sm)]">
+                  <h3 className="m-0 text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)]">
+                    웹 푸시 진단
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={refreshPushEnvironment}
+                    className="
+                      h-[30px] shrink-0 px-[var(--spacing-sm)]
+                      border border-[var(--color-border)] rounded-[var(--radius-sm)]
+                      bg-[var(--color-surface)] text-[var(--text-xs)] text-[var(--color-text-secondary)]
+                      cursor-pointer hover:bg-[var(--color-surface-muted)]
+                    "
+                  >
+                    환경 다시 확인
+                  </button>
+                </div>
                 <div className="space-y-[var(--spacing-xs)] text-[var(--text-sm)] text-[var(--color-text-secondary)]">
                   <p className="m-0">알림 API: {pushEnvironment.notificationsSupported ? '지원됨' : '미지원'}</p>
                   <p className="m-0">Service Worker: {pushEnvironment.serviceWorkerSupported ? '지원됨' : '미지원'}</p>
