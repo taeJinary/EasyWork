@@ -194,13 +194,6 @@ export default function LoginPage() {
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
-            카카오로 계속하기
-          </button>
-          <button className="
-            w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
-            bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
-            cursor-pointer hover:bg-[var(--color-surface-muted)]
-          ">
             네이버로 계속하기
           </button>
         </div>
