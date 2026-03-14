@@ -62,7 +62,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void oauthLoginExcludedPathPassesWithoutToken() throws Exception {
+    void oauthLoginPathIsNotExcludedWithoutToken() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/v1/auth/oauth/login");
         request.setServletPath("/auth/oauth/login");
@@ -72,6 +72,7 @@ class JwtAuthenticationFilterTest {
         jwtAuthenticationFilter.doFilter(request, response, chain);
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(jwtAuthenticationFilter.shouldNotFilter(request)).isFalse();
     }
 
     @Test

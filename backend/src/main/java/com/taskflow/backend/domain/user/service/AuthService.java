@@ -2,7 +2,6 @@ package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
-import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
@@ -124,9 +123,8 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginTokens oauthLogin(OAuthLoginRequest request) {
-        OAuthProvider provider = request.provider();
-        OAuthProfile profile = oauthClientRegistry.getClient(provider).fetchProfile(request.accessToken());
+    private LoginTokens oauthLogin(OAuthProvider provider, String accessToken) {
+        OAuthProfile profile = oauthClientRegistry.getClient(provider).fetchProfile(accessToken);
         validateOAuthProfile(profile);
 
         User user = userRepository.findByProviderAndProviderId(provider.name(), profile.providerId())
@@ -151,7 +149,7 @@ public class AuthService {
                 request.codeVerifier(),
                 request.state()
         );
-        return oauthLogin(new OAuthLoginRequest(request.provider(), accessToken));
+        return oauthLogin(request.provider(), accessToken);
     }
 
     @Transactional

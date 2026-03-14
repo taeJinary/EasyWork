@@ -40,11 +40,11 @@ class SecurityConfigIntegrationTest extends IntegrationTestContainerSupport {
     }
 
     @Test
-    void oauthLoginEndpointPermitsAnonymousRequest() throws Exception {
-        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_LOGIN_PATH)
+    void oauthLoginEndpointRequiresAuthentication() throws Exception {
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + "/oauth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

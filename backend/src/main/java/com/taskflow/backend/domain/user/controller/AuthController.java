@@ -4,7 +4,6 @@ import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
-import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.LoginResponse;
 import com.taskflow.backend.domain.user.dto.response.ReissueResponse;
@@ -90,24 +89,6 @@ public class AuthController {
     ) {
         apiRateLimitService.checkAuthLogin(httpServletRequest, request.email());
         LoginTokens tokens = authService.login(request);
-        addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
-
-        LoginResponse loginResponse = new LoginResponse(
-                tokens.accessToken(),
-                tokens.accessTokenExpiresIn(),
-                tokens.user()
-        );
-        return ResponseEntity.ok(ApiResponse.success(loginResponse));
-    }
-
-    @PostMapping(AuthHttpContract.OAUTH_LOGIN_PATH)
-    public ResponseEntity<ApiResponse<LoginResponse>> oauthLogin(
-            @Valid @RequestBody OAuthLoginRequest request,
-            HttpServletRequest httpServletRequest,
-            HttpServletResponse response
-    ) {
-        apiRateLimitService.checkAuthOauthLogin(httpServletRequest);
-        LoginTokens tokens = authService.oauthLogin(request);
         addRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiresIn());
 
         LoginResponse loginResponse = new LoginResponse(

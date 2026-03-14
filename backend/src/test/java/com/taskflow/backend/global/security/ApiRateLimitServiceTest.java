@@ -33,7 +33,6 @@ class ApiRateLimitServiceTest {
                 5, 60,
                 5, 60,
                 5, 60,
-                5, 60,
                 7, 60,
                 5, 60,
                 4, 60,
@@ -89,17 +88,6 @@ class ApiRateLimitServiceTest {
     }
 
     @Test
-    void checkAuthOauthLoginUsesRemoteAddrEvenWhenForwardedHeaderPresent() {
-        when(redisService.increment(anyString())).thenReturn(1L);
-        MockHttpServletRequest request = requestWithIp("10.0.0.10");
-        request.addHeader("X-Forwarded-For", "198.51.100.7, 10.0.0.10");
-
-        apiRateLimitService.checkAuthOauthLogin(request);
-
-        verify(redisService).increment("rate-limit:auth:oauth-login:ip:10.0.0.10");
-    }
-
-    @Test
     void checkCommentCreateFailsOpenWhenRedisIncrementReturnsNull() {
         when(redisService.increment("rate-limit:comment:create:ip:198.51.100.10")).thenReturn(1L);
         when(redisService.increment("rate-limit:comment:create:user:1")).thenReturn(null);
@@ -115,7 +103,6 @@ class ApiRateLimitServiceTest {
         ApiRateLimitService service = new ApiRateLimitService(
                 redisService,
                 3, 2, 60,
-                5, 60,
                 5, 60,
                 5, 60,
                 5, 60,

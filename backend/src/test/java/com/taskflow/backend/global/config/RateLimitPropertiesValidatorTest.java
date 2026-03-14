@@ -81,8 +81,6 @@ class RateLimitPropertiesValidatorTest {
                 fixture.authLoginWindowSeconds,
                 fixture.authTokenReissueIpMaxAttempts,
                 fixture.authTokenReissueWindowSeconds,
-                fixture.authOauthLoginIpMaxAttempts,
-                fixture.authOauthLoginWindowSeconds,
                 fixture.authOauthCodeLoginIpMaxAttempts,
                 fixture.authOauthCodeLoginWindowSeconds,
                 fixture.invitationCreateIpMaxAttempts,
@@ -114,8 +112,6 @@ class RateLimitPropertiesValidatorTest {
         long authLoginWindowSeconds = 60;
         int authTokenReissueIpMaxAttempts = 60;
         long authTokenReissueWindowSeconds = 60;
-        int authOauthLoginIpMaxAttempts = 30;
-        long authOauthLoginWindowSeconds = 60;
         int authOauthCodeLoginIpMaxAttempts = 30;
         long authOauthCodeLoginWindowSeconds = 60;
         int invitationCreateIpMaxAttempts = 40;

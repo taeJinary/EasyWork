@@ -160,10 +160,6 @@ app:
         ip:
           max-attempts: 60
         window-seconds: 60
-      oauth-login:
-        ip:
-          max-attempts: 30
-        window-seconds: 60
       oauth-code-login:
         ip:
           max-attempts: 30
