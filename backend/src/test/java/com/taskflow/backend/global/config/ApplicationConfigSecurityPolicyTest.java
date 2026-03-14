@@ -223,6 +223,16 @@ class ApplicationConfigSecurityPolicyTest {
     }
 
     @Test
+    void applicationYmlImportsLocalDotEnvFilesForDeveloperSecrets() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("config:");
+        assertThat(content).contains("import:");
+        assertThat(content).contains("optional:file:.env[.properties]");
+        assertThat(content).contains("optional:file:../.env[.properties]");
+    }
+
+    @Test
     void applicationYmlDefinesEmailVerificationEnvironmentKeys() throws IOException {
         String content = read("src/main/resources/application.yml");
 
