@@ -5,7 +5,6 @@ import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
-import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
@@ -208,37 +207,6 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
-    }
-
-    @Test
-    void oauthLoginReturnsTokenPayload() throws Exception {
-        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
-        LoginTokens tokens = new LoginTokens(
-                "oauth-access-token",
-                "oauth-refresh-token",
-                1800000L,
-                1209600000L,
-                new AuthUserResponse(2L, "oauth@example.com", "oauth-user", null, "ROLE_USER")
-        );
-
-        given(authService.oauthLogin(eq(request))).willReturn(tokens);
-
-        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_LOGIN_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
-                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
-                .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
-                .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
-                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
-                .andExpect(jsonPath("$.data.user.userId").value(2L));
-
-        then(apiRateLimitService).should().checkAuthOauthLogin(any());
     }
 
     @Test

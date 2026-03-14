@@ -2,7 +2,6 @@ package com.taskflow.backend.domain.user.service;
 
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
-import com.taskflow.backend.domain.user.dto.request.OAuthLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.entity.EmailVerificationToken;
@@ -332,8 +331,8 @@ class AuthServiceTest {
     }
 
     @Test
-    void oauthLoginReturnsTokensForExistingProviderUser() {
-        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+    void oauthCodeLoginReturnsTokensForExistingProviderUser() {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
         OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
         User oauthUser = User.builder()
                 .id(2L)
@@ -345,6 +344,8 @@ class AuthServiceTest {
                 .status(UserStatus.ACTIVE)
                 .build();
 
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+                .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
         when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.of(oauthUser));
@@ -353,7 +354,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
                 .thenReturn("oauth-refresh-token");
 
-        LoginTokens response = authService.oauthLogin(request);
+        LoginTokens response = authService.oauthCodeLogin(request);
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
@@ -362,10 +363,12 @@ class AuthServiceTest {
     }
 
     @Test
-    void oauthLoginCreatesUserWhenProviderUserDoesNotExist() {
-        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+    void oauthCodeLoginCreatesUserWhenProviderUserDoesNotExist() {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
         OAuthProfile profile = new OAuthProfile("google-123", "oauth@example.com", "oauth-user");
 
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+                .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
         when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.empty());
@@ -388,7 +391,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.generateRefreshToken(org.mockito.ArgumentMatchers.eq(2L), anyString()))
                 .thenReturn("oauth-refresh-token");
 
-        LoginTokens response = authService.oauthLogin(request);
+        LoginTokens response = authService.oauthCodeLogin(request);
 
         assertThat(response.accessToken()).isEqualTo("oauth-access-jwt");
         assertThat(response.refreshToken()).isEqualTo("oauth-refresh-token");
@@ -536,16 +539,18 @@ class AuthServiceTest {
     }
 
     @Test
-    void oauthLoginThrowsWhenEmailAlreadyExistsWithAnotherAccount() {
-        OAuthLoginRequest request = new OAuthLoginRequest(OAuthProvider.GOOGLE, "oauth-access-token");
+    void oauthCodeLoginThrowsWhenEmailAlreadyExistsWithAnotherAccount() {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
         OAuthProfile profile = new OAuthProfile("google-123", "user@example.com", "oauth-user");
 
+        when(oauthAccessTokenExchanger.exchange(OAuthProvider.GOOGLE, "auth-code", null, null))
+                .thenReturn("oauth-access-token");
         when(oauthClientRegistry.getClient(OAuthProvider.GOOGLE)).thenReturn(oauthClient);
         when(oauthClient.fetchProfile("oauth-access-token")).thenReturn(profile);
         when(userRepository.findByProviderAndProviderId("GOOGLE", "google-123")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(activeUser()));
 
-        assertThatThrownBy(() -> authService.oauthLogin(request))
+        assertThatThrownBy(() -> authService.oauthCodeLogin(request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
