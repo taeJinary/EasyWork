@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import apiClient from '@/api/client';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   ProjectCreateResponse,
@@ -70,7 +71,7 @@ export default function ProjectCreateModal({
           return;
         }
         setError('작업공간 목록을 불러오지 못했습니다.');
-        console.error('Failed to load workspaces for project creation:', caughtError);
+        reportUiError('Failed to load workspaces for project creation:', caughtError);
       } finally {
         if (!cancelled) {
           setLoadingWorkspaces(false);
@@ -114,7 +115,7 @@ export default function ProjectCreateModal({
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(message || '프로젝트 생성에 실패했습니다.');
-      console.error('Failed to create project:', caughtError);
+      reportUiError('Failed to create project:', caughtError);
     } finally {
       setSubmitting(false);
     }

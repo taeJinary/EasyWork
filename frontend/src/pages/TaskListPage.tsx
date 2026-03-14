@@ -18,6 +18,7 @@ import TaskCreateModal from '@/components/TaskCreateModal';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
 import { toProjectDetail } from '@/utils/projectMappers';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   ProjectDetail,
@@ -105,7 +106,7 @@ export default function TaskListPage() {
         }
 
         setError('작업을 불러오지 못했습니다.');
-        console.error('Failed to fetch task list:', caughtError);
+        reportUiError('Failed to fetch task list:', caughtError);
       } finally {
         if (!cancelled) {
           setLoading(false);

@@ -5,6 +5,7 @@ import FilterBar from '@/components/FilterBar';
 import Badge from '@/components/Badge';
 import apiClient from '@/api/client';
 import { toProjectDetail } from '@/utils/projectMappers';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   InvitationSummary,
@@ -66,7 +67,7 @@ export default function ProjectMembersPage() {
       setMembers(membersRes.data.data);
     } catch (caughtError) {
       setError('멤버를 불러오지 못했습니다.');
-      console.error('Failed to fetch members:', caughtError);
+      reportUiError('Failed to fetch members:', caughtError);
     } finally {
       setLoading(false);
     }
@@ -100,7 +101,7 @@ export default function ProjectMembersPage() {
       )));
     } catch (caughtError) {
       setError('권한을 변경하지 못했습니다.');
-      console.error('Failed to change role:', caughtError);
+      reportUiError('Failed to change role:', caughtError);
     }
   };
 
@@ -112,7 +113,7 @@ export default function ProjectMembersPage() {
       setMembers((previousMembers) => previousMembers.filter((member) => member.memberId !== memberId));
     } catch (caughtError) {
       setError('멤버를 제거하지 못했습니다.');
-      console.error('Failed to remove member:', caughtError);
+      reportUiError('Failed to remove member:', caughtError);
     }
   };
 
@@ -129,7 +130,7 @@ export default function ProjectMembersPage() {
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setInviteError(message || '멤버 초대를 보내지 못했습니다.');
-      console.error('Failed to invite:', caughtError);
+      reportUiError('Failed to invite:', caughtError);
     } finally {
       setInviteSubmitting(false);
     }

@@ -8,6 +8,7 @@ import TaskCreateModal from '@/components/TaskCreateModal';
 import TaskDetailDrawer from '@/components/TaskDetailDrawer';
 import apiClient from '@/api/client';
 import { toProjectDetail } from '@/utils/projectMappers';
+import { reportUiError } from '@/utils/reportUiError';
 import type {
   ApiResponse,
   BoardTaskCard,
@@ -65,7 +66,7 @@ export default function ProjectBoardPage() {
       setLabels(labelsRes.data.data);
     } catch (caughtError) {
       setError('보드를 불러오지 못했습니다.');
-      console.error('Failed to fetch board:', caughtError);
+      reportUiError('Failed to fetch board:', caughtError);
     } finally {
       setLoading(false);
     }
@@ -109,7 +110,7 @@ export default function ProjectBoardPage() {
       setColumns(normalizeColumns(response.data.data.columns));
     } catch (caughtError) {
       setError('보드를 새로고침하지 못했습니다.');
-      console.error('Failed to refresh board:', caughtError);
+      reportUiError('Failed to refresh board:', caughtError);
     }
   };
 

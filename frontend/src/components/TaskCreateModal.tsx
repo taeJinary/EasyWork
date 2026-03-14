@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import apiClient from '@/api/client';
+import { reportUiError } from '@/utils/reportUiError';
 import type { ApiResponse, ProjectLabelResponse, TaskCreateResponse, TaskPriority } from '@/types';
 
 type TaskCreateModalProps = {
@@ -91,7 +92,7 @@ export default function TaskCreateModal({ projectId, open, onClose, onCreated }:
     } catch (caughtError: unknown) {
       const message = (caughtError as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(message || '작업을 생성하지 못했습니다.');
-      console.error('Failed to create task:', caughtError);
+      reportUiError('Failed to create task:', caughtError);
     } finally {
       setSubmitting(false);
     }
