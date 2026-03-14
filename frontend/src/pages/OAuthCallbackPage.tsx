@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AxiosError } from 'axios';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import apiClient from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
 import { consumeOAuthState, type OAuthProvider } from '@/oauth/oauthLogin';
-import type { ApiErrorResponse, ApiResponse, LoginResponse } from '@/types';
+import { requestOAuthCodeLogin } from '@/oauth/oauthCodeLoginRequestCache';
+import type { ApiErrorResponse } from '@/types';
 
 type OAuthCallbackPageProps = {
   provider: OAuthProvider;
@@ -52,7 +52,7 @@ export default function OAuthCallbackPage({ provider }: OAuthCallbackPageProps) 
       }
 
       try {
-        const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/oauth/code/login', {
+        const response = await requestOAuthCodeLogin({
           provider,
           authorizationCode,
           codeVerifier: null,
@@ -63,7 +63,7 @@ export default function OAuthCallbackPage({ provider }: OAuthCallbackPageProps) 
           return;
         }
 
-        const { accessToken, user } = response.data.data;
+        const { accessToken, user } = response;
         login(accessToken, user);
         navigate('/workspaces', { replace: true });
       } catch (error) {

@@ -4,6 +4,7 @@ const OAUTH_STATE_STORAGE_PREFIX = 'easywork.oauth.state.';
 const GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const NAVER_AUTHORIZE_URL = 'https://nid.naver.com/oauth2.0/authorize';
 const GOOGLE_SCOPE = 'openid email profile';
+const consumedOAuthStateCache = new Map<OAuthProvider, string | null>();
 
 function getClientId(provider: OAuthProvider) {
   if (provider === 'GOOGLE') {
@@ -34,9 +35,14 @@ function getStateStorageKey(provider: OAuthProvider) {
 }
 
 export function consumeOAuthState(provider: OAuthProvider) {
+  if (consumedOAuthStateCache.has(provider)) {
+    return consumedOAuthStateCache.get(provider) ?? null;
+  }
+
   const storageKey = getStateStorageKey(provider);
   const state = window.sessionStorage.getItem(storageKey);
   window.sessionStorage.removeItem(storageKey);
+  consumedOAuthStateCache.set(provider, state);
   return state;
 }
 
@@ -64,7 +70,12 @@ export function startOAuthLogin(
   redirect: (url: string) => void = (url) => window.location.assign(url)
 ) {
   const state = createState();
+  consumedOAuthStateCache.delete(provider);
   window.sessionStorage.setItem(getStateStorageKey(provider), state);
   const authorizeUrl = buildOAuthAuthorizeUrl(provider, state);
   redirect(authorizeUrl);
+}
+
+export function resetOAuthStateCacheForTest() {
+  consumedOAuthStateCache.clear();
 }
