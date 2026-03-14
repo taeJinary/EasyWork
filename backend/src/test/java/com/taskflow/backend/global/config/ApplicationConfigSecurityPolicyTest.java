@@ -184,6 +184,8 @@ class ApplicationConfigSecurityPolicyTest {
         String content = read("src/main/resources/application-prod.yml");
 
         assertThat(content).contains("management:");
+        assertThat(content).contains("mail:");
+        assertThat(content).contains("enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}");
         assertThat(content).contains("include: health,info");
         assertThat(content).contains("show-details: never");
     }
@@ -218,6 +220,29 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("client-id: ${OAUTH_NAVER_CLIENT_ID");
         assertThat(content).contains("client-secret: ${OAUTH_NAVER_CLIENT_SECRET");
         assertThat(content).contains("redirect-uri: ${OAUTH_NAVER_REDIRECT_URI");
+    }
+
+    @Test
+    void applicationYmlDefinesEmailVerificationEnvironmentKeys() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("enabled: ${APP_EMAIL_VERIFICATION_ENABLED:false}");
+        assertThat(content).contains("from: ${APP_EMAIL_VERIFICATION_FROM:noreply@taskflow.local}");
+        assertThat(content).contains("subject-prefix: ${APP_EMAIL_VERIFICATION_SUBJECT_PREFIX:[TaskFlow]}");
+        assertThat(content).contains("verify-base-url: ${APP_EMAIL_VERIFICATION_VERIFY_BASE_URL:http://localhost:5173/verify-email}");
+    }
+
+    @Test
+    void applicationYmlDefinesMailInfrastructureEnvironmentKeys() throws IOException {
+        String content = read("src/main/resources/application.yml");
+
+        assertThat(content).contains("host: ${MAIL_HOST:}");
+        assertThat(content).contains("port: ${MAIL_PORT:587}");
+        assertThat(content).contains("username: ${MAIL_USERNAME:}");
+        assertThat(content).contains("password: ${MAIL_PASSWORD:}");
+        assertThat(content).contains("auth: ${MAIL_SMTP_AUTH:true}");
+        assertThat(content).contains("enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}");
+        assertThat(content).contains("enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}");
     }
 
     private String read(String relativePath) throws IOException {
