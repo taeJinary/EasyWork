@@ -3,6 +3,7 @@ import AppShell from '@/layouts/AppShell';
 import AuthLayout from '@/layouts/AuthLayout';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
+import OAuthCallbackPage from '@/pages/OAuthCallbackPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import DashboardPage from '@/pages/DashboardPage';
 import WorkspacesPage from '@/pages/WorkspacesPage';
@@ -21,6 +22,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/oauth/google/callback" element={<OAuthCallbackPage provider="GOOGLE" />} />
+      <Route path="/oauth/naver/callback" element={<OAuthCallbackPage provider="NAVER" />} />
 
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
