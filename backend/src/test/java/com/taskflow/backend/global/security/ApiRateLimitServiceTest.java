@@ -29,6 +29,7 @@ class ApiRateLimitServiceTest {
         apiRateLimitService = new ApiRateLimitService(
                 redisService,
                 3, 2, 60,
+                4, 60,
                 5, 60,
                 5, 60,
                 5, 60,
@@ -63,6 +64,18 @@ class ApiRateLimitServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void checkAuthOauthAuthorizeUrlUsesDedicatedIpQuota() {
+        when(redisService.increment("rate-limit:auth:oauth-authorize-url:ip:203.0.113.10")).thenReturn(5L);
+
+        assertThatThrownBy(() -> apiRateLimitService.checkAuthOauthAuthorizeUrl(requestWithIp("203.0.113.10")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
+
+        verify(redisService, never()).expire("rate-limit:auth:oauth-authorize-url:ip:203.0.113.10", Duration.ofSeconds(60));
     }
 
     @Test
@@ -103,6 +116,7 @@ class ApiRateLimitServiceTest {
         ApiRateLimitService service = new ApiRateLimitService(
                 redisService,
                 3, 2, 60,
+                5, 60,
                 5, 60,
                 5, 60,
                 5, 60,

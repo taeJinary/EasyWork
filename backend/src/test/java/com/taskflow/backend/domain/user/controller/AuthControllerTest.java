@@ -228,7 +228,7 @@ class AuthControllerTest {
         given(authService.oauthCodeLogin(eq(request), eq("client-nonce"))).willReturn(tokens);
 
         MvcResult result = mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
-                        .cookie(new Cookie(AuthHttpContract.OAUTH_STATE_COOKIE_NAME, "client-nonce"))
+                        .cookie(new Cookie(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX + "google_state", "client-nonce"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -245,7 +245,7 @@ class AuthControllerTest {
                         && header.contains("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)
                         && header.contains("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)
                         && header.contains("Max-Age=1209600"))
-                .anyMatch(header -> header.contains(AuthHttpContract.OAUTH_STATE_COOKIE_NAME + "=")
+                .anyMatch(header -> header.contains(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX + "google_state=")
                         && header.contains("Max-Age=0"));
 
         then(apiRateLimitService).should().checkAuthOauthCodeLogin(any());
@@ -270,8 +270,9 @@ class AuthControllerTest {
                 .andReturn();
 
         org.assertj.core.api.Assertions.assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
-                .anyMatch(header -> header.contains("oauth_state_nonce="));
+                .anyMatch(header -> header.contains("oauth_state_nonce_google_server-state="));
         then(authService).should().issueOAuthAuthorizeUrl(eq(OAuthProvider.GOOGLE), anyString());
+        then(apiRateLimitService).should().checkAuthOauthAuthorizeUrl(any());
     }
 
     @Test
@@ -286,6 +287,38 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.errorCode").value("OAUTH_TOKEN_INVALID"));
 
         then(authService).should(never()).oauthCodeLogin(any(), any());
+    }
+
+    @Test
+    void oauthCodeLoginReturnsUnauthorizedWhenNonceCookieForStateDoesNotMatch() throws Exception {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
+                        .cookie(new Cookie(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX + "google_other-state", "client-nonce"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("OAUTH_TOKEN_INVALID"));
+
+        then(authService).should(never()).oauthCodeLogin(any(), any());
+    }
+
+    @Test
+    void oauthAuthorizeUrlReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        OAuthAuthorizeUrlRequest request = new OAuthAuthorizeUrlRequest(OAuthProvider.GOOGLE);
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkAuthOauthAuthorizeUrl(any());
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(authService).should(never()).issueOAuthAuthorizeUrl(any(), any());
     }
 
     @Test

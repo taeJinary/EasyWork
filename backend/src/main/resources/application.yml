@@ -156,6 +156,10 @@ app:
         email:
           max-attempts: 10
         window-seconds: 60
+      oauth-authorize-url:
+        ip:
+          max-attempts: 30
+        window-seconds: 60
       token-reissue:
         ip:
           max-attempts: 60

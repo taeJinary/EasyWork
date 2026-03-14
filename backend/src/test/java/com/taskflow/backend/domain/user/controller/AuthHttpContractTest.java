@@ -25,8 +25,8 @@ class AuthHttpContractTest {
         assertThat(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME).isEqualTo("refresh_token");
         assertThat(AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH).isEqualTo("/api/v1/auth");
         assertThat(AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE).isEqualTo("Lax");
-        assertThat(AuthHttpContract.OAUTH_STATE_COOKIE_NAME).isEqualTo("oauth_state_nonce");
-        assertThat(AuthHttpContract.OAUTH_STATE_COOKIE_PATH).isEqualTo("/api/v1/auth");
+        assertThat(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX).isEqualTo("oauth_state_nonce_");
+        assertThat(AuthHttpContract.OAUTH_STATE_COOKIE_PATH).isEqualTo("/api/v1/auth/oauth/code/login");
         assertThat(AuthHttpContract.OAUTH_STATE_COOKIE_SAME_SITE).isEqualTo("Lax");
     }
 }

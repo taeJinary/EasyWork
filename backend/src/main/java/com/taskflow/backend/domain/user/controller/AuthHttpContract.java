@@ -16,8 +16,8 @@ public final class AuthHttpContract {
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
     public static final String REFRESH_TOKEN_COOKIE_PATH = "/api/v1/auth";
     public static final String REFRESH_TOKEN_COOKIE_SAME_SITE = "Lax";
-    public static final String OAUTH_STATE_COOKIE_NAME = "oauth_state_nonce";
-    public static final String OAUTH_STATE_COOKIE_PATH = "/api/v1/auth";
+    public static final String OAUTH_STATE_COOKIE_NAME_PREFIX = "oauth_state_nonce_";
+    public static final String OAUTH_STATE_COOKIE_PATH = "/api/v1/auth/oauth/code/login";
     public static final String OAUTH_STATE_COOKIE_SAME_SITE = "Lax";
 
     private AuthHttpContract() {

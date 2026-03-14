@@ -14,6 +14,7 @@ import com.taskflow.backend.domain.user.service.AuthService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
 import com.taskflow.backend.domain.user.service.model.ReissueTokens;
 import com.taskflow.backend.global.common.dto.ApiResponse;
+import com.taskflow.backend.global.common.enums.OAuthProvider;
 import com.taskflow.backend.global.error.BusinessException;
 import com.taskflow.backend.global.error.ErrorCode;
 import com.taskflow.backend.global.security.ApiRateLimitService;
@@ -28,11 +29,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -106,11 +109,14 @@ public class AuthController {
     @PostMapping(AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
     public ResponseEntity<ApiResponse<OAuthAuthorizeUrlResponse>> oauthAuthorizeUrl(
             @Valid @RequestBody OAuthAuthorizeUrlRequest request,
+            HttpServletRequest httpServletRequest,
             HttpServletResponse response
     ) {
+        apiRateLimitService.checkAuthOauthAuthorizeUrl(httpServletRequest);
         String clientNonce = UUID.randomUUID().toString();
         OAuthAuthorizeUrlResponse authorizeUrlResponse = authService.issueOAuthAuthorizeUrl(request.provider(), clientNonce);
-        addOAuthStateNonceCookie(response, clientNonce);
+        String state = extractOAuthState(authorizeUrlResponse.authorizeUrl());
+        addOAuthStateNonceCookie(response, request.provider(), state, clientNonce);
         return ResponseEntity.ok(ApiResponse.success(authorizeUrlResponse));
     }
 
@@ -121,7 +127,10 @@ public class AuthController {
             HttpServletResponse response
     ) {
         apiRateLimitService.checkAuthOauthCodeLogin(httpServletRequest);
-        String oauthStateNonce = resolveCookieValue(httpServletRequest, AuthHttpContract.OAUTH_STATE_COOKIE_NAME);
+        String oauthStateNonce = resolveCookieValue(
+                httpServletRequest,
+                oauthStateCookieName(request.provider(), request.state())
+        );
         if (!StringUtils.hasText(oauthStateNonce)) {
             throw new BusinessException(ErrorCode.OAUTH_TOKEN_INVALID);
         }
@@ -137,8 +146,19 @@ public class AuthController {
             );
             return ResponseEntity.ok(ApiResponse.success(loginResponse));
         } finally {
-            expireOAuthStateNonceCookie(response);
+            expireOAuthStateNonceCookie(response, request.provider(), request.state());
         }
+    }
+
+    private String extractOAuthState(String authorizeUrl) {
+        String state = UriComponentsBuilder.fromUriString(authorizeUrl)
+                .build()
+                .getQueryParams()
+                .getFirst("state");
+        if (!StringUtils.hasText(state)) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+        return state.trim();
     }
 
     @PostMapping(AuthHttpContract.TOKEN_REISSUE_PATH)
@@ -231,8 +251,13 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private void addOAuthStateNonceCookie(HttpServletResponse response, String oauthStateNonce) {
-        ResponseCookie cookie = ResponseCookie.from(AuthHttpContract.OAUTH_STATE_COOKIE_NAME, oauthStateNonce)
+    private void addOAuthStateNonceCookie(
+            HttpServletResponse response,
+            OAuthProvider provider,
+            String state,
+            String oauthStateNonce
+    ) {
+        ResponseCookie cookie = ResponseCookie.from(oauthStateCookieName(provider, state), oauthStateNonce)
                 .httpOnly(true)
                 .secure(refreshTokenCookieSecure)
                 .sameSite(AuthHttpContract.OAUTH_STATE_COOKIE_SAME_SITE)
@@ -242,8 +267,12 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private void expireOAuthStateNonceCookie(HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from(AuthHttpContract.OAUTH_STATE_COOKIE_NAME, "")
+    private void expireOAuthStateNonceCookie(
+            HttpServletResponse response,
+            OAuthProvider provider,
+            String state
+    ) {
+        ResponseCookie cookie = ResponseCookie.from(oauthStateCookieName(provider, state), "")
                 .httpOnly(true)
                 .secure(refreshTokenCookieSecure)
                 .sameSite(AuthHttpContract.OAUTH_STATE_COOKIE_SAME_SITE)
@@ -251,6 +280,13 @@ public class AuthController {
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private String oauthStateCookieName(OAuthProvider provider, String state) {
+        return AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX
+                + provider.name().toLowerCase(Locale.ROOT)
+                + "_"
+                + state.trim();
     }
 }
 
