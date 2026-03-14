@@ -15,11 +15,19 @@ function getClientId(provider: OAuthProvider) {
 }
 
 function getRedirectUri(provider: OAuthProvider) {
-  const callbackPath = provider === 'GOOGLE'
-    ? '/oauth/google/callback'
-    : '/oauth/naver/callback';
+  if (provider === 'GOOGLE') {
+    return (
+      import.meta.env.VITE_OAUTH_GOOGLE_REDIRECT_URI?.trim()
+      || __OAUTH_GOOGLE_REDIRECT_URI__?.trim()
+      || `${window.location.origin}/oauth/google/callback`
+    );
+  }
 
-  return `${window.location.origin}${callbackPath}`;
+  return (
+    import.meta.env.VITE_OAUTH_NAVER_REDIRECT_URI?.trim()
+    || __OAUTH_NAVER_REDIRECT_URI__?.trim()
+    || `${window.location.origin}/oauth/naver/callback`
+  );
 }
 
 function createState() {
