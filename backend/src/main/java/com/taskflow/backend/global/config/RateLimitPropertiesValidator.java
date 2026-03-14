@@ -13,6 +13,8 @@ public class RateLimitPropertiesValidator {
     private final int authLoginIpMaxAttempts;
     private final int authLoginEmailMaxAttempts;
     private final long authLoginWindowSeconds;
+    private final int authOauthAuthorizeUrlIpMaxAttempts;
+    private final long authOauthAuthorizeUrlWindowSeconds;
     private final int authTokenReissueIpMaxAttempts;
     private final long authTokenReissueWindowSeconds;
     private final int authOauthCodeLoginIpMaxAttempts;
@@ -38,6 +40,8 @@ public class RateLimitPropertiesValidator {
             @Value("${app.rate-limit.auth.login.ip.max-attempts:30}") int authLoginIpMaxAttempts,
             @Value("${app.rate-limit.auth.login.email.max-attempts:10}") int authLoginEmailMaxAttempts,
             @Value("${app.rate-limit.auth.login.window-seconds:60}") long authLoginWindowSeconds,
+            @Value("${app.rate-limit.auth.oauth-authorize-url.ip.max-attempts:30}") int authOauthAuthorizeUrlIpMaxAttempts,
+            @Value("${app.rate-limit.auth.oauth-authorize-url.window-seconds:60}") long authOauthAuthorizeUrlWindowSeconds,
             @Value("${app.rate-limit.auth.token-reissue.ip.max-attempts:60}") int authTokenReissueIpMaxAttempts,
             @Value("${app.rate-limit.auth.token-reissue.window-seconds:60}") long authTokenReissueWindowSeconds,
             @Value("${app.rate-limit.auth.oauth-code-login.ip.max-attempts:30}") int authOauthCodeLoginIpMaxAttempts,
@@ -62,6 +66,8 @@ public class RateLimitPropertiesValidator {
         this.authLoginIpMaxAttempts = authLoginIpMaxAttempts;
         this.authLoginEmailMaxAttempts = authLoginEmailMaxAttempts;
         this.authLoginWindowSeconds = authLoginWindowSeconds;
+        this.authOauthAuthorizeUrlIpMaxAttempts = authOauthAuthorizeUrlIpMaxAttempts;
+        this.authOauthAuthorizeUrlWindowSeconds = authOauthAuthorizeUrlWindowSeconds;
         this.authTokenReissueIpMaxAttempts = authTokenReissueIpMaxAttempts;
         this.authTokenReissueWindowSeconds = authTokenReissueWindowSeconds;
         this.authOauthCodeLoginIpMaxAttempts = authOauthCodeLoginIpMaxAttempts;
@@ -95,6 +101,11 @@ public class RateLimitPropertiesValidator {
                 authLoginEmailMaxAttempts,
                 MAX_MAX_ATTEMPTS,
                 "app.rate-limit.auth.login.email.max-attempts"
+        );
+        requirePositiveAndAtMost(
+                authOauthAuthorizeUrlIpMaxAttempts,
+                MAX_MAX_ATTEMPTS,
+                "app.rate-limit.auth.oauth-authorize-url.ip.max-attempts"
         );
         requirePositiveAndAtMost(
                 authTokenReissueIpMaxAttempts,
@@ -151,6 +162,11 @@ public class RateLimitPropertiesValidator {
                 authLoginWindowSeconds,
                 MAX_WINDOW_SECONDS,
                 "app.rate-limit.auth.login.window-seconds"
+        );
+        requirePositiveAndAtMost(
+                authOauthAuthorizeUrlWindowSeconds,
+                MAX_WINDOW_SECONDS,
+                "app.rate-limit.auth.oauth-authorize-url.window-seconds"
         );
         requirePositiveAndAtMost(
                 authTokenReissueWindowSeconds,

@@ -13,6 +13,7 @@ public record OAuthCodeLoginRequest(
 
         String codeVerifier,
 
+        @NotBlank(message = "OAuth state is required.")
         String state
 ) {
 }

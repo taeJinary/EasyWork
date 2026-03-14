@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskflow.backend.domain.user.dto.request.LoginRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationResendRequest;
 import com.taskflow.backend.domain.user.dto.request.EmailVerificationVerifyRequest;
+import com.taskflow.backend.domain.user.dto.request.OAuthAuthorizeUrlRequest;
 import com.taskflow.backend.domain.user.dto.request.OAuthCodeLoginRequest;
 import com.taskflow.backend.domain.user.dto.request.SignupRequest;
 import com.taskflow.backend.domain.user.dto.response.AuthUserResponse;
+import com.taskflow.backend.domain.user.dto.response.OAuthAuthorizeUrlResponse;
 import com.taskflow.backend.domain.user.dto.response.SignupResponse;
 import com.taskflow.backend.domain.user.service.AuthService;
 import com.taskflow.backend.domain.user.service.model.LoginTokens;
@@ -23,9 +25,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -211,7 +216,7 @@ class AuthControllerTest {
 
     @Test
     void oauthCodeLoginReturnsTokenPayload() throws Exception {
-        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, null);
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
         LoginTokens tokens = new LoginTokens(
                 "oauth-access-token",
                 "oauth-refresh-token",
@@ -220,24 +225,100 @@ class AuthControllerTest {
                 new AuthUserResponse(2L, "oauth@example.com", "oauth-user", null, "ROLE_USER")
         );
 
-        given(authService.oauthCodeLogin(eq(request))).willReturn(tokens);
+        given(authService.oauthCodeLogin(eq(request), eq("client-nonce"))).willReturn(tokens);
 
-        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
+        MvcResult result = mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
+                        .cookie(new Cookie(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX + "google_state", "client-nonce"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Set-Cookie", containsString(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")))
-                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
-                .andExpect(header().string("Set-Cookie", containsString("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)))
-                .andExpect(header().string("Set-Cookie", containsString("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)))
-                .andExpect(header().string("Set-Cookie", containsString("Max-Age=1209600")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("oauth-access-token"))
                 .andExpect(jsonPath("$.data.expiresIn").value(1800000L))
                 .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
-                .andExpect(jsonPath("$.data.user.userId").value(2L));
+                .andExpect(jsonPath("$.data.user.userId").value(2L))
+                .andReturn();
+
+        org.assertj.core.api.Assertions.assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .anyMatch(header -> header.contains(AuthHttpContract.REFRESH_TOKEN_COOKIE_NAME + "=")
+                        && header.contains("HttpOnly")
+                        && header.contains("Path=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_PATH)
+                        && header.contains("SameSite=" + AuthHttpContract.REFRESH_TOKEN_COOKIE_SAME_SITE)
+                        && header.contains("Max-Age=1209600"))
+                .anyMatch(header -> header.contains(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX + "google_state=")
+                        && header.contains("Max-Age=0"));
 
         then(apiRateLimitService).should().checkAuthOauthCodeLogin(any());
+    }
+
+    @Test
+    void oauthAuthorizeUrlReturnsPayload() throws Exception {
+        OAuthAuthorizeUrlRequest request = new OAuthAuthorizeUrlRequest(OAuthProvider.GOOGLE);
+        OAuthAuthorizeUrlResponse response = new OAuthAuthorizeUrlResponse(
+                "https://accounts.google.com/o/oauth2/v2/auth?state=server-state"
+        );
+
+        given(authService.issueOAuthAuthorizeUrl(eq(OAuthProvider.GOOGLE), anyString())).willReturn(response);
+
+        MvcResult result = mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.authorizeUrl")
+                        .value("https://accounts.google.com/o/oauth2/v2/auth?state=server-state"))
+                .andReturn();
+
+        org.assertj.core.api.Assertions.assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .anyMatch(header -> header.contains("oauth_state_nonce_google_server-state="));
+        then(authService).should().issueOAuthAuthorizeUrl(eq(OAuthProvider.GOOGLE), anyString());
+        then(apiRateLimitService).should().checkAuthOauthAuthorizeUrl(any());
+    }
+
+    @Test
+    void oauthCodeLoginReturnsUnauthorizedWhenOauthStateNonceCookieIsMissing() throws Exception {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("OAUTH_TOKEN_INVALID"));
+
+        then(authService).should(never()).oauthCodeLogin(any(), any());
+    }
+
+    @Test
+    void oauthCodeLoginReturnsUnauthorizedWhenNonceCookieForStateDoesNotMatch() throws Exception {
+        OAuthCodeLoginRequest request = new OAuthCodeLoginRequest(OAuthProvider.GOOGLE, "auth-code", null, "state");
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_CODE_LOGIN_PATH)
+                        .cookie(new Cookie(AuthHttpContract.OAUTH_STATE_COOKIE_NAME_PREFIX + "google_other-state", "client-nonce"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("OAUTH_TOKEN_INVALID"));
+
+        then(authService).should(never()).oauthCodeLogin(any(), any());
+    }
+
+    @Test
+    void oauthAuthorizeUrlReturnsTooManyRequestsWhenRateLimited() throws Exception {
+        OAuthAuthorizeUrlRequest request = new OAuthAuthorizeUrlRequest(OAuthProvider.GOOGLE);
+        doThrow(new BusinessException(ErrorCode.TOO_MANY_REQUESTS))
+                .when(apiRateLimitService)
+                .checkAuthOauthAuthorizeUrl(any());
+
+        mockMvc.perform(post(AuthHttpContract.AUTH_BASE_PATH + AuthHttpContract.OAUTH_AUTHORIZE_URL_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("TOO_MANY_REQUESTS"));
+
+        then(authService).should(never()).issueOAuthAuthorizeUrl(any(), any());
     }
 
     @Test

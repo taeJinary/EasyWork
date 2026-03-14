@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [oauthLoadingProvider, setOauthLoadingProvider] = useState<'GOOGLE' | 'NAVER' | null>(null);
   const [requiresVerification, setRequiresVerification] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
@@ -65,14 +66,17 @@ export default function LoginPage() {
     }
   };
 
-  const handleOAuthLogin = (provider: 'GOOGLE' | 'NAVER') => {
+  const handleOAuthLogin = async (provider: 'GOOGLE' | 'NAVER') => {
     setError('');
     setInfo('');
+    setOauthLoadingProvider(provider);
 
     try {
-      startOAuthLogin(provider);
+      await startOAuthLogin(provider);
     } catch {
       setError('소셜 로그인 설정이 준비되지 않았습니다. 관리자에게 문의하세요.');
+    } finally {
+      setOauthLoadingProvider(null);
     }
   };
 
@@ -196,23 +200,27 @@ export default function LoginPage() {
         <div className="flex flex-col gap-[var(--spacing-sm)]">
           <button
             type="button"
-            onClick={() => handleOAuthLogin('GOOGLE')}
+            onClick={() => void handleOAuthLogin('GOOGLE')}
+            disabled={oauthLoadingProvider !== null}
             className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
+            disabled:opacity-50 disabled:cursor-not-allowed
           ">
-            Google로 계속하기
+            {oauthLoadingProvider === 'GOOGLE' ? 'Google 로그인 연결 중...' : 'Google로 계속하기'}
           </button>
           <button
             type="button"
-            onClick={() => handleOAuthLogin('NAVER')}
+            onClick={() => void handleOAuthLogin('NAVER')}
+            disabled={oauthLoadingProvider !== null}
             className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
+            disabled:opacity-50 disabled:cursor-not-allowed
           ">
-            네이버로 계속하기
+            {oauthLoadingProvider === 'NAVER' ? '네이버 로그인 연결 중...' : '네이버로 계속하기'}
           </button>
         </div>
       </div>
