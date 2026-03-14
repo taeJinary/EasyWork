@@ -16,9 +16,6 @@ public class OAuthPropertiesValidator {
     private final String googleClientId;
     private final String googleClientSecret;
     private final String googleRedirectUri;
-    private final String kakaoClientId;
-    private final String kakaoClientSecret;
-    private final String kakaoRedirectUri;
     private final String naverClientId;
     private final String naverClientSecret;
     private final String naverRedirectUri;
@@ -28,9 +25,6 @@ public class OAuthPropertiesValidator {
             @Value("${app.oauth.google.client-id:}") String googleClientId,
             @Value("${app.oauth.google.client-secret:}") String googleClientSecret,
             @Value("${app.oauth.google.redirect-uri:}") String googleRedirectUri,
-            @Value("${app.oauth.kakao.client-id:}") String kakaoClientId,
-            @Value("${app.oauth.kakao.client-secret:}") String kakaoClientSecret,
-            @Value("${app.oauth.kakao.redirect-uri:}") String kakaoRedirectUri,
             @Value("${app.oauth.naver.client-id:}") String naverClientId,
             @Value("${app.oauth.naver.client-secret:}") String naverClientSecret,
             @Value("${app.oauth.naver.redirect-uri:}") String naverRedirectUri
@@ -39,9 +33,6 @@ public class OAuthPropertiesValidator {
         this.googleClientId = googleClientId;
         this.googleClientSecret = googleClientSecret;
         this.googleRedirectUri = googleRedirectUri;
-        this.kakaoClientId = kakaoClientId;
-        this.kakaoClientSecret = kakaoClientSecret;
-        this.kakaoRedirectUri = kakaoRedirectUri;
         this.naverClientId = naverClientId;
         this.naverClientSecret = naverClientSecret;
         this.naverRedirectUri = naverRedirectUri;
@@ -54,7 +45,6 @@ public class OAuthPropertiesValidator {
         }
 
         validateProvider("google", googleClientId, googleClientSecret, googleRedirectUri);
-        validateProvider("kakao", kakaoClientId, kakaoClientSecret, kakaoRedirectUri);
         validateProvider("naver", naverClientId, naverClientSecret, naverRedirectUri);
     }
 

@@ -34,6 +34,18 @@ describe('LoginPage', () => {
     vi.clearAllMocks();
   });
 
+  it('shows only google and naver oauth entry points', () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('button', { name: 'Google로 계속하기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '네이버로 계속하기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '카카오로 계속하기' })).not.toBeInTheDocument();
+  });
+
   it('shows resend action when email is not verified', async () => {
     mockPost.mockRejectedValueOnce({
       response: {

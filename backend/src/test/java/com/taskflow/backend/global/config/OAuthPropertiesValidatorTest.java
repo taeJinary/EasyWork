@@ -17,9 +17,6 @@ class OAuthPropertiesValidatorTest {
                 "",
                 "",
                 "",
-                "",
-                "",
-                "",
                 ""
         );
 
@@ -33,9 +30,6 @@ class OAuthPropertiesValidatorTest {
                 "",
                 "google-secret",
                 "https://app.example.com/oauth/google",
-                "kakao-id",
-                "kakao-secret",
-                "https://app.example.com/oauth/kakao",
                 "naver-id",
                 "naver-secret",
                 "https://app.example.com/oauth/naver"
@@ -53,9 +47,6 @@ class OAuthPropertiesValidatorTest {
                 "google-id",
                 "google-secret",
                 "http://app.example.com/oauth/google",
-                "kakao-id",
-                "kakao-secret",
-                "https://app.example.com/oauth/kakao",
                 "naver-id",
                 "naver-secret",
                 "https://app.example.com/oauth/naver"
@@ -73,9 +64,6 @@ class OAuthPropertiesValidatorTest {
                 "google-id",
                 "google-secret",
                 "https://app.example.com/oauth/google",
-                "kakao-id",
-                "kakao-secret",
-                "https://app.example.com/oauth/kakao",
                 "naver-id",
                 "naver-secret",
                 "https://localhost:5173/oauth/naver"
@@ -87,23 +75,20 @@ class OAuthPropertiesValidatorTest {
     }
 
     @Test
-    void prodProfileRejectsWhitespacePaddedKakaoClientSecret() {
+    void prodProfileRejectsWhitespacePaddedNaverClientSecret() {
         OAuthPropertiesValidator validator = new OAuthPropertiesValidator(
                 environment("prod"),
                 "google-id",
                 "google-secret",
                 "https://app.example.com/oauth/google",
-                "kakao-id",
-                " kakao-secret ",
-                "https://app.example.com/oauth/kakao",
                 "naver-id",
-                "naver-secret",
+                " naver-secret ",
                 "https://app.example.com/oauth/naver"
         );
 
         assertThatThrownBy(validator::validateAtStartup)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("app.oauth.kakao.client-secret");
+                .hasMessageContaining("app.oauth.naver.client-secret");
     }
 
     @Test
@@ -113,9 +98,6 @@ class OAuthPropertiesValidatorTest {
                 "google-id",
                 "google-secret",
                 "https://app.example.com/oauth/google",
-                "kakao-id",
-                "kakao-secret",
-                "https://app.example.com/oauth/kakao",
                 "naver-id",
                 "naver-secret",
                 "https://app.example.com/oauth/naver"
@@ -131,9 +113,6 @@ class OAuthPropertiesValidatorTest {
 
         OAuthPropertiesValidator validator = new OAuthPropertiesValidator(
                 environment,
-                "",
-                "",
-                "",
                 "",
                 "",
                 "",

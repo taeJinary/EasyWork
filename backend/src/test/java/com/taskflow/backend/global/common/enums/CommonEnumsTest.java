@@ -69,7 +69,7 @@ class CommonEnumsTest {
     @Test
     void oauthProviderEnumMatchesSpecification() {
         assertThat(OAuthProvider.values())
-                .containsExactly(OAuthProvider.GOOGLE, OAuthProvider.KAKAO, OAuthProvider.NAVER);
+                .containsExactly(OAuthProvider.GOOGLE, OAuthProvider.NAVER);
     }
 
     @Test

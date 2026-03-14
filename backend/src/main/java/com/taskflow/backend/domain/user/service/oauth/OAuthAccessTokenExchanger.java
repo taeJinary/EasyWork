@@ -19,7 +19,6 @@ public class OAuthAccessTokenExchanger {
     private final RestClient restClient;
 
     private final ProviderTokenConfig googleConfig;
-    private final ProviderTokenConfig kakaoConfig;
     private final ProviderTokenConfig naverConfig;
 
     public OAuthAccessTokenExchanger(
@@ -28,10 +27,6 @@ public class OAuthAccessTokenExchanger {
             @Value("${app.oauth.google.client-id:}") String googleClientId,
             @Value("${app.oauth.google.client-secret:}") String googleClientSecret,
             @Value("${app.oauth.google.redirect-uri:}") String googleRedirectUri,
-            @Value("${app.oauth.kakao.token-uri:https://kauth.kakao.com/oauth/token}") String kakaoTokenUri,
-            @Value("${app.oauth.kakao.client-id:}") String kakaoClientId,
-            @Value("${app.oauth.kakao.client-secret:}") String kakaoClientSecret,
-            @Value("${app.oauth.kakao.redirect-uri:}") String kakaoRedirectUri,
             @Value("${app.oauth.naver.token-uri:https://nid.naver.com/oauth2.0/token}") String naverTokenUri,
             @Value("${app.oauth.naver.client-id:}") String naverClientId,
             @Value("${app.oauth.naver.client-secret:}") String naverClientSecret,
@@ -39,7 +34,6 @@ public class OAuthAccessTokenExchanger {
     ) {
         this.restClient = restClientBuilder.build();
         this.googleConfig = new ProviderTokenConfig(googleTokenUri, googleClientId, googleClientSecret, googleRedirectUri);
-        this.kakaoConfig = new ProviderTokenConfig(kakaoTokenUri, kakaoClientId, kakaoClientSecret, kakaoRedirectUri);
         this.naverConfig = new ProviderTokenConfig(naverTokenUri, naverClientId, naverClientSecret, naverRedirectUri);
     }
 
@@ -91,7 +85,6 @@ public class OAuthAccessTokenExchanger {
     private ProviderTokenConfig resolveConfig(OAuthProvider provider) {
         return switch (provider) {
             case GOOGLE -> googleConfig;
-            case KAKAO -> kakaoConfig;
             case NAVER -> naverConfig;
         };
     }

@@ -214,9 +214,9 @@ class ApplicationConfigSecurityPolicyTest {
         assertThat(content).contains("client-id: ${OAUTH_GOOGLE_CLIENT_ID");
         assertThat(content).contains("client-secret: ${OAUTH_GOOGLE_CLIENT_SECRET");
         assertThat(content).contains("redirect-uri: ${OAUTH_GOOGLE_REDIRECT_URI");
-        assertThat(content).contains("client-id: ${OAUTH_KAKAO_CLIENT_ID");
-        assertThat(content).contains("client-secret: ${OAUTH_KAKAO_CLIENT_SECRET");
-        assertThat(content).contains("redirect-uri: ${OAUTH_KAKAO_REDIRECT_URI");
+        assertThat(content).doesNotContain("OAUTH_KAKAO_CLIENT_ID");
+        assertThat(content).doesNotContain("OAUTH_KAKAO_CLIENT_SECRET");
+        assertThat(content).doesNotContain("OAUTH_KAKAO_REDIRECT_URI");
         assertThat(content).contains("client-id: ${OAUTH_NAVER_CLIENT_ID");
         assertThat(content).contains("client-secret: ${OAUTH_NAVER_CLIENT_SECRET");
         assertThat(content).contains("redirect-uri: ${OAUTH_NAVER_REDIRECT_URI");
