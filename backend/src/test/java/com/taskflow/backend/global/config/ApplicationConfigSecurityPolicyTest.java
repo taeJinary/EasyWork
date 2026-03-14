@@ -65,6 +65,16 @@ class ApplicationConfigSecurityPolicyTest {
     }
 
     @Test
+    void applicationTestYmlAlignsOAuthProvidersAndCallbackUris() throws IOException {
+        String content = read("src/main/resources/application-test.yml");
+
+        assertThat(content).contains("redirect-uri: http://localhost:5173/oauth/google/callback");
+        assertThat(content).contains("redirect-uri: http://localhost:5173/oauth/naver/callback");
+        assertThat(content).doesNotContain("kakao:");
+        assertThat(content).doesNotContain("oauth/kakao");
+    }
+
+    @Test
     void applicationYmlDefinesRetryQueueMaintenancePolicy() throws IOException {
         String content = read("src/main/resources/application.yml");
 
