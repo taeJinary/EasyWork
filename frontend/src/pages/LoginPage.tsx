@@ -3,6 +3,7 @@ import type { AxiosError } from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import apiClient from '@/api/client';
+import { startOAuthLogin } from '@/oauth/oauthLogin';
 import type { ApiErrorResponse, ApiResponse, LoginResponse } from '@/types';
 
 export default function LoginPage() {
@@ -61,6 +62,17 @@ export default function LoginPage() {
       setError(axiosError.response?.data?.message ?? '인증 메일 재발송에 실패했습니다.');
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleOAuthLogin = (provider: 'GOOGLE' | 'NAVER') => {
+    setError('');
+    setInfo('');
+
+    try {
+      startOAuthLogin(provider);
+    } catch {
+      setError('소셜 로그인 설정이 준비되지 않았습니다. 관리자에게 문의하세요.');
     }
   };
 
@@ -182,14 +194,20 @@ export default function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-[var(--spacing-sm)]">
-          <button className="
+          <button
+            type="button"
+            onClick={() => handleOAuthLogin('GOOGLE')}
+            className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]
           ">
             Google로 계속하기
           </button>
-          <button className="
+          <button
+            type="button"
+            onClick={() => handleOAuthLogin('NAVER')}
+            className="
             w-full h-[36px] border border-[var(--color-border)] rounded-[var(--radius-sm)]
             bg-[var(--color-surface)] text-[var(--text-sm)] text-[var(--color-text-primary)]
             cursor-pointer hover:bg-[var(--color-surface-muted)]

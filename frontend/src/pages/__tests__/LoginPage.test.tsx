@@ -8,11 +8,16 @@ import { apiOk } from '@/test/helpers';
 const mockPost = vi.fn();
 const mockLogin = vi.fn();
 const mockNavigate = vi.fn();
+const mockStartOAuthLogin = vi.fn();
 
 vi.mock('@/api/client', () => ({
   default: {
     post: (...args: unknown[]) => mockPost(...args),
   },
+}));
+
+vi.mock('@/oauth/oauthLogin', () => ({
+  startOAuthLogin: (...args: unknown[]) => mockStartOAuthLogin(...args),
 }));
 
 vi.mock('@/stores/authStore', () => ({
@@ -44,6 +49,32 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'Google로 계속하기' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '네이버로 계속하기' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '카카오로 계속하기' })).not.toBeInTheDocument();
+  });
+
+  it('starts google oauth flow when Google button is clicked', async () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Google로 계속하기' }));
+
+    expect(mockStartOAuthLogin).toHaveBeenCalledWith('GOOGLE');
+  });
+
+  it('starts naver oauth flow when Naver button is clicked', async () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '네이버로 계속하기' }));
+
+    expect(mockStartOAuthLogin).toHaveBeenCalledWith('NAVER');
   });
 
   it('shows resend action when email is not verified', async () => {
