@@ -31,7 +31,7 @@ class OAuthAccessTokenExchangerTest {
                 .andExpect(content().string(containsString("code=google-auth-code")))
                 .andExpect(content().string(containsString("client_id=google-client-id")))
                 .andExpect(content().string(containsString("client_secret=google-client-secret")))
-                .andExpect(content().string(containsString("redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Foauth%2Fgoogle")))
+                .andExpect(content().string(containsString("redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Foauth%2Fgoogle%2Fcallback")))
                 .andRespond(withSuccess(
                         """
                         {"access_token":"google-access-token"}
@@ -114,11 +114,11 @@ class OAuthAccessTokenExchangerTest {
                 "https://google.test/token",
                 "google-client-id",
                 "google-client-secret",
-                "http://localhost:5173/oauth/google",
+                "http://localhost:5173/oauth/google/callback",
                 "https://naver.test/token",
                 "naver-client-id",
                 "naver-client-secret",
-                "http://localhost:5173/oauth/naver"
+                "http://localhost:5173/oauth/naver/callback"
         );
     }
 }
