@@ -504,6 +504,32 @@ describe('AccountSettingsPage', () => {
     expect(within(diagnostics).getByText('Firebase 설정: 준비됨')).toBeInTheDocument();
   });
 
+  it('re-checks web push diagnostics after environment changes', async () => {
+    mockIsWebPushConfigured.mockReturnValue(false);
+    mockGetMissingWebPushConfigKeys.mockReturnValue(['VITE_FIREBASE_API_KEY']);
+    setNotificationPermission('denied');
+
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Firebase 설정: 누락')).toBeInTheDocument();
+    expect(screen.getByText('누락된 설정: VITE_FIREBASE_API_KEY')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
+
+    mockIsWebPushConfigured.mockReturnValue(true);
+    mockGetMissingWebPushConfigKeys.mockReturnValue([]);
+    setNotificationPermission('granted');
+
+    await user.click(screen.getByRole('button', { name: '환경 다시 확인' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Firebase 설정: 준비됨')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('누락된 설정: VITE_FIREBASE_API_KEY')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeEnabled();
+  });
+
   it('disables web registration when secure context is missing', async () => {
     setSecureContext(false);
 
