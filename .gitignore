@@ -45,3 +45,4 @@ Task.md
 review.md
 storage/
 .run-logs/
+.gradle-user-home-tmp/
