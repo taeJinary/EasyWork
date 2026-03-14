@@ -103,8 +103,9 @@ describe('AccountSettingsPage', () => {
     });
   });
 
-  it('disables change button when fields are empty', () => {
+  it('disables change button when fields are empty', async () => {
     renderPage();
+    await screen.findByText('등록된 디바이스가 없습니다.');
     const changeBtn = screen.getByRole('button', { name: '비밀번호 변경' });
     expect(changeBtn).toBeDisabled();
   });
@@ -485,6 +486,7 @@ describe('AccountSettingsPage', () => {
     mockGetMissingWebPushConfigKeys.mockReturnValue(['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_VAPID_KEY']);
 
     renderPage();
+    await screen.findByText('등록된 디바이스가 없습니다.');
 
     expect(screen.getByRole('button', { name: '디바이스 등록' })).toBeDisabled();
     expect(screen.getByText('웹 푸시 설정이 준비되지 않아 현재 브라우저 디바이스를 등록할 수 없습니다.')).toBeInTheDocument();
