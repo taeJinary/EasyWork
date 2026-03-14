@@ -12,7 +12,9 @@ export default defineConfig(({ mode }) => {
     envDir: '..',
     define: {
       __OAUTH_GOOGLE_CLIENT_ID__: JSON.stringify(env.OAUTH_GOOGLE_CLIENT_ID ?? ''),
+      __OAUTH_GOOGLE_REDIRECT_URI__: JSON.stringify(env.OAUTH_GOOGLE_REDIRECT_URI ?? ''),
       __OAUTH_NAVER_CLIENT_ID__: JSON.stringify(env.OAUTH_NAVER_CLIENT_ID ?? ''),
+      __OAUTH_NAVER_REDIRECT_URI__: JSON.stringify(env.OAUTH_NAVER_REDIRECT_URI ?? ''),
     },
     plugins: [react(), tailwindcss()],
     resolve: {
