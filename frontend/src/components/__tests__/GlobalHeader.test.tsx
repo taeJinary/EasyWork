@@ -124,4 +124,123 @@ describe('GlobalHeader', () => {
 
     expect(screen.getByPlaceholderText('검색...')).toBeInTheDocument();
   });
+
+  it('navigates to the global search page when submitting a query', async () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <GlobalHeader />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    const searchInput = screen.getByPlaceholderText('검색...');
+
+    await user.type(searchInput, 'dd{enter}');
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/search?q=dd');
+  });
+
+  it('shows inline preview results under the search box while typing', async () => {
+    mockGet.mockImplementation((url: string, config?: { params?: Record<string, unknown> }) => {
+      if (url === '/notifications/unread-count') {
+        return Promise.resolve(apiOk({ unreadCount: 0 }));
+      }
+
+      if (url === '/projects') {
+        expect(config).toEqual({ params: { page: 0, size: 5, keyword: 'dd' } });
+        return Promise.resolve(
+          apiOk({
+            content: [
+              {
+                projectId: 10,
+                name: 'dd project',
+                description: 'target project',
+                role: 'OWNER',
+                memberCount: 2,
+                taskCount: 3,
+                doneTaskCount: 1,
+                progressRate: 33,
+                updatedAt: '2026-03-15T09:00:00',
+              },
+            ],
+            page: 0,
+            size: 5,
+            totalElements: 1,
+            totalPages: 1,
+            first: true,
+            last: true,
+          })
+        );
+      }
+
+      if (url === '/workspaces') {
+        return Promise.resolve(
+          apiOk({
+            content: [
+              {
+                workspaceId: 2,
+                name: 'dd workspace',
+                description: 'target workspace',
+                myRole: 'OWNER',
+                memberCount: 4,
+                updatedAt: '2026-03-15T08:00:00',
+              },
+            ],
+            page: 0,
+            size: 20,
+            totalElements: 1,
+            totalPages: 1,
+            first: true,
+            last: true,
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <GlobalHeader />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    const searchInput = screen.getByPlaceholderText('검색...');
+
+    await user.type(searchInput, 'dd');
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'dd project' })).toHaveAttribute(
+        'href',
+        '/projects/10/board'
+      );
+    });
+
+    expect(screen.getByRole('link', { name: 'dd workspace' })).toHaveAttribute(
+      'href',
+      '/workspaces/2'
+    );
+  });
+
+  it('does not render the workspace tab button next to the brand', () => {
+    render(
+      <MemoryRouter>
+        <GlobalHeader />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('button', { name: /워크스페이스/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the header above sidebar overlays for the search preview layer', () => {
+    render(
+      <MemoryRouter>
+        <GlobalHeader />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('banner')).toHaveClass('z-[60]');
+  });
 });

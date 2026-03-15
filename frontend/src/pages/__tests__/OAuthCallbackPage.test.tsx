@@ -58,7 +58,7 @@ describe('OAuthCallbackPage', () => {
     resetOAuthCodeLoginRequestCacheForTest();
   });
 
-  it('logs in with google authorization code and redirects to workspaces', async () => {
+  it('logs in with google authorization code and redirects to dashboard', async () => {
     mockPost.mockResolvedValue(
       apiOk({
         accessToken: 'oauth-token',
@@ -91,7 +91,7 @@ describe('OAuthCallbackPage', () => {
       profileImg: null,
       role: 'USER',
     });
-    expect(mockNavigate).toHaveBeenCalledWith('/workspaces', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
   });
 
   it('shows error when backend rejects invalid naver state', async () => {

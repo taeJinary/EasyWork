@@ -63,7 +63,7 @@ export default function OAuthCallbackPage({ provider }: OAuthCallbackPageProps) 
 
         const { accessToken, user } = response;
         login(accessToken, user);
-        navigate('/workspaces', { replace: true });
+        navigate('/dashboard', { replace: true });
       } catch (error) {
         if (cancelled) {
           return;

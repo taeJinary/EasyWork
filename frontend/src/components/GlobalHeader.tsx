@@ -1,15 +1,267 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, LogOut, Menu, Plus, Search, Settings, User } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Bell, LogOut, Menu, Plus, Search, Settings, User } from 'lucide-react';
 import apiClient from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
 import { useUiStore } from '@/stores/uiStore';
-import type { ApiResponse, NotificationUnreadCount } from '@/types';
+import type {
+  ApiResponse,
+  NotificationUnreadCount,
+  ProjectListResponse,
+  WorkspaceListItemResponse,
+  WorkspaceListResponse,
+} from '@/types';
+
+type SearchPreviewProject = {
+  id: number;
+  name: string;
+  description?: string;
+};
+
+type SearchPreviewWorkspace = {
+  id: number;
+  name: string;
+  description?: string;
+};
+
+function normalizeWorkspace(workspace: WorkspaceListItemResponse): SearchPreviewWorkspace {
+  return {
+    id: workspace.workspaceId,
+    name: workspace.name,
+    description: workspace.description,
+  };
+}
+
+function GlobalSearchForm({
+  initialQuery,
+}: {
+  initialQuery: string;
+}) {
+  const navigate = useNavigate();
+  const searchRef = useRef<HTMLFormElement>(null);
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [previewProjects, setPreviewProjects] = useState<SearchPreviewProject[]>([]);
+  const [previewWorkspaces, setPreviewWorkspaces] = useState<SearchPreviewWorkspace[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setPreviewOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const normalizedQuery = searchQuery.trim();
+
+    async function fetchPreview() {
+      if (normalizedQuery.length < 2) {
+        setPreviewProjects([]);
+        setPreviewWorkspaces([]);
+        setLoadingPreview(false);
+        setPreviewOpen(false);
+        return;
+      }
+
+      try {
+        setLoadingPreview(true);
+
+        const [projectResponse, workspaceResponse] = await Promise.all([
+          apiClient.get<ApiResponse<ProjectListResponse>>('/projects', {
+            params: { page: 0, size: 5, keyword: normalizedQuery },
+          }),
+          apiClient.get<ApiResponse<WorkspaceListResponse>>('/workspaces'),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const lowerQuery = normalizedQuery.toLowerCase();
+        const filteredWorkspaces = workspaceResponse.data.data.content
+          .map(normalizeWorkspace)
+          .filter((workspace) => {
+            const workspaceName = workspace.name.toLowerCase();
+            const workspaceDescription = workspace.description?.toLowerCase() ?? '';
+            return workspaceName.includes(lowerQuery) || workspaceDescription.includes(lowerQuery);
+          })
+          .slice(0, 5);
+
+        setPreviewProjects(
+          projectResponse.data.data.content.map((project) => ({
+            id: project.projectId,
+            name: project.name,
+            description: project.description,
+          }))
+        );
+        setPreviewWorkspaces(filteredWorkspaces);
+        setPreviewOpen(true);
+      } catch {
+        if (!cancelled) {
+          setPreviewProjects([]);
+          setPreviewWorkspaces([]);
+          setPreviewOpen(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPreview(false);
+        }
+      }
+    }
+
+    void fetchPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalizedQuery = searchQuery.trim();
+    if (!normalizedQuery) {
+      return;
+    }
+
+    setPreviewOpen(false);
+    navigate(`/search?q=${encodeURIComponent(normalizedQuery)}`);
+  };
+
+  const hasPreviewResults = previewProjects.length > 0 || previewWorkspaces.length > 0;
+  const shouldShowPreview = previewOpen && searchQuery.trim().length >= 2;
+
+  return (
+    <form
+      ref={searchRef}
+      onSubmit={handleSearchSubmit}
+      className="relative hidden max-w-[480px] flex-1 md:flex"
+    >
+      <Search
+        size={16}
+        className="absolute left-[var(--spacing-sm)] top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
+      />
+      <input
+        name="q"
+        type="text"
+        placeholder="검색..."
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        onFocus={() => {
+          if (searchQuery.trim().length >= 2) {
+            setPreviewOpen(true);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setPreviewOpen(false);
+          }
+        }}
+        className="
+          h-[32px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
+          bg-[var(--color-surface-muted)] pl-[30px] pr-[var(--spacing-sm)] text-[var(--text-sm)]
+          text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
+          focus:bg-[var(--color-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]
+        "
+      />
+
+      {shouldShowPreview && (
+        <div
+          className="
+            absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[var(--radius-md)]
+            border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]
+          "
+        >
+          {loadingPreview && (
+            <div className="px-[var(--spacing-base)] py-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+              검색 중...
+            </div>
+          )}
+
+          {!loadingPreview && !hasPreviewResults && (
+            <div className="px-[var(--spacing-base)] py-[var(--spacing-base)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+              검색 결과가 없습니다.
+            </div>
+          )}
+
+          {!loadingPreview && hasPreviewResults && (
+            <div className="max-h-[320px] overflow-y-auto">
+              {previewProjects.length > 0 && (
+                <div>
+                  <div className="border-b border-[var(--color-border)] px-[var(--spacing-base)] py-[var(--spacing-xs)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                    프로젝트
+                  </div>
+                  <ul className="m-0 list-none p-0">
+                    {previewProjects.map((project) => (
+                      <li key={project.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                        <Link
+                          to={`/projects/${project.id}/board`}
+                          aria-label={project.name}
+                          onClick={() => setPreviewOpen(false)}
+                          className="block px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--color-text-primary)] no-underline hover:bg-[var(--color-surface-muted)]"
+                        >
+                          <div className="font-medium">{project.name}</div>
+                          {project.description && (
+                            <div className="truncate text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                              {project.description}
+                            </div>
+                          )}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {previewWorkspaces.length > 0 && (
+                <div>
+                  <div className="border-b border-[var(--color-border)] px-[var(--spacing-base)] py-[var(--spacing-xs)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                    작업공간
+                  </div>
+                  <ul className="m-0 list-none p-0">
+                    {previewWorkspaces.map((workspace) => (
+                      <li key={workspace.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                        <Link
+                          to={`/workspaces/${workspace.id}`}
+                          aria-label={workspace.name}
+                          onClick={() => setPreviewOpen(false)}
+                          className="block px-[var(--spacing-base)] py-[var(--spacing-sm)] text-[var(--color-text-primary)] no-underline hover:bg-[var(--color-surface-muted)]"
+                        >
+                          <div className="font-medium">{workspace.name}</div>
+                          {workspace.description && (
+                            <div className="truncate text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                              {workspace.description}
+                            </div>
+                          )}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="border-t border-[var(--color-border)] px-[var(--spacing-base)] py-[var(--spacing-xs)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
+                Enter를 누르면 전체 검색 결과로 이동합니다.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </form>
+  );
+}
 
 export default function GlobalHeader() {
   const { user, logout } = useAuthStore();
   const { toggleMobileSidebar } = useUiStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -65,7 +317,7 @@ export default function GlobalHeader() {
   return (
     <header
       className="
-        fixed left-0 right-0 top-0 z-50 flex h-[56px] items-center gap-[var(--spacing-base)]
+        fixed left-0 right-0 top-0 z-[60] flex h-[56px] items-center gap-[var(--spacing-base)]
         border-b border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--spacing-base)]
       "
     >
@@ -87,33 +339,12 @@ export default function GlobalHeader() {
         EasyWork
       </Link>
 
-      <button
-        className="
-          flex h-[32px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)]
-          bg-[var(--color-surface)] px-[var(--spacing-sm)] text-[var(--text-sm)] text-[var(--color-text-secondary)]
-          hover:bg-[var(--color-surface-muted)]
-        "
-      >
-        <span className="max-w-[120px] truncate">워크스페이스</span>
-        <ChevronDown size={14} />
-      </button>
-
-      <div className="relative hidden max-w-[480px] flex-1 md:flex">
-        <Search
-          size={16}
-          className="absolute left-[var(--spacing-sm)] top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
-        />
-        <input
-          type="text"
-          placeholder="검색..."
-          className="
-            h-[32px] w-full rounded-[var(--radius-sm)] border border-[var(--color-border)]
-            bg-[var(--color-surface-muted)] pl-[30px] pr-[var(--spacing-sm)] text-[var(--text-sm)]
-            text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
-            focus:bg-[var(--color-surface)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]
-          "
-        />
-      </div>
+      <GlobalSearchForm
+        key={`${location.pathname}${location.search}`}
+        initialQuery={location.pathname === '/search'
+          ? new URLSearchParams(location.search).get('q')?.trim() ?? ''
+          : ''}
+      />
 
       <div className="ml-auto flex items-center gap-[var(--spacing-sm)]">
         <button
