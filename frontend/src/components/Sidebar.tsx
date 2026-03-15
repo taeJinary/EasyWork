@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home,
   Layers,
@@ -8,7 +9,9 @@ import {
   Settings,
   FolderOpen,
 } from 'lucide-react';
+import apiClient from '@/api/client';
 import { useUiStore } from '@/stores/uiStore';
+import type { ApiResponse, ProjectListResponse } from '@/types';
 
 const mainMenuItems = [
   { to: '/dashboard', label: 'Home', icon: Home },
@@ -19,14 +22,48 @@ const mainMenuItems = [
   { to: '/settings/profile', label: 'Settings', icon: Settings },
 ];
 
-const recentProjects = [
-  { id: 1, name: 'EasyWork' },
-  { id: 2, name: 'Internal Tools' },
-  { id: 3, name: 'Design System' },
-];
+type RecentProject = {
+  id: number;
+  name: string;
+};
 
 export default function Sidebar() {
   const { isMobileSidebarOpen, setMobileSidebarOpen } = useUiStore();
+  const { pathname } = useLocation();
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchRecentProjects() {
+      try {
+        const res = await apiClient.get<ApiResponse<ProjectListResponse>>('/projects', {
+          params: { page: 0, size: 3 },
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setRecentProjects(
+          res.data.data.content.map((project) => ({
+            id: project.projectId,
+            name: project.name,
+          }))
+        );
+      } catch {
+        if (!cancelled) {
+          setRecentProjects([]);
+        }
+      }
+    }
+
+    void fetchRecentProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   return (
     <>
@@ -70,32 +107,34 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        <div className="border-t border-[var(--color-border)] py-[var(--spacing-sm)]">
-          <div className="px-[var(--spacing-base)] py-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            Recent Projects
+        {recentProjects.length > 0 && (
+          <div className="border-t border-[var(--color-border)] py-[var(--spacing-sm)]">
+            <div className="px-[var(--spacing-base)] py-[var(--spacing-xs)] text-[var(--text-xs)] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              Recent Projects
+            </div>
+            <ul className="m-0 list-none p-0">
+              {recentProjects.map((project) => (
+                <li key={project.id}>
+                  <NavLink
+                    to={`/projects/${project.id}/board`}
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={({ isActive }) => `
+                      flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-base)] py-[6px]
+                      text-[var(--text-sm)] no-underline
+                      ${isActive
+                        ? 'text-[var(--color-text-primary)] font-medium'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-primary)]'
+                      }
+                    `}
+                  >
+                    <FolderOpen size={14} className="shrink-0 text-[var(--color-text-muted)]" />
+                    <span className="truncate">{project.name}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="m-0 list-none p-0">
-            {recentProjects.map((project) => (
-              <li key={project.id}>
-                <NavLink
-                  to={`/projects/${project.id}/board`}
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className={({ isActive }) => `
-                    flex items-center gap-[var(--spacing-sm)] px-[var(--spacing-base)] py-[6px]
-                    text-[var(--text-sm)] no-underline
-                    ${isActive
-                      ? 'text-[var(--color-text-primary)] font-medium'
-                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text-primary)]'
-                    }
-                  `}
-                >
-                  <FolderOpen size={14} className="shrink-0 text-[var(--color-text-muted)]" />
-                  <span className="truncate">{project.name}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+        )}
       </aside>
     </>
   );

@@ -31,6 +31,7 @@ vi.mock('@/pages/NotificationsPage', () => ({ default: () => <div>notifications-
 vi.mock('@/pages/ProfileSettingsPage', () => ({ default: () => <div>profile-settings-page</div> }));
 vi.mock('@/pages/AccountSettingsPage', () => ({ default: () => <div>account-settings-page</div> }));
 vi.mock('@/pages/ProjectSettingsPage', () => ({ default: () => <div>project-settings-page</div> }));
+vi.mock('@/pages/SearchPage', () => ({ default: () => <div>search-page</div> }));
 
 describe('App routes', () => {
   it('renders verify-email route even when authenticated', () => {
@@ -53,5 +54,15 @@ describe('App routes', () => {
 
     expect(screen.getByText('oauth-callback-page')).toBeInTheDocument();
     expect(screen.queryByText('workspaces-page')).not.toBeInTheDocument();
+  });
+
+  it('renders search route inside the authenticated shell', () => {
+    render(
+      <MemoryRouter initialEntries={['/search?q=dd']}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('search-page')).toBeInTheDocument();
   });
 });

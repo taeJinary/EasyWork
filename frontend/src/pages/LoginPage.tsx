@@ -32,7 +32,7 @@ export default function LoginPage() {
       });
       const { accessToken, user } = res.data.data;
       login(accessToken, user);
-      navigate('/workspaces');
+      navigate('/dashboard');
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
       const errorCode = axiosError.response?.data?.errorCode;

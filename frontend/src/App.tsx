@@ -17,6 +17,7 @@ import NotificationsPage from '@/pages/NotificationsPage';
 import ProfileSettingsPage from '@/pages/ProfileSettingsPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import ProjectSettingsPage from '@/pages/ProjectSettingsPage';
+import SearchPage from '@/pages/SearchPage';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
         <Route path="/invitations" element={<InvitationsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
         <Route path="/settings/profile" element={<ProfileSettingsPage />} />
         <Route path="/settings/account" element={<AccountSettingsPage />} />

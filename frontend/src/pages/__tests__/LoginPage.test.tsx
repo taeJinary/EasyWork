@@ -39,6 +39,45 @@ describe('LoginPage', () => {
     vi.clearAllMocks();
   });
 
+  it('redirects to dashboard after successful login', async () => {
+    mockPost.mockResolvedValueOnce(
+      apiOk({
+        accessToken: 'token',
+        expiresIn: 3600,
+        user: {
+          userId: 1,
+          email: 'user@example.com',
+          nickname: 'tester',
+          profileImg: null,
+          role: 'USER',
+        },
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('이메일'), 'user@example.com');
+    await user.type(screen.getByLabelText('비밀번호'), 'Password1!');
+    await user.click(screen.getByRole('button', { name: '로그인' }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('token', {
+        userId: 1,
+        email: 'user@example.com',
+        nickname: 'tester',
+        profileImg: null,
+        role: 'USER',
+      });
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+  });
+
   it('shows only google and naver oauth entry points', () => {
     render(
       <MemoryRouter>
