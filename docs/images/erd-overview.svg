@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="940" viewBox="0 0 1320 940" role="img" aria-labelledby="title desc">
+  <title id="title">EasyWork ERD Overview</title>
+  <desc id="desc">Simplified entity relationship overview for EasyWork with orthogonal connectors.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto-start-reverse">
+      <path d="M 1 1 L 8 4.5 L 1 8" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .section { fill: #e2e8f0; stroke: #cbd5e1; stroke-width: 1; rx: 18; ry: 18; }
+      .section-title { font: 700 20px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
+      .box { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; rx: 12; ry: 12; }
+      .box-title { font: 700 17px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
+      .box-sub { font: 400 12px 'Segoe UI', Arial, sans-serif; fill: #475569; }
+      .edge { stroke: #64748b; stroke-width: 2.2; fill: none; marker-end: url(#arrow); stroke-linecap: round; stroke-linejoin: round; }
+      .edge-label { font: 600 12px 'Segoe UI', Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1320" height="940"/>
+
+  <rect class="section" x="40" y="40" width="360" height="470"/>
+  <text class="section-title" x="60" y="80">Account / Auth</text>
+
+  <rect class="section" x="440" y="40" width="420" height="570"/>
+  <text class="section-title" x="460" y="80">Workspace / Project</text>
+
+  <rect class="section" x="900" y="40" width="380" height="330"/>
+  <text class="section-title" x="920" y="80">Task / Collaboration</text>
+
+  <rect class="section" x="240" y="650" width="840" height="220"/>
+  <text class="section-title" x="260" y="690">Invitation / Notification</text>
+
+  <rect class="box" x="90" y="130" width="220" height="78"/>
+  <text class="box-title" x="125" y="165">User</text>
+  <text class="box-sub" x="125" y="188">email, nickname, provider, status</text>
+
+  <rect class="box" x="90" y="250" width="220" height="78"/>
+  <text class="box-title" x="125" y="285">EmailVerificationToken</text>
+  <text class="box-sub" x="125" y="308">tokenHash, expiresAt, consumedAt</text>
+
+  <rect class="box" x="90" y="370" width="220" height="78"/>
+  <text class="box-title" x="125" y="405">NotificationPushToken</text>
+  <text class="box-sub" x="125" y="428">token, platform, isActive</text>
+
+  <rect class="box" x="540" y="130" width="220" height="78"/>
+  <text class="box-title" x="585" y="165">Workspace</text>
+  <text class="box-sub" x="585" y="188">owner, name, description</text>
+
+  <rect class="box" x="540" y="250" width="220" height="78"/>
+  <text class="box-title" x="565" y="285">WorkspaceMember</text>
+  <text class="box-sub" x="565" y="308">workspace, user, role</text>
+
+  <rect class="box" x="540" y="370" width="220" height="78"/>
+  <text class="box-title" x="605" y="405">Project</text>
+  <text class="box-sub" x="605" y="428">workspace, owner, name</text>
+
+  <rect class="box" x="540" y="490" width="220" height="78"/>
+  <text class="box-title" x="620" y="525">Label</text>
+  <text class="box-sub" x="575" y="548">project, name, colorHex</text>
+
+  <rect class="box" x="980" y="130" width="220" height="78"/>
+  <text class="box-title" x="1060" y="165">Task</text>
+  <text class="box-sub" x="1015" y="188">project, creator, assignee, status</text>
+
+  <rect class="box" x="980" y="250" width="220" height="78"/>
+  <text class="box-title" x="1050" y="285">Comment</text>
+  <text class="box-sub" x="1018" y="308">task, author, content</text>
+
+  <rect class="box" x="320" y="730" width="230" height="78"/>
+  <text class="box-title" x="355" y="765">WorkspaceInvitation</text>
+  <text class="box-sub" x="390" y="788">workspace, inviter, invitee, status</text>
+
+  <rect class="box" x="585" y="730" width="230" height="78"/>
+  <text class="box-title" x="650" y="765">Notification</text>
+  <text class="box-sub" x="628" y="788">user, type, referenceType, isRead</text>
+
+  <rect class="box" x="850" y="730" width="230" height="78"/>
+  <text class="box-title" x="905" y="765">ProjectMember</text>
+  <text class="box-sub" x="888" y="788">project, user, role</text>
+
+  <path class="edge" d="M 310 169 L 540 169"/>
+  <text class="edge-label" x="412" y="159">owns</text>
+
+  <path class="edge" d="M 200 208 L 200 250"/>
+  <text class="edge-label" x="216" y="232">verifies</text>
+
+  <path class="edge" d="M 200 328 L 200 370"/>
+  <text class="edge-label" x="216" y="352">owns</text>
+
+  <path class="edge" d="M 310 289 L 540 289"/>
+  <text class="edge-label" x="392" y="279">joins</text>
+
+  <path class="edge" d="M 650 208 L 650 250"/>
+  <text class="edge-label" x="666" y="232">has</text>
+
+  <path class="edge" d="M 650 328 L 650 370"/>
+  <text class="edge-label" x="666" y="352">contains</text>
+
+  <path class="edge" d="M 650 448 L 650 490"/>
+  <text class="edge-label" x="666" y="472">defines</text>
+
+  <path class="edge" d="M 760 409 L 900 409 L 900 169 L 980 169"/>
+  <text class="edge-label" x="818" y="399">has</text>
+
+  <path class="edge" d="M 1200 169 L 1235 169 L 1235 289 L 1200 289"/>
+  <text class="edge-label" x="1242" y="234">has</text>
+
+  <path class="edge" d="M 650 208 L 650 620 L 435 620 L 435 730"/>
+  <text class="edge-label" x="516" y="610">invites to</text>
+
+  <path class="edge" d="M 650 448 L 650 620 L 965 620 L 965 730"/>
+  <text class="edge-label" x="785" y="610">members</text>
+
+  <path class="edge" d="M 310 409 L 470 409 L 470 620 L 700 620 L 700 730"/>
+  <text class="edge-label" x="492" y="398">receives on device</text>
+
+  <path class="edge" d="M 310 169 L 390 169 L 390 620 L 700 620 L 700 730"/>
+  <text class="edge-label" x="405" y="610">receives</text>
+
+  <path class="edge" d="M 310 169 L 430 169 L 430 120 L 1090 120 L 1090 130"/>
+  <text class="edge-label" x="725" y="110">creates / assigned</text>
+
+</svg>
